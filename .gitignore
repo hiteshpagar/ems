@@ -1,0 +1,12 @@
+# Frontend
+Employee-Management-System-Frontend/node_modules/
+Employee-Management-System-Frontend/.expo/
+
+# Backend
+Employee-Management-System-Backend/target/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
