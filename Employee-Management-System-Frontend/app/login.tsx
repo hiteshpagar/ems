@@ -1,0 +1,98 @@
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+import { useState } from "react";
+
+import { router } from "expo-router";
+
+import API from "../services/api";
+
+import CustomButton from "../components/CustomButton";
+import CustomInput from "../components/CustomInput";
+import ScreenWrapper from "../components/ScreenWrapper";
+import { saveToken } from "../utils/storage";
+
+export default function LoginScreen() {
+  const [email, setEmail] = useState("");
+
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please fill all fields");
+
+      return;
+    }
+
+    try {
+      const response = await API.post("/auth/login", {
+        email,
+        password,
+      });
+
+      console.log(response.data);
+
+      if (response.data) {
+        // Save user in AsyncStorage
+        await saveToken(response.data.token);
+
+        Alert.alert("Success", "Login Successful");
+
+        router.replace("/dashboard");
+      } else {
+        Alert.alert("Error", "Invalid Credentials");
+      }
+    } catch (error) {
+      console.log(error);
+
+      Alert.alert("Error", "Login Failed");
+    }
+  };
+
+  return (
+    <ScreenWrapper>
+      <View style={styles.container}>
+        <Text style={styles.title}>Employee Management System</Text>
+
+        <CustomInput
+          placeholder="Enter Email"
+          value={email}
+          onChangeText={setEmail}
+        />
+
+        <CustomInput
+          placeholder="Enter Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        <CustomButton title="Login" onPress={handleLogin} />
+
+        <TouchableOpacity onPress={() => router.push("/register")}>
+          <Text style={styles.link}>Don't have an account? Register</Text>
+        </TouchableOpacity>
+      </View>
+    </ScreenWrapper>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+  },
+
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 40,
+  },
+
+  link: {
+    textAlign: "center",
+    marginTop: 20,
+    color: "#007AFF",
+    fontSize: 16,
+  },
+});
