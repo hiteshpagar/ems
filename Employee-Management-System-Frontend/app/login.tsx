@@ -1,6 +1,6 @@
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 
 import { router } from "expo-router";
 
@@ -9,12 +9,15 @@ import API from "../services/api";
 import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
 import ScreenWrapper from "../components/ScreenWrapper";
-import { saveToken } from "../utils/storage";
+
+import { AuthContext } from "../context/AuthContext";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
 
   const [password, setPassword] = useState("");
+
+  const { login } = useContext(AuthContext);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,7 +36,7 @@ export default function LoginScreen() {
 
       if (response.data) {
         // Save user in AsyncStorage
-        await saveToken(response.data.token);
+        await login(response.data.token);
 
         Alert.alert("Success", "Login Successful");
 

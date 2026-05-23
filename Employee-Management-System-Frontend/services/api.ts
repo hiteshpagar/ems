@@ -3,7 +3,7 @@ import axios from "axios";
 import { getToken } from "../utils/storage";
 
 const API = axios.create({
-  baseURL: "http://192.168.110.19:8080/api",
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
 });
 
 // Add JWT Token Automatically

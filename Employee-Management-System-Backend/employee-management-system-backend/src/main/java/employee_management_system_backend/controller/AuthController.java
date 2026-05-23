@@ -18,7 +18,6 @@ import employee_management_system_backend.service.UserService;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin("*")
 public class AuthController {
 
     @Autowired

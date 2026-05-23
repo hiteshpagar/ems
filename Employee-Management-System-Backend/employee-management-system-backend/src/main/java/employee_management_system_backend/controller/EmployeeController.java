@@ -10,7 +10,6 @@ import employee_management_system_backend.service.EmployeeService;
 
 @RestController
 @RequestMapping("/api/employees")
-@CrossOrigin("*")
 public class EmployeeController {
 
     @Autowired
