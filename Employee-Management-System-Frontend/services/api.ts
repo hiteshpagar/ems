@@ -1,4 +1,6 @@
 import axios from "axios";
+import { router } from "expo-router";
+import { removeToken } from "../utils/storage";
 
 import { getToken } from "../utils/storage";
 
@@ -19,6 +21,20 @@ API.interceptors.request.use(
   },
 
   (error) => {
+    return Promise.reject(error);
+  },
+);
+
+API.interceptors.response.use(
+  (response) => response,
+
+  async (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      await removeToken();
+
+      router.replace("/login");
+    }
+
     return Promise.reject(error);
   },
 );
