@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import io.jsonwebtoken.ExpiredJwtException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -56,11 +57,24 @@ public class JwtAuthenticationFilter
             )
         ) {
 
-            token =
-                    authHeader.substring(7);
+        	token = authHeader.substring(7);
 
-            email =
-                    jwtUtil.extractEmail(token);
+        	try {
+
+        	    email = jwtUtil.extractEmail(token);
+
+        	} catch (ExpiredJwtException e) {
+
+        	    response.setStatus(
+        	            HttpServletResponse.SC_UNAUTHORIZED
+        	    );
+
+        	    response.getWriter().write(
+        	            "JWT Token Expired"
+        	    );
+
+        	    return;
+        	}
         }
 
         // Validate User
