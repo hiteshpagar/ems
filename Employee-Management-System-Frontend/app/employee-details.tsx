@@ -1,6 +1,7 @@
 import {
   ActivityIndicator,
   Alert,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -86,7 +87,11 @@ export default function EmployeeDetailsScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
@@ -169,7 +174,7 @@ export default function EmployeeDetailsScreen() {
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
           <Text style={styles.buttonText}>🗑️ Delete Employee</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
@@ -179,6 +184,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  scrollContent: {
+    paddingBottom: 40,
   },
 
   container: {
