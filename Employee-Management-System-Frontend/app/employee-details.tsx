@@ -56,23 +56,17 @@ export default function EmployeeDetailsScreen() {
             try {
               await API.delete(`/employees/${id}`);
 
-              Alert.alert(
-                "Success",
-                "Employee Deleted Successfully"
-              );
+              Alert.alert("Success", "Employee Deleted Successfully");
 
               router.back();
             } catch (error) {
               console.log(error);
 
-              Alert.alert(
-                "Error",
-                "Delete Failed"
-              );
+              Alert.alert("Error", "Delete Failed");
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -103,60 +97,77 @@ export default function EmployeeDetailsScreen() {
           style={styles.profileCard}
         >
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {getInitials(employee?.name)}
-            </Text>
+            <Text style={styles.avatarText}>{getInitials(employee?.name)}</Text>
           </View>
 
-          <Text style={styles.name}>
-            {employee?.name}
-          </Text>
+          <Text style={styles.name}>{employee?.name}</Text>
 
-          <Text style={styles.email}>
-            {employee?.email}
-          </Text>
+          <Text style={styles.email}>{employee?.email}</Text>
+
+          <View style={styles.departmentBadge}>
+            <Text style={styles.departmentBadgeText}>
+              {employee?.department}
+            </Text>
+          </View>
         </LinearGradient>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statEmoji}>🏢</Text>
+            <Text style={styles.statValue}>{employee?.department}</Text>
+            <Text style={styles.statLabel}>Department</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={styles.statEmoji}>💰</Text>
+            <Text style={styles.statValue}>₹ {employee?.salary}</Text>
+            <Text style={styles.statLabel}>Salary</Text>
+          </View>
+        </View>
 
         {/* Details */}
         <View style={styles.infoCard}>
-          <Text style={styles.label}>
-            Department
-          </Text>
+          <Text style={styles.sectionTitle}>EMPLOYEE INFORMATION</Text>
 
-          <Text style={styles.value}>
-            {employee?.department}
-          </Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoIcon}>📧</Text>
+            <View>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{employee?.email}</Text>
+            </View>
+          </View>
 
-          <Text style={styles.label}>
-            Salary
-          </Text>
+          <View style={styles.infoDivider} />
 
-          <Text style={styles.value}>
-            ₹ {employee?.salary}
-          </Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoIcon}>🏢</Text>
+            <View>
+              <Text style={styles.infoLabel}>Department</Text>
+              <Text style={styles.infoValue}>{employee?.department}</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoDivider} />
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoIcon}>💰</Text>
+            <View>
+              <Text style={styles.infoLabel}>Salary</Text>
+              <Text style={styles.infoValue}>₹ {employee?.salary}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Buttons */}
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() =>
-            router.push(
-              `/edit-employee?id=${employee.id}`
-            )
-          }
+          onPress={() => router.push(`/edit-employee?id=${employee.id}`)}
         >
-          <Text style={styles.buttonText}>
-            Edit Employee
-          </Text>
+          <Text style={styles.buttonText}>✏️ Edit Employee</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDelete}
-        >
-          <Text style={styles.buttonText}>
-            Delete Employee
-          </Text>
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <Text style={styles.buttonText}>🗑️ Delete Employee</Text>
         </TouchableOpacity>
       </View>
     </ScreenWrapper>
@@ -190,10 +201,12 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
@@ -201,8 +214,8 @@ const styles = StyleSheet.create({
 
   avatarText: {
     color: "#fff",
-    fontSize: 30,
-    fontWeight: "bold",
+    fontSize: 36,
+    fontWeight: "800",
   },
 
   name: {
@@ -255,5 +268,82 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  departmentBadge: {
+    marginTop: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+
+  departmentBadgeText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+  },
+
+  statCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    elevation: 3,
+  },
+
+  statEmoji: {
+    fontSize: 24,
+  },
+
+  statValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+
+  statLabel: {
+    color: "gray",
+    marginTop: 4,
+  },
+
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "gray",
+    letterSpacing: 1,
+    marginBottom: 15,
+  },
+
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+
+  infoIcon: {
+    fontSize: 22,
+    marginRight: 15,
+  },
+
+  infoLabel: {
+    color: "gray",
+    fontSize: 12,
+  },
+
+  infoValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+
+  infoDivider: {
+    height: 1,
+    backgroundColor: "#EEE",
   },
 });
