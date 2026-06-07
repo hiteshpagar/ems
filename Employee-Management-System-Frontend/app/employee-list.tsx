@@ -1,13 +1,13 @@
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
@@ -208,85 +208,63 @@ export default function EmployeeListScreen() {
             const grad = getGradient(item.id);
             const dept = getDeptStyle(item.department);
             return (
-              <View style={styles.card}>
-                {/* left accent bar */}
-                <LinearGradient
-                  colors={grad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                  style={styles.cardAccent}
-                />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  console.log("Clicked Employee:", item.id);
 
-                {/* avatar + info row */}
-                <View style={styles.cardTop}>
-                  <LinearGradient colors={grad} style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {getInitials(item.name)}
-                    </Text>
-                  </LinearGradient>
+                  router.push(`/employee-details?id=${item.id}`);
+                }}
+              >
+                <View style={styles.card}>
+                  {/* left accent bar */}
+                  <LinearGradient
+                    colors={grad}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.cardAccent}
+                  />
 
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardName}>{item.name}</Text>
-                    <Text style={styles.cardEmail}>{item.email}</Text>
-                  </View>
-
-                  {/* index badge */}
-                  <View style={styles.indexBadge}>
-                    <Text style={styles.indexText}>
-                      {String(index + 1).padStart(2, "0")}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* meta chips row */}
-                <View style={styles.metaRow}>
-                  <View style={[styles.deptChip, { backgroundColor: dept.bg }]}>
-                    <Text style={[styles.deptText, { color: dept.text }]}>
-                      {item.department}
-                    </Text>
-                  </View>
-
-                  <View style={styles.salaryChip}>
-                    <Text style={styles.salaryText}>₹ {item.salary}</Text>
-                  </View>
-                </View>
-
-                {/* divider */}
-                <View style={styles.cardDivider} />
-
-                {/* action buttons */}
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    style={styles.editBtn}
-                    onPress={() => router.push(`/edit-employee?id=${item.id}`)} // ← untouched
-                  >
-                    <LinearGradient
-                      colors={["#2F80ED", "#56CCF2"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.editGrad}
-                    >
-                      <Text style={styles.editIcon}>✏️</Text>
-                      <Text style={styles.editText}>Edit</Text>
+                  {/* avatar + info row */}
+                  <View style={styles.cardTop}>
+                    <LinearGradient colors={grad} style={styles.avatar}>
+                      <Text style={styles.avatarText}>
+                        {getInitials(item.name)}
+                      </Text>
                     </LinearGradient>
-                  </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => handleDeleteEmployee(item.id)} // ← untouched
-                  >
-                    <LinearGradient
-                      colors={["#FF416C", "#FF4B2B"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.deleteGrad}
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.cardName}>{item.name}</Text>
+                      <Text style={styles.cardEmail}>{item.email}</Text>
+                    </View>
+
+                    {/* index badge */}
+                    <View style={styles.indexBadge}>
+                      <Text style={styles.indexText}>
+                        {String(index + 1).padStart(2, "0")}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* meta chips row */}
+                  <View style={styles.metaRow}>
+                    <View
+                      style={[styles.deptChip, { backgroundColor: dept.bg }]}
                     >
-                      <Text style={styles.deleteIcon}>🗑</Text>
-                      <Text style={styles.deleteText}>Delete</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
+                      <Text style={[styles.deptText, { color: dept.text }]}>
+                        {item.department}
+                      </Text>
+                    </View>
+
+                    <View style={styles.salaryChip}>
+                      <Text style={styles.salaryText}>₹ {item.salary}</Text>
+                    </View>
+                  </View>
+
+                  {/* divider */}
+                  <View style={styles.cardDivider} />
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           }}
         />

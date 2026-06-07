@@ -1,13 +1,13 @@
 import {
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { useEffect, useState } from "react";
@@ -25,22 +25,57 @@ import { removeToken } from "../utils/storage";
 export default function DashboardScreen() {
   const [employeeCount, setEmployeeCount] = useState(0);
 
+  const [departmentCount, setDepartmentCount] = useState(0);
+  const [averageSalary, setAverageSalary] = useState(0);
+  const [highestSalary, setHighestSalary] = useState(0);
+
   const [loading, setLoading] = useState(true);
 
   const [refreshing, setRefreshing] = useState(false);
 
+  const [employees, setEmployees] = useState<any[]>([]);
+
   // Fetch Employee Count
   const fetchDashboardData = async () => {
+
+    
     try {
       const response = await API.get("/employees");
 
-      setEmployeeCount(response.data.length);
+      const employees = response.data;
+
+      setEmployees(employees);
+    
+      setEmployeeCount(employees.length);
+
+      // Unique Departments
+      const departments = new Set(employees.map((emp: any) => emp.department));
+
+      setDepartmentCount(departments.size);
+
+      // Average Salary
+      const totalSalary = employees.reduce(
+        (sum: number, emp: any) => sum + Number(emp.salary),
+        0,
+      );
+
+      setAverageSalary(
+        employees.length ? Math.round(totalSalary / employees.length) : 0,
+      );
+
+      // Highest Salary
+      const maxSalary = employees.length
+        ? Math.max(...employees.map((emp: any) => Number(emp.salary)))
+        : 0;
+
+      setHighestSalary(maxSalary);
     } catch (error) {
       console.log(error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+
   };
 
   // Initial Load
@@ -88,6 +123,24 @@ export default function DashboardScreen() {
     );
   }
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+
+    if (hour < 12) {
+      return "Good Morning ☀️";
+    }
+
+    if (hour < 18) {
+      return "Good Afternoon 🌤️";
+    }
+
+    return "Good Evening 🌙";
+  };
+
+  const recentEmployees = [...employees]
+  .sort((a, b) => b.id - a.id)
+  .slice(0, 3);
+
   return (
     <ScreenWrapper>
       <StatusBar barStyle="light-content" />
@@ -131,7 +184,7 @@ export default function DashboardScreen() {
 
           {/* GREETING */}
 
-          <Text style={styles.greeting}>Welcome Back 👋</Text>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
 
           <Text style={styles.heroTitle}>Employee{"\n"}Dashboard</Text>
 
@@ -150,30 +203,42 @@ export default function DashboardScreen() {
           <Text style={styles.sectionLabel}>OVERVIEW</Text>
 
           <View style={styles.statsRow}>
-            {/* TOTAL EMPLOYEES */}
-
             <LinearGradient
               colors={["#2F80ED", "#56CCF2"]}
               style={styles.statCard}
             >
               <Text style={styles.statEmoji}>👥</Text>
-
               <Text style={styles.statNumber}>{employeeCount}</Text>
-
-              <Text style={styles.statLabel}>Total Employees</Text>
+              <Text style={styles.statLabel}>Employees</Text>
             </LinearGradient>
-
-            {/* ACTIVE STATUS */}
 
             <LinearGradient
               colors={["#11998e", "#38ef7d"]}
               style={styles.statCard}
             >
-              <Text style={styles.statEmoji}>✅</Text>
+              <Text style={styles.statEmoji}>🏢</Text>
+              <Text style={styles.statNumber}>{departmentCount}</Text>
+              <Text style={styles.statLabel}>Departments</Text>
+            </LinearGradient>
+          </View>
 
-              <Text style={styles.statNumber}>Active</Text>
+          <View style={[styles.statsRow, { marginTop: 14 }]}>
+            <LinearGradient
+              colors={["#F2994A", "#F2C94C"]}
+              style={styles.statCard}
+            >
+              <Text style={styles.statEmoji}>💰</Text>
+              <Text style={styles.statNumber}>₹{averageSalary}</Text>
+              <Text style={styles.statLabel}>Avg Salary</Text>
+            </LinearGradient>
 
-              <Text style={styles.statLabel}>System Status</Text>
+            <LinearGradient
+              colors={["#EB5757", "#FF416C"]}
+              style={styles.statCard}
+            >
+              <Text style={styles.statEmoji}>🏆</Text>
+              <Text style={styles.statNumber}>₹{highestSalary}</Text>
+              <Text style={styles.statLabel}>Highest Salary</Text>
             </LinearGradient>
           </View>
         </View>
@@ -237,6 +302,33 @@ export default function DashboardScreen() {
               <Text style={styles.actionChevron}>›</Text>
             </LinearGradient>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionWrapper}>
+          <Text style={styles.sectionLabel}>RECENT EMPLOYEES</Text>
+
+          {recentEmployees.map((employee) => (
+            <View key={employee.id} style={styles.employeeCard}>
+              <View style={styles.employeeAvatar}>
+                <Text style={styles.employeeAvatarText}>
+                  {employee.name
+                    ?.split(" ")
+                    .map((word: string) => word[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.employeeName}>{employee.name}</Text>
+
+                <Text style={styles.employeeDepartment}>
+                  {employee.department}
+                </Text>
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* LOGOUT */}
@@ -423,7 +515,7 @@ const styles = StyleSheet.create({
 
   statNumber: {
     color: "#fff",
-    fontSize: 34,
+    fontSize: 25,
     fontWeight: "bold",
   },
 
@@ -497,5 +589,41 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+
+  employeeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    elevation: 2,
+  },
+
+  employeeAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#2F80ED",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 14,
+  },
+
+  employeeAvatarText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+
+  employeeName: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  employeeDepartment: {
+    color: "gray",
+    marginTop: 2,
   },
 });
