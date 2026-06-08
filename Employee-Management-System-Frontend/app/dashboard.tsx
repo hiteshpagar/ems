@@ -37,15 +37,13 @@ export default function DashboardScreen() {
 
   // Fetch Employee Count
   const fetchDashboardData = async () => {
-
-    
     try {
       const response = await API.get("/employees");
 
       const employees = response.data;
 
       setEmployees(employees);
-    
+
       setEmployeeCount(employees.length);
 
       // Unique Departments
@@ -75,7 +73,6 @@ export default function DashboardScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-
   };
 
   // Initial Load
@@ -138,8 +135,8 @@ export default function DashboardScreen() {
   };
 
   const recentEmployees = [...employees]
-  .sort((a, b) => b.id - a.id)
-  .slice(0, 3);
+    .sort((a, b) => b.id - a.id)
+    .slice(0, 3);
 
   return (
     <ScreenWrapper>
@@ -297,6 +294,64 @@ export default function DashboardScreen() {
                 <Text style={styles.actionTitle}>View Employees</Text>
 
                 <Text style={styles.actionSub}>Browse employee list</Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/apply-leave")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#F2994A",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>🏖</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>Apply Leave</Text>
+
+                <Text style={styles.actionSub}>Submit leave request</Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/leave-list")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#27AE60",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>📋</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>View Leaves</Text>
+
+                <Text style={styles.actionSub}>Track leave requests</Text>
               </View>
 
               <Text style={styles.actionChevron}>›</Text>
