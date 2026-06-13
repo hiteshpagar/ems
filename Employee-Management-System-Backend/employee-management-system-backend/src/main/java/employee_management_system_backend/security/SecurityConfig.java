@@ -41,7 +41,8 @@ public class SecurityConfig {
             			    "/api/auth/**",
             			    "/api/employees/**",
             			    "/api/leaves/**",
-            			    "/api/dashboard/**"
+            			    "/api/dashboard/**",
+            			    "/api/attendance/**"
             			).permitAll()
 
                 // Protected APIs
