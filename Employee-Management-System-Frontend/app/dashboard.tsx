@@ -356,6 +356,74 @@ export default function DashboardScreen() {
 
           <TouchableOpacity
             activeOpacity={0.85}
+            onPress={() => router.push("/attendance")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#8E44AD",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>🕒</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>Attendance</Text>
+
+                <Text style={styles.actionSub}>Mark employee attendance</Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+  activeOpacity={0.85}
+  onPress={() =>
+    router.push("/attendance-history")
+  }
+>
+  <LinearGradient
+    colors={["#1a1a2e", "#16213e"]}
+    style={styles.actionCard}
+  >
+    <View
+      style={[
+        styles.actionIconBg,
+        {
+          backgroundColor: "#16A085",
+        },
+      ]}
+    >
+      <Text style={styles.actionIconText}>
+        📊
+      </Text>
+    </View>
+
+    <View style={styles.actionTextGroup}>
+      <Text style={styles.actionTitle}>
+        Attendance History
+      </Text>
+
+      <Text style={styles.actionSub}>
+        View attendance records
+      </Text>
+    </View>
+
+    <Text style={styles.actionChevron}>
+      ›
+    </Text>
+  </LinearGradient>
+</TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
             onPress={() => router.push("/leave-list")}
           >
             <LinearGradient
@@ -705,5 +773,16 @@ const styles = StyleSheet.create({
   employeeDepartment: {
     color: "gray",
     marginTop: 2,
+  },
+
+  actionIcon: {
+    fontSize: 28,
+    marginBottom: 10,
+  },
+
+  actionSubtitle: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
   },
 });
