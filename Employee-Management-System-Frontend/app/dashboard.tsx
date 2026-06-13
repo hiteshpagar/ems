@@ -25,6 +25,13 @@ import { removeToken } from "../utils/storage";
 export default function DashboardScreen() {
   const [employeeCount, setEmployeeCount] = useState(0);
 
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    pendingLeaves: 0,
+    approvedLeaves: 0,
+    rejectedLeaves: 0,
+  });
+
   const [departmentCount, setDepartmentCount] = useState(0);
   const [averageSalary, setAverageSalary] = useState(0);
   const [highestSalary, setHighestSalary] = useState(0);
@@ -34,6 +41,16 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [employees, setEmployees] = useState<any[]>([]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await API.get("/dashboard/stats");
+
+      setStats(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   // Fetch Employee Count
   const fetchDashboardData = async () => {
@@ -78,6 +95,7 @@ export default function DashboardScreen() {
   // Initial Load
   useEffect(() => {
     fetchDashboardData();
+    fetchDashboardStats();
   }, []);
 
   // Pull To Refresh
@@ -85,6 +103,7 @@ export default function DashboardScreen() {
     setRefreshing(true);
 
     fetchDashboardData();
+    fetchDashboardStats();
   };
 
   // Logout
@@ -205,37 +224,43 @@ export default function DashboardScreen() {
               style={styles.statCard}
             >
               <Text style={styles.statEmoji}>👥</Text>
-              <Text style={styles.statNumber}>{employeeCount}</Text>
+              <Text style={styles.statNumber}>{stats.totalEmployees}</Text>
               <Text style={styles.statLabel}>Employees</Text>
             </LinearGradient>
 
             <LinearGradient
-              colors={["#11998e", "#38ef7d"]}
+              colors={["#F2994A", "#F2C94C"]}
               style={styles.statCard}
             >
-              <Text style={styles.statEmoji}>🏢</Text>
-              <Text style={styles.statNumber}>{departmentCount}</Text>
-              <Text style={styles.statLabel}>Departments</Text>
+              <Text style={styles.statEmoji}>🟡</Text>
+
+              <Text style={styles.statNumber}>{stats.pendingLeaves}</Text>
+
+              <Text style={styles.statLabel}>Pending Leaves</Text>
             </LinearGradient>
           </View>
 
           <View style={[styles.statsRow, { marginTop: 14 }]}>
             <LinearGradient
-              colors={["#F2994A", "#F2C94C"]}
+              colors={["#27AE60", "#6FCF97"]}
               style={styles.statCard}
             >
-              <Text style={styles.statEmoji}>💰</Text>
-              <Text style={styles.statNumber}>₹{averageSalary}</Text>
-              <Text style={styles.statLabel}>Avg Salary</Text>
+              <Text style={styles.statEmoji}>🟢</Text>
+
+              <Text style={styles.statNumber}>{stats.approvedLeaves}</Text>
+
+              <Text style={styles.statLabel}>Approved Leaves</Text>
             </LinearGradient>
 
             <LinearGradient
               colors={["#EB5757", "#FF416C"]}
               style={styles.statCard}
             >
-              <Text style={styles.statEmoji}>🏆</Text>
-              <Text style={styles.statNumber}>₹{highestSalary}</Text>
-              <Text style={styles.statLabel}>Highest Salary</Text>
+              <Text style={styles.statEmoji}>🔴</Text>
+
+              <Text style={styles.statNumber}>{stats.rejectedLeaves}</Text>
+
+              <Text style={styles.statLabel}>Rejected Leaves</Text>
             </LinearGradient>
           </View>
         </View>

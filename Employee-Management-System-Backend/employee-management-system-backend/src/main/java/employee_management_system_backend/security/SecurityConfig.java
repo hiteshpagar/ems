@@ -40,7 +40,8 @@ public class SecurityConfig {
             		.requestMatchers(
             			    "/api/auth/**",
             			    "/api/employees/**",
-            			    "/api/leaves/**"
+            			    "/api/leaves/**",
+            			    "/api/dashboard/**"
             			).permitAll()
 
                 // Protected APIs
