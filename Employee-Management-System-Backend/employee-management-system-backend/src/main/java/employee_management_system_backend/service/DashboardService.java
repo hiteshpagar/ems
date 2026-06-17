@@ -6,6 +6,9 @@ import org.springframework.stereotype.Service;
 import employee_management_system_backend.dto.DashboardStatsDTO;
 import employee_management_system_backend.repository.EmployeeRepository;
 import employee_management_system_backend.repository.LeaveRepository;
+import employee_management_system_backend.repository.AttendanceRepository;
+import java.time.LocalDate;
+import employee_management_system_backend.dto.AttendanceStatsDTO;
 
 @Service
 public class DashboardService {
@@ -15,6 +18,9 @@ public class DashboardService {
 
     @Autowired
     private LeaveRepository leaveRepository;
+    
+    @Autowired
+    private AttendanceRepository attendanceRepository;
 
     public DashboardStatsDTO getDashboardStats() {
 
@@ -35,6 +41,34 @@ public class DashboardService {
                 pendingLeaves,
                 approvedLeaves,
                 rejectedLeaves
+        );
+    }
+    
+    public AttendanceStatsDTO getAttendanceStats() {
+
+        String today =
+                LocalDate.now().toString();
+
+        long presentToday =
+                attendanceRepository.countByDate(
+                        today
+                );
+
+        long checkedInToday =
+                attendanceRepository.countByDate(
+                        today
+                );
+
+        long totalEmployees =
+                employeeRepository.count();
+
+        long absentToday =
+                totalEmployees - presentToday;
+
+        return new AttendanceStatsDTO(
+                presentToday,
+                absentToday,
+                checkedInToday
         );
     }
 }
