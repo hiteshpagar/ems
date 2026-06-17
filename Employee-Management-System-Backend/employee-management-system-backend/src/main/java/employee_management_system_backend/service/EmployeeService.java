@@ -59,6 +59,9 @@ public class EmployeeService {
 
             employee.setSalary(
                     updatedEmployee.getSalary());
+            
+            employee.setPhotoUrl(
+                    updatedEmployee.getPhotoUrl());
 
             return employeeRepository.save(employee);
         }

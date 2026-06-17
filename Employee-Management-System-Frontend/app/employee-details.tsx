@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 
 import { useEffect, useState } from "react";
@@ -101,9 +102,14 @@ export default function EmployeeDetailsScreen() {
           colors={["#0F2027", "#203A43", "#2C5364"]}
           style={styles.profileCard}
         >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(employee?.name)}</Text>
-          </View>
+          <Image
+            source={{
+              uri: employee?.photoUrl
+                ? `http://10.195.172.204:8080${employee.photoUrl}`
+                : "https://i.pravatar.cc/300",
+            }}
+            style={styles.avatar}
+          />
 
           <Text style={styles.name}>{employee?.name}</Text>
 
@@ -213,18 +219,9 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "rgba(255,255,255,0.15)",
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
     marginBottom: 15,
-  },
-
-  avatarText: {
-    color: "#fff",
-    fontSize: 36,
-    fontWeight: "800",
   },
 
   name: {
