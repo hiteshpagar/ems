@@ -11,4 +11,13 @@ public interface AttendanceRepository
             Long employeeId,
             String date
     );
+    
+    long countByDateAndStatus(
+            String date,
+            String status
+    );
+
+    long countByDate(
+            String date
+    );
 }

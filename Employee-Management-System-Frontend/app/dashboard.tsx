@@ -42,11 +42,27 @@ export default function DashboardScreen() {
 
   const [employees, setEmployees] = useState<any[]>([]);
 
+  const [attendanceStats, setAttendanceStats] = useState({
+    presentToday: 0,
+    absentToday: 0,
+    checkedInToday: 0,
+  });
+
   const fetchDashboardStats = async () => {
     try {
       const response = await API.get("/dashboard/stats");
 
       setStats(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchAttendanceStats = async () => {
+    try {
+      const response = await API.get("/dashboard/attendance-stats");
+
+      setAttendanceStats(response.data);
     } catch (error) {
       console.log(error);
     }
@@ -96,6 +112,7 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchDashboardData();
     fetchDashboardStats();
+    fetchAttendanceStats();
   }, []);
 
   // Pull To Refresh
@@ -104,6 +121,7 @@ export default function DashboardScreen() {
 
     fetchDashboardData();
     fetchDashboardStats();
+    fetchAttendanceStats();
   };
 
   // Logout
@@ -384,43 +402,33 @@ export default function DashboardScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-  activeOpacity={0.85}
-  onPress={() =>
-    router.push("/attendance-history")
-  }
->
-  <LinearGradient
-    colors={["#1a1a2e", "#16213e"]}
-    style={styles.actionCard}
-  >
-    <View
-      style={[
-        styles.actionIconBg,
-        {
-          backgroundColor: "#16A085",
-        },
-      ]}
-    >
-      <Text style={styles.actionIconText}>
-        📊
-      </Text>
-    </View>
+            activeOpacity={0.85}
+            onPress={() => router.push("/attendance-history")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#16A085",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>📊</Text>
+              </View>
 
-    <View style={styles.actionTextGroup}>
-      <Text style={styles.actionTitle}>
-        Attendance History
-      </Text>
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>Attendance History</Text>
 
-      <Text style={styles.actionSub}>
-        View attendance records
-      </Text>
-    </View>
+                <Text style={styles.actionSub}>View attendance records</Text>
+              </View>
 
-    <Text style={styles.actionChevron}>
-      ›
-    </Text>
-  </LinearGradient>
-</TouchableOpacity>
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
@@ -450,6 +458,47 @@ export default function DashboardScreen() {
               <Text style={styles.actionChevron}>›</Text>
             </LinearGradient>
           </TouchableOpacity>
+
+          <View style={styles.sectionWrapper}>
+            <Text style={styles.sectionLabel}>ATTENDANCE ANALYTICS</Text>
+
+            <View style={styles.statsRow}>
+              <LinearGradient
+                colors={["#27AE60", "#6FCF97"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🟢</Text>
+                <Text style={styles.statNumber}>
+                  {attendanceStats.presentToday}
+                </Text>
+                <Text style={styles.statLabel}>Present Today</Text>
+              </LinearGradient>
+
+              <LinearGradient
+                colors={["#EB5757", "#FF416C"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🔴</Text>
+                <Text style={styles.statNumber}>
+                  {attendanceStats.absentToday}
+                </Text>
+                <Text style={styles.statLabel}>Absent Today</Text>
+              </LinearGradient>
+            </View>
+
+            <View style={[styles.statsRow, { marginTop: 14 }]}>
+              <LinearGradient
+                colors={["#9B51E0", "#BB6BD9"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🕒</Text>
+                <Text style={styles.statNumber}>
+                  {attendanceStats.checkedInToday}
+                </Text>
+                <Text style={styles.statLabel}>Checked In Today</Text>
+              </LinearGradient>
+            </View>
+          </View>
         </View>
 
         <View style={styles.sectionWrapper}>
