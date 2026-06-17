@@ -42,7 +42,9 @@ public class SecurityConfig {
             			    "/api/employees/**",
             			    "/api/leaves/**",
             			    "/api/dashboard/**",
-            			    "/api/attendance/**"
+            			    "/api/attendance/**",
+            			    "/api/upload/**",
+            			    "/uploads/**"
             			).permitAll()
 
                 // Protected APIs

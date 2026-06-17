@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
@@ -227,11 +228,14 @@ export default function EmployeeListScreen() {
 
                   {/* avatar + info row */}
                   <View style={styles.cardTop}>
-                    <LinearGradient colors={grad} style={styles.avatar}>
-                      <Text style={styles.avatarText}>
-                        {getInitials(item.name)}
-                      </Text>
-                    </LinearGradient>
+                    <Image
+                      source={{
+                        uri: item.photoUrl
+                          ? `http://10.195.172.204:8080${item.photoUrl}`
+                          : "https://i.pravatar.cc/300",
+                      }}
+                      style={styles.employeeAvatar}
+                    />
 
                     <View style={styles.cardInfo}>
                       <Text style={styles.cardName}>{item.name}</Text>
@@ -421,7 +425,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 14,
   },
-  avatarText: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  employeeAvatar: {
+    width: 55,
+    height: 55,
+    borderRadius: 28,
+    marginRight: 14,
+  },
+
   cardInfo: { flex: 1 },
   cardName: {
     fontSize: 16,

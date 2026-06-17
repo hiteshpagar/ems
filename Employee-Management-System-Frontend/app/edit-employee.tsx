@@ -23,6 +23,8 @@ export default function EditEmployeeScreen() {
 
   const [salary, setSalary] = useState("");
 
+  const [photoUrl, setPhotoUrl] = useState("");
+
   // Fetch Employee By ID
   const fetchEmployee = async () => {
     try {
@@ -34,6 +36,7 @@ export default function EditEmployeeScreen() {
       setEmail(employee.email);
       setDepartment(employee.department);
       setSalary(employee.salary.toString());
+      setPhotoUrl(employee.photoUrl || "");
     } catch (error) {
       console.log(error);
     }
@@ -47,6 +50,7 @@ export default function EditEmployeeScreen() {
         email,
         department,
         salary: Number(salary),
+        photoUrl,
       });
 
       Alert.alert("Success", "Employee Updated");
@@ -104,6 +108,14 @@ export default function EditEmployeeScreen() {
             keyboardType="numeric"
           />
 
+          <Text style={styles.label}>🖼 Profile Photo URL</Text>
+
+          <CustomInput
+            placeholder="https://example.com/photo.jpg"
+            value={photoUrl}
+            onChangeText={setPhotoUrl}
+          />
+
           <CustomButton
             title="Update Employee"
             onPress={handleUpdateEmployee}
@@ -138,16 +150,16 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
- formCard: {
-  backgroundColor: "#fff",
-  borderRadius: 20,
-  padding: 20,
-  elevation: 3,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.08,
-  shadowRadius: 12,
-},
+  formCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+  },
 
   label: {
     fontSize: 14,

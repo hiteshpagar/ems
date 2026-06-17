@@ -17,8 +17,18 @@ public class Employee {
     private String department;
 
     private Double salary;
+    
+    private String photoUrl;
 
-    // Getter and Setter for id
+    public String getPhotoUrl() {
+		return photoUrl;
+	}
+
+	public void setPhotoUrl(String photoUrl) {
+		this.photoUrl = photoUrl;
+	}
+
+	// Getter and Setter for id
     public Long getId() {
         return id;
     }
