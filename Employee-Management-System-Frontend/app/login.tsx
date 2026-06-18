@@ -36,7 +36,13 @@ export default function LoginScreen() {
 
       if (response.data) {
         // Save user in AsyncStorage
-        await login(response.data.token);
+        await login(
+          response.data.token,
+          response.data.role,
+          response.data.fullName,
+        );
+
+        console.log(response.data);
 
         Alert.alert("Success", "Login Successful");
 
