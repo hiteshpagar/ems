@@ -22,8 +22,13 @@ import ScreenWrapper from "../components/ScreenWrapper";
 
 import { removeToken } from "../utils/storage";
 
+import { useContext } from "react";
+
+import { AuthContext } from "../context/AuthContext";
+
 export default function DashboardScreen() {
   const [employeeCount, setEmployeeCount] = useState(0);
+  const { userRole, userName } = useContext(AuthContext);
 
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -203,7 +208,9 @@ export default function DashboardScreen() {
                 colors={["#56CCF2", "#2F80ED"]}
                 style={styles.avatar}
               >
-                <Text style={styles.avatarInitial}>H</Text>
+                <Text style={styles.avatarInitial}>
+                  {userName?.charAt(0)?.toUpperCase() || "U"}
+                </Text>
               </LinearGradient>
 
               <View style={styles.onlineDot} />
@@ -220,7 +227,10 @@ export default function DashboardScreen() {
 
           <Text style={styles.greeting}>{getGreeting()}</Text>
 
-          <Text style={styles.heroTitle}>Employee{"\n"}Dashboard</Text>
+          <Text style={styles.heroTitle}>
+            {userRole === "ADMIN" ? "Admin" : "Employee"}
+            {"\n"}Dashboard
+          </Text>
 
           {/* STATUS TAG */}
 
@@ -233,115 +243,122 @@ export default function DashboardScreen() {
 
         {/* OVERVIEW */}
 
-        <View style={styles.sectionWrapper}>
-          <Text style={styles.sectionLabel}>OVERVIEW</Text>
+        {userRole === "ADMIN" && (
+          <View style={styles.sectionWrapper}>
+            <Text style={styles.sectionLabel}>OVERVIEW</Text>
 
-          <View style={styles.statsRow}>
-            <LinearGradient
-              colors={["#2F80ED", "#56CCF2"]}
-              style={styles.statCard}
-            >
-              <Text style={styles.statEmoji}>👥</Text>
-              <Text style={styles.statNumber}>{stats.totalEmployees}</Text>
-              <Text style={styles.statLabel}>Employees</Text>
-            </LinearGradient>
+            <View style={styles.statsRow}>
+              <LinearGradient
+                colors={["#2F80ED", "#56CCF2"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>👥</Text>
+                <Text style={styles.statNumber}>{stats.totalEmployees}</Text>
+                <Text style={styles.statLabel}>Employees</Text>
+              </LinearGradient>
 
-            <LinearGradient
-              colors={["#F2994A", "#F2C94C"]}
-              style={styles.statCard}
-            >
-              <Text style={styles.statEmoji}>🟡</Text>
+              <LinearGradient
+                colors={["#F2994A", "#F2C94C"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🟡</Text>
 
-              <Text style={styles.statNumber}>{stats.pendingLeaves}</Text>
+                <Text style={styles.statNumber}>{stats.pendingLeaves}</Text>
 
-              <Text style={styles.statLabel}>Pending Leaves</Text>
-            </LinearGradient>
+                <Text style={styles.statLabel}>Pending Leaves</Text>
+              </LinearGradient>
+            </View>
+
+            <View style={[styles.statsRow, { marginTop: 14 }]}>
+              <LinearGradient
+                colors={["#27AE60", "#6FCF97"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🟢</Text>
+
+                <Text style={styles.statNumber}>{stats.approvedLeaves}</Text>
+
+                <Text style={styles.statLabel}>Approved Leaves</Text>
+              </LinearGradient>
+
+              <LinearGradient
+                colors={["#EB5757", "#FF416C"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🔴</Text>
+
+                <Text style={styles.statNumber}>{stats.rejectedLeaves}</Text>
+
+                <Text style={styles.statLabel}>Rejected Leaves</Text>
+              </LinearGradient>
+            </View>
           </View>
-
-          <View style={[styles.statsRow, { marginTop: 14 }]}>
-            <LinearGradient
-              colors={["#27AE60", "#6FCF97"]}
-              style={styles.statCard}
-            >
-              <Text style={styles.statEmoji}>🟢</Text>
-
-              <Text style={styles.statNumber}>{stats.approvedLeaves}</Text>
-
-              <Text style={styles.statLabel}>Approved Leaves</Text>
-            </LinearGradient>
-
-            <LinearGradient
-              colors={["#EB5757", "#FF416C"]}
-              style={styles.statCard}
-            >
-              <Text style={styles.statEmoji}>🔴</Text>
-
-              <Text style={styles.statNumber}>{stats.rejectedLeaves}</Text>
-
-              <Text style={styles.statLabel}>Rejected Leaves</Text>
-            </LinearGradient>
-          </View>
-        </View>
+        )}
 
         {/* QUICK ACTIONS */}
 
         <View style={styles.sectionWrapper}>
           <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
 
-          {/* ADD EMPLOYEE */}
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/add-employee")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View style={styles.actionIconBg}>
-                <Text style={styles.actionIconText}>+</Text>
-              </View>
-
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>Add Employee</Text>
-
-                <Text style={styles.actionSub}>Register new employee</Text>
-              </View>
-
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* VIEW EMPLOYEES */}
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/employee-list")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View
-                style={[
-                  styles.actionIconBg,
-                  {
-                    backgroundColor: "#11998e",
-                  },
-                ]}
+          {userRole === "ADMIN" && (
+            <>
+              {/* ADD EMPLOYEE */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/add-employee")}
               >
-                <Text style={styles.actionIconText}>☰</Text>
-              </View>
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View style={styles.actionIconBg}>
+                    <Text style={styles.actionIconText}>+</Text>
+                  </View>
 
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>View Employees</Text>
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Add Employee</Text>
 
-                <Text style={styles.actionSub}>Browse employee list</Text>
-              </View>
+                    <Text style={styles.actionSub}>Register new employee</Text>
+                  </View>
 
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* VIEW EMPLOYEES */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/employee-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#11998e",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>☰</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>View Employees</Text>
+
+                    <Text style={styles.actionSub}>Browse employee list</Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* APPLY LEAVE */}
 
           <TouchableOpacity
             activeOpacity={0.85}
@@ -430,103 +447,109 @@ export default function DashboardScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/leave-list")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
+          {userRole === "ADMIN" && (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push("/leave-list")}
             >
-              <View
-                style={[
-                  styles.actionIconBg,
-                  {
-                    backgroundColor: "#27AE60",
-                  },
-                ]}
+              <LinearGradient
+                colors={["#1a1a2e", "#16213e"]}
+                style={styles.actionCard}
               >
-                <Text style={styles.actionIconText}>📋</Text>
+                <View
+                  style={[
+                    styles.actionIconBg,
+                    {
+                      backgroundColor: "#27AE60",
+                    },
+                  ]}
+                >
+                  <Text style={styles.actionIconText}>📋</Text>
+                </View>
+
+                <View style={styles.actionTextGroup}>
+                  <Text style={styles.actionTitle}>View Leaves</Text>
+
+                  <Text style={styles.actionSub}>Track leave requests</Text>
+                </View>
+
+                <Text style={styles.actionChevron}>›</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {userRole === "ADMIN" && (
+            <View style={styles.sectionWrapper}>
+              <Text style={styles.sectionLabel}>ATTENDANCE ANALYTICS</Text>
+
+              <View style={styles.statsRow}>
+                <LinearGradient
+                  colors={["#27AE60", "#6FCF97"]}
+                  style={styles.statCard}
+                >
+                  <Text style={styles.statEmoji}>🟢</Text>
+                  <Text style={styles.statNumber}>
+                    {attendanceStats.presentToday}
+                  </Text>
+                  <Text style={styles.statLabel}>Present Today</Text>
+                </LinearGradient>
+
+                <LinearGradient
+                  colors={["#EB5757", "#FF416C"]}
+                  style={styles.statCard}
+                >
+                  <Text style={styles.statEmoji}>🔴</Text>
+                  <Text style={styles.statNumber}>
+                    {attendanceStats.absentToday}
+                  </Text>
+                  <Text style={styles.statLabel}>Absent Today</Text>
+                </LinearGradient>
               </View>
 
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>View Leaves</Text>
-
-                <Text style={styles.actionSub}>Track leave requests</Text>
+              <View style={[styles.statsRow, { marginTop: 14 }]}>
+                <LinearGradient
+                  colors={["#9B51E0", "#BB6BD9"]}
+                  style={styles.statCard}
+                >
+                  <Text style={styles.statEmoji}>🕒</Text>
+                  <Text style={styles.statNumber}>
+                    {attendanceStats.checkedInToday}
+                  </Text>
+                  <Text style={styles.statLabel}>Checked In Today</Text>
+                </LinearGradient>
               </View>
+            </View>
+          )}
+        </View>
 
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
+        {userRole === "ADMIN" && (
           <View style={styles.sectionWrapper}>
-            <Text style={styles.sectionLabel}>ATTENDANCE ANALYTICS</Text>
+            <Text style={styles.sectionLabel}>RECENT EMPLOYEES</Text>
 
-            <View style={styles.statsRow}>
-              <LinearGradient
-                colors={["#27AE60", "#6FCF97"]}
-                style={styles.statCard}
-              >
-                <Text style={styles.statEmoji}>🟢</Text>
-                <Text style={styles.statNumber}>
-                  {attendanceStats.presentToday}
-                </Text>
-                <Text style={styles.statLabel}>Present Today</Text>
-              </LinearGradient>
+            {recentEmployees.map((employee) => (
+              <View key={employee.id} style={styles.employeeCard}>
+                <View style={styles.employeeAvatar}>
+                  <Text style={styles.employeeAvatarText}>
+                    {employee.name
+                      ?.split(" ")
+                      .map((word: string) => word[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </Text>
+                </View>
 
-              <LinearGradient
-                colors={["#EB5757", "#FF416C"]}
-                style={styles.statCard}
-              >
-                <Text style={styles.statEmoji}>🔴</Text>
-                <Text style={styles.statNumber}>
-                  {attendanceStats.absentToday}
-                </Text>
-                <Text style={styles.statLabel}>Absent Today</Text>
-              </LinearGradient>
-            </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.employeeName}>{employee.name}</Text>
 
-            <View style={[styles.statsRow, { marginTop: 14 }]}>
-              <LinearGradient
-                colors={["#9B51E0", "#BB6BD9"]}
-                style={styles.statCard}
-              >
-                <Text style={styles.statEmoji}>🕒</Text>
-                <Text style={styles.statNumber}>
-                  {attendanceStats.checkedInToday}
-                </Text>
-                <Text style={styles.statLabel}>Checked In Today</Text>
-              </LinearGradient>
-            </View>
+                  <Text style={styles.employeeDepartment}>
+                    {employee.department}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </View>
-        </View>
-
-        <View style={styles.sectionWrapper}>
-          <Text style={styles.sectionLabel}>RECENT EMPLOYEES</Text>
-
-          {recentEmployees.map((employee) => (
-            <View key={employee.id} style={styles.employeeCard}>
-              <View style={styles.employeeAvatar}>
-                <Text style={styles.employeeAvatarText}>
-                  {employee.name
-                    ?.split(" ")
-                    .map((word: string) => word[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </Text>
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.employeeName}>{employee.name}</Text>
-
-                <Text style={styles.employeeDepartment}>
-                  {employee.department}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        )}
 
         {/* LOGOUT */}
 

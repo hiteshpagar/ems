@@ -31,6 +31,8 @@ public class AuthController {
             @RequestBody User user
     ) {
 
+        user.setRole("EMPLOYEE");
+
         return userService.register(user);
     }
 
@@ -51,6 +53,16 @@ public class AuthController {
                 new HashMap<>();
 
         response.put("token", token);
+
+        response.put(
+                "role",
+                existingUser.getRole()
+        );
+
+        response.put(
+                "fullName",
+                existingUser.getFullName()
+        );
 
         return response;
     }

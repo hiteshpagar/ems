@@ -16,8 +16,19 @@ public class User {
     private String email;
 
     private String password;
+    
+    @Column(nullable = false)
+    private String role;
 
-    // Getter and Setter for id
+    public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
+	}
+
+	// Getter and Setter for id
     public Long getId() {
         return id;
     }
