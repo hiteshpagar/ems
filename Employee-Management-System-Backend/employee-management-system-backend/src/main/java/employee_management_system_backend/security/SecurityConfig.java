@@ -17,6 +17,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import employee_management_system_backend.security.jwt.JwtAuthenticationFilter;
 
+import org.springframework.http.HttpMethod;
+
 @Configuration
 public class SecurityConfig {
 
@@ -36,20 +38,77 @@ public class SecurityConfig {
             // API Authorization Rules
             .authorizeHttpRequests(auth -> auth
 
-                // Public APIs
-            		.requestMatchers(
-            			    "/api/auth/**",
-            			    "/api/employees/**",
-            			    "/api/leaves/**",
-            			    "/api/dashboard/**",
-            			    "/api/attendance/**",
-            			    "/api/upload/**",
-            			    "/uploads/**"
-            			).permitAll()
+            	    // Public APIs
+            	    .requestMatchers(
+            	            "/api/auth/**",
+            	            "/uploads/**"
+            	    ).permitAll()
 
-                // Protected APIs
-                .anyRequest().authenticated()
-            )
+            	    // Employee Management
+            	    .requestMatchers(
+            	            HttpMethod.POST,
+            	            "/api/employees/**"
+            	    ).hasRole("ADMIN")
+
+            	    .requestMatchers(
+            	            HttpMethod.PUT,
+            	            "/api/employees/**"
+            	    ).hasRole("ADMIN")
+
+            	    .requestMatchers(
+            	            HttpMethod.DELETE,
+            	            "/api/employees/**"
+            	    ).hasRole("ADMIN")
+
+            	    // Read Employees
+            	    .requestMatchers(
+            	            HttpMethod.GET,
+            	            "/api/employees/**"
+            	    ).hasRole("ADMIN")
+
+            	    // Leave APIs
+            	 // Apply Leave
+            	    .requestMatchers(
+            	            HttpMethod.POST,
+            	            "/api/leaves"
+            	    ).authenticated()
+
+            	    // View Leaves
+            	    .requestMatchers(
+            	            HttpMethod.GET,
+            	            "/api/leaves/**"
+            	    ).hasRole("ADMIN")
+
+            	    // Approve / Reject Leave
+            	    .requestMatchers(
+            	            HttpMethod.PUT,
+            	            "/api/leaves/**"
+            	    ).hasRole("ADMIN")
+
+            	    // Delete Leave
+            	    .requestMatchers(
+            	            HttpMethod.DELETE,
+            	            "/api/leaves/**"
+            	    ).hasRole("ADMIN")
+
+            	    // Attendance APIs
+            	    .requestMatchers(
+            	            "/api/attendance/**"
+            	    ).authenticated()
+
+            	    // Dashboard APIs
+            	    .requestMatchers(
+            	            "/api/dashboard/**"
+            	    ).hasRole("ADMIN")
+
+            	    // Upload APIs
+            	    .requestMatchers(
+            	            "/api/upload/**"
+            	    ).authenticated()
+
+            	    .anyRequest()
+            	    .authenticated()
+            	)
 
             // Disable Session
             .sessionManagement(session ->

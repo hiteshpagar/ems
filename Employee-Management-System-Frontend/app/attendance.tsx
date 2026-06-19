@@ -11,12 +11,17 @@ import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
 import CustomButton from "../components/CustomButton";
 
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+
 export default function AttendanceScreen() {
   const [employees, setEmployees] = useState<any[]>([]);
 
   const [employeeId, setEmployeeId] = useState("");
 
   const [employeeName, setEmployeeName] = useState("");
+  
+  const { userRole, userName } = useContext(AuthContext);
 
   const fetchEmployees = async () => {
     try {
@@ -28,9 +33,11 @@ export default function AttendanceScreen() {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  if (userRole === "ADMIN") {
     fetchEmployees();
-  }, []);
+  }
+}, [userRole]);
 
   const handleCheckIn = async () => {
     if (!employeeId) {
@@ -86,32 +93,51 @@ export default function AttendanceScreen() {
         </LinearGradient>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>👤 Select Employee</Text>
+         {userRole === "ADMIN" ? (
+  <>
+    <Text style={styles.label}>👤 Select Employee</Text>
 
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={employeeId}
-              onValueChange={(value) => {
-                setEmployeeId(value);
+    <View style={styles.pickerContainer}>
+      <Picker
+        selectedValue={employeeId}
+        onValueChange={(value) => {
+          setEmployeeId(value);
 
-                const employee = employees.find((emp) => emp.id === value);
+          const employee = employees.find(
+            (emp) => emp.id === value
+          );
 
-                if (employee) {
-                  setEmployeeName(employee.name);
-                }
-              }}
-            >
-              <Picker.Item label="Select Employee" value="" />
+          if (employee) {
+            setEmployeeName(employee.name);
+          }
+        }}
+      >
+        <Picker.Item
+          label="Select Employee"
+          value=""
+        />
 
-              {employees.map((employee) => (
-                <Picker.Item
-                  key={employee.id}
-                  label={employee.name}
-                  value={employee.id}
-                />
-              ))}
-            </Picker>
-          </View>
+        {employees.map((employee) => (
+          <Picker.Item
+            key={employee.id}
+            label={employee.name}
+            value={employee.id}
+          />
+        ))}
+      </Picker>
+    </View>
+  </>
+) : (
+  <>
+    <Text style={styles.label}>👤 Employee</Text>
+
+    <View style={styles.readOnlyBox}>
+      <Text style={styles.readOnlyText}>
+        {userName}
+      </Text>
+    </View>
+  </>
+)}
 
           <View
             style={{
@@ -179,4 +205,18 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     borderRadius: 12,
   },
+  readOnlyBox: {
+  borderWidth: 1,
+  borderColor: "#E5E7EB",
+  borderRadius: 12,
+  padding: 15,
+  marginBottom: 10,
+  backgroundColor: "#F9FAFB",
+},
+
+readOnlyText: {
+  fontSize: 16,
+  color: "#111827",
+  fontWeight: "500",
+},
 });
