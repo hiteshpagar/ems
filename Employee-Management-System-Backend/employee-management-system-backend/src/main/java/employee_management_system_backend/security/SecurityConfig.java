@@ -44,7 +44,7 @@ public class SecurityConfig {
             	            "/uploads/**"
             	    ).permitAll()
 
-            	    // Employee Management
+            	 // Employee Management
             	    .requestMatchers(
             	            HttpMethod.POST,
             	            "/api/employees/**"
@@ -60,7 +60,13 @@ public class SecurityConfig {
             	            "/api/employees/**"
             	    ).hasRole("ADMIN")
 
-            	    // Read Employees
+            	    // Logged In Employee Profile
+            	    .requestMatchers(
+            	            HttpMethod.GET,
+            	            "/api/employees/me"
+            	    ).authenticated()
+
+            	    // Read All Employees (Admin Only)
             	    .requestMatchers(
             	            HttpMethod.GET,
             	            "/api/employees/**"
@@ -94,6 +100,11 @@ public class SecurityConfig {
             	    // Attendance APIs
             	    .requestMatchers(
             	            "/api/attendance/**"
+            	    ).authenticated()
+            	    
+            	    .requestMatchers(
+            	            HttpMethod.GET,
+            	            "/api/attendance/me/today"
             	    ).authenticated()
 
             	    // Dashboard APIs

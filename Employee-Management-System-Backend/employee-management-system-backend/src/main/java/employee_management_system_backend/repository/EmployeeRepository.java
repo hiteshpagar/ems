@@ -7,4 +7,7 @@ import employee_management_system_backend.entity.Employee;
 public interface EmployeeRepository
         extends JpaRepository<Employee, Long> {
 
+    Employee findByEmail(
+            String email
+    );
 }
