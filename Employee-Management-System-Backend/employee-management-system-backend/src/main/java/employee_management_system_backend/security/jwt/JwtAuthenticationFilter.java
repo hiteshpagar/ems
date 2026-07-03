@@ -20,6 +20,10 @@ import org.springframework.stereotype.Component;
 
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.util.List;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 @Component
 public class JwtAuthenticationFilter
         extends OncePerRequestFilter {
@@ -47,6 +51,8 @@ public class JwtAuthenticationFilter
         String token = null;
 
         String email = null;
+        
+        String role = null;
 
         // Check Bearer Token
         if (
@@ -62,6 +68,9 @@ public class JwtAuthenticationFilter
         	try {
 
         	    email = jwtUtil.extractEmail(token);
+        	    
+        	     role =
+        	            jwtUtil.extractRole(token);
 
         	} catch (ExpiredJwtException e) {
 
@@ -94,18 +103,22 @@ public class JwtAuthenticationFilter
                 )
             ) {
 
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                email,
-                                null,
-                                null
-                        );
+            	UsernamePasswordAuthenticationToken authToken =
+            	        new UsernamePasswordAuthenticationToken(
+            	                email,
+            	                null,
+            	                List.of(
+            	                        new SimpleGrantedAuthority(
+            	                                "ROLE_" + role
+            	                        )
+            	                )
+            	        );
 
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource()
                                 .buildDetails(request)
                 );
-
+                
                 SecurityContextHolder
                         .getContext()
                         .setAuthentication(authToken);

@@ -27,28 +27,31 @@ public class JwtUtil {
 
     // Generate JWT Token
     public String generateToken(
-            String email
+            String email,
+            String role
     ) {
 
-        return Jwts.builder()
+    	return Jwts.builder()
 
-                .setSubject(email)
+    	        .setSubject(email)
 
-                .setIssuedAt(new Date())
+    	        .claim("role", role)
 
-                .setExpiration(
-                        new Date(
-                                System.currentTimeMillis()
-                                + 1000 * 60 * 60 * 24
-                        )
-                )
+    	        .setIssuedAt(new Date())
 
-                .signWith(
-                        getSigningKey(),
-                        SignatureAlgorithm.HS256
-                )
+    	        .setExpiration(
+    	                new Date(
+    	                        System.currentTimeMillis()
+    	                        + 1000 * 60 * 60 * 24
+    	                )
+    	        )
 
-                .compact();
+    	        .signWith(
+    	                getSigningKey(),
+    	                SignatureAlgorithm.HS256
+    	        )
+
+    	        .compact();
     }
 
     // Extract Email
@@ -70,6 +73,25 @@ public class JwtUtil {
                 .getBody();
 
         return claims.getSubject();
+    }
+    
+    public String extractRole(
+            String token
+    ) {
+
+        Claims claims =
+                Jwts.parserBuilder()
+                        .setSigningKey(
+                                getSigningKey()
+                        )
+                        .build()
+                        .parseClaimsJws(token)
+                        .getBody();
+
+        return claims.get(
+                "role",
+                String.class
+        );
     }
 
     // Validate Token

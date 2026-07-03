@@ -29,11 +29,11 @@ API.interceptors.response.use(
   (response) => response,
 
   async (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      await removeToken();
+   if (error.response?.status === 401) {
+  await removeToken();
 
-      router.replace("/login");
-    }
+  router.replace("/login");
+}
 
     return Promise.reject(error);
   },

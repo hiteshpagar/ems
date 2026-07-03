@@ -13,6 +13,8 @@ import API from "../services/api";
 import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
 import ScreenWrapper from "../components/ScreenWrapper";
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 
 export default function ApplyLeaveScreen() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -39,21 +41,29 @@ export default function ApplyLeaveScreen() {
     }
   };
 
+  const { userRole, userName } = useContext(AuthContext);
+
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+    if (userRole === "ADMIN") {
+      fetchEmployees();
+    }
+  }, [userRole]);
 
   const handleApplyLeave = async () => {
-    if (!employeeId || !leaveType || !startDate || !endDate || !reason) {
-      Alert.alert("Error", "Please fill all fields");
+    if (userRole === "ADMIN" && !employeeId) {
+      Alert.alert("Error", "Please select employee");
+      return;
+    }
 
+    if (!leaveType || !startDate || !endDate || !reason) {
+      Alert.alert("Error", "Please fill all fields");
       return;
     }
 
     try {
       await API.post("/leaves", {
         employeeId,
-        employeeName,
+        employeeName: leaveEmployeeName,
         leaveType,
         startDate,
         endDate,
@@ -70,6 +80,12 @@ export default function ApplyLeaveScreen() {
     }
   };
 
+  let leaveEmployeeName = employeeName;
+
+  if (userRole === "EMPLOYEE") {
+    leaveEmployeeName = userName;
+  }
+
   return (
     <ScreenWrapper>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -85,32 +101,44 @@ export default function ApplyLeaveScreen() {
         </LinearGradient>
 
         <View style={styles.formCard}>
-          <Text style={styles.label}>👤 Employee</Text>
+          {userRole === "ADMIN" ? (
+            <>
+              <Text style={styles.label}>👤 Employee</Text>
 
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={employeeId}
-              onValueChange={(value) => {
-                setEmployeeId(value);
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={employeeId}
+                  onValueChange={(value) => {
+                    setEmployeeId(value);
 
-                const employee = employees.find((emp) => emp.id === value);
+                    const employee = employees.find((emp) => emp.id === value);
 
-                if (employee) {
-                  setEmployeeName(employee.name);
-                }
-              }}
-            >
-              <Picker.Item label="Select Employee" value={null} />
+                    if (employee) {
+                      setEmployeeName(employee.name);
+                    }
+                  }}
+                >
+                  <Picker.Item label="Select Employee" value={null} />
 
-              {employees.map((employee) => (
-                <Picker.Item
-                  key={employee.id}
-                  label={employee.name}
-                  value={employee.id}
-                />
-              ))}
-            </Picker>
-          </View>
+                  {employees.map((employee) => (
+                    <Picker.Item
+                      key={employee.id}
+                      label={employee.name}
+                      value={employee.id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>👤 Employee</Text>
+
+              <View style={styles.readOnlyBox}>
+                <Text style={styles.readOnlyText}>{userName}</Text>
+              </View>
+            </>
+          )}
 
           <Text style={styles.label}>🏖 Leave Type</Text>
 
@@ -209,5 +237,19 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     overflow: "hidden",
     backgroundColor: "#fff",
+  },
+  readOnlyBox: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    backgroundColor: "#F9FAFB",
+  },
+
+  readOnlyText: {
+    fontSize: 16,
+    color: "#111827",
+    fontWeight: "500",
   },
 });
