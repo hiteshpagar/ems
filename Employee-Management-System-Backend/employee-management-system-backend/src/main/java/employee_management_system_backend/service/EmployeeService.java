@@ -75,6 +75,16 @@ public class EmployeeService {
 
         return employee.orElse(null);
     }
+    
+ // Get Employee By Email
+    public Employee getEmployeeByEmail(
+            String email
+    ) {
+
+        return employeeRepository.findByEmail(
+                email
+        );
+    }
 
     // Update Employee
     public Employee updateEmployee(

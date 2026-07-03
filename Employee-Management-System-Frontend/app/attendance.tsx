@@ -20,7 +20,9 @@ export default function AttendanceScreen() {
   const [employeeId, setEmployeeId] = useState("");
 
   const [employeeName, setEmployeeName] = useState("");
-  
+
+  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+
   const { userRole, userName } = useContext(AuthContext);
 
   const fetchEmployees = async () => {
@@ -33,11 +35,36 @@ export default function AttendanceScreen() {
     }
   };
 
-useEffect(() => {
-  if (userRole === "ADMIN") {
-    fetchEmployees();
-  }
-}, [userRole]);
+  const fetchLoggedInEmployee = async () => {
+    try {
+      const response = await API.get("/employees/me");
+
+      setEmployeeId(response.data.id.toString());
+
+      setEmployeeName(response.data.name);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchTodayAttendance = async () => {
+    try {
+      const response = await API.get("/attendance/me/today");
+
+      setTodayAttendance(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    if (userRole === "ADMIN") {
+      fetchEmployees();
+    } else {
+      fetchLoggedInEmployee();
+      fetchTodayAttendance();
+    }
+  }, [userRole]);
 
   const handleCheckIn = async () => {
     if (!employeeId) {
@@ -50,6 +77,8 @@ useEffect(() => {
         employeeId,
         employeeName,
       });
+
+      await fetchTodayAttendance();
 
       Alert.alert("Success", "Check In Successful");
     } catch (error) {
@@ -70,12 +99,32 @@ useEffect(() => {
         employeeId,
       });
 
+      await fetchTodayAttendance();
+
       Alert.alert("Success", "Check Out Successful");
     } catch (error) {
       console.log(error);
 
       Alert.alert("Error", "Check Out Failed");
     }
+  };
+
+  const formatTime = (time: string | null) => {
+    if (!time) return "--";
+
+    const [hour, minute] = time.split(":");
+
+    let hours = parseInt(hour);
+
+    const ampm = hours >= 12 ? "PM" : "AM";
+
+    hours = hours % 12;
+
+    if (hours === 0) {
+      hours = 12;
+    }
+
+    return `${hours}:${minute} ${ampm}`;
   };
 
   return (
@@ -93,67 +142,129 @@ useEffect(() => {
         </LinearGradient>
 
         <View style={styles.formCard}>
-         {userRole === "ADMIN" ? (
-  <>
-    <Text style={styles.label}>👤 Select Employee</Text>
+          {userRole === "ADMIN" ? (
+            <>
+              <Text style={styles.label}>👤 Select Employee</Text>
 
-    <View style={styles.pickerContainer}>
-      <Picker
-        selectedValue={employeeId}
-        onValueChange={(value) => {
-          setEmployeeId(value);
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={employeeId}
+                  onValueChange={(value) => {
+                    setEmployeeId(value);
 
-          const employee = employees.find(
-            (emp) => emp.id === value
-          );
+                    const employee = employees.find((emp) => emp.id === value);
 
-          if (employee) {
-            setEmployeeName(employee.name);
-          }
-        }}
-      >
-        <Picker.Item
-          label="Select Employee"
-          value=""
-        />
+                    if (employee) {
+                      setEmployeeName(employee.name);
+                    }
+                  }}
+                >
+                  <Picker.Item label="Select Employee" value="" />
 
-        {employees.map((employee) => (
-          <Picker.Item
-            key={employee.id}
-            label={employee.name}
-            value={employee.id}
-          />
-        ))}
-      </Picker>
-    </View>
-  </>
-) : (
-  <>
-    <Text style={styles.label}>👤 Employee</Text>
+                  {employees.map((employee) => (
+                    <Picker.Item
+                      key={employee.id}
+                      label={employee.name}
+                      value={employee.id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>👤 Employee</Text>
 
-    <View style={styles.readOnlyBox}>
-      <Text style={styles.readOnlyText}>
-        {userName}
-      </Text>
-    </View>
-  </>
-)}
+              <View style={styles.readOnlyBox}>
+                <Text style={styles.readOnlyText}>{userName}</Text>
+              </View>
+            </>
+          )}
+          {userRole === "EMPLOYEE" && (
+            <View style={styles.todayCard}>
+              <Text style={styles.todayTitle}>📅 Today's Attendance</Text>
 
-          <View
-            style={{
-              marginTop: 15,
-            }}
-          >
-            <CustomButton title="✅ Check In" onPress={handleCheckIn} />
-          </View>
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Status</Text>
 
-          <View
-            style={{
-              marginTop: 10,
-            }}
-          >
-            <CustomButton title="❌ Check Out" onPress={handleCheckOut} />
-          </View>
+                <Text style={styles.rowValue}>
+                  {todayAttendance ? "🟢 Present" : "🔴 Not Checked In"}
+                </Text>
+              </View>
+
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Check In</Text>
+
+                <Text style={styles.rowValue}>
+                  {formatTime(todayAttendance?.checkInTime)}
+                </Text>
+              </View>
+
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Check Out</Text>
+
+                <Text style={styles.rowValue}>
+                  {formatTime(todayAttendance?.checkOutTime)}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {userRole === "ADMIN" ? (
+            <>
+              <View
+                style={{
+                  marginTop: 15,
+                }}
+              >
+                <CustomButton title="✅ Check In" onPress={handleCheckIn} />
+              </View>
+
+              <View
+                style={{
+                  marginTop: 10,
+                }}
+              >
+                <CustomButton title="❌ Check Out" onPress={handleCheckOut} />
+              </View>
+            </>
+          ) : (
+            <>
+              {!todayAttendance && (
+                <View
+                  style={{
+                    marginTop: 15,
+                  }}
+                >
+                  <CustomButton title="✅ Check In" onPress={handleCheckIn} />
+                </View>
+              )}
+
+              {todayAttendance && !todayAttendance.checkOutTime && (
+                <View
+                  style={{
+                    marginTop: 15,
+                  }}
+                >
+                  <CustomButton title="❌ Check Out" onPress={handleCheckOut} />
+                </View>
+              )}
+
+              {todayAttendance && todayAttendance.checkOutTime && (
+                <Text
+                  style={{
+                    textAlign: "center",
+                    color: "green",
+                    fontWeight: "bold",
+                    marginTop: 20,
+                    fontSize: 16,
+                  }}
+                >
+                  ✅ Attendance Completed
+                </Text>
+              )}
+            </>
+          )}
         </View>
       </ScrollView>
     </ScreenWrapper>
@@ -206,17 +317,48 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   readOnlyBox: {
-  borderWidth: 1,
-  borderColor: "#E5E7EB",
-  borderRadius: 12,
-  padding: 15,
-  marginBottom: 10,
-  backgroundColor: "#F9FAFB",
-},
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    backgroundColor: "#F9FAFB",
+  },
 
-readOnlyText: {
-  fontSize: 16,
-  color: "#111827",
-  fontWeight: "500",
-},
+  readOnlyText: {
+    fontSize: 16,
+    color: "#111827",
+    fontWeight: "500",
+  },
+  todayCard: {
+    marginTop: 20,
+    marginBottom: 20,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+
+  todayTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+
+  rowLabel: {
+    color: "#6B7280",
+    fontWeight: "600",
+  },
+
+  rowValue: {
+    color: "#111827",
+    fontWeight: "bold",
+  },
 });

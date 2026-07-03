@@ -15,6 +15,9 @@ import API from "../services/api";
 
 import ScreenWrapper from "../components/ScreenWrapper";
 
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+
 export default function AttendanceHistoryScreen() {
   const [attendance, setAttendance] = useState<any[]>([]);
 
@@ -22,9 +25,16 @@ export default function AttendanceHistoryScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  const { userRole } = useContext(AuthContext);
+
   const fetchAttendance = async () => {
     try {
-      const response = await API.get("/attendance");
+      const response =
+        userRole === "ADMIN"
+          ? await API.get("/attendance")
+          : await API.get("/attendance/me");
+
+      setAttendance(response.data);
 
       setAttendance(response.data);
     } catch (error) {
@@ -36,8 +46,10 @@ export default function AttendanceHistoryScreen() {
   };
 
   useEffect(() => {
-    fetchAttendance();
-  }, []);
+    if (userRole) {
+      fetchAttendance();
+    }
+  }, [userRole]);
 
   if (loading) {
     return (
@@ -48,6 +60,24 @@ export default function AttendanceHistoryScreen() {
       </ScreenWrapper>
     );
   }
+
+  const formatTime = (time: string | null) => {
+    if (!time) return "--";
+
+    const [hour, minute] = time.split(":");
+
+    let hours = parseInt(hour);
+
+    const ampm = hours >= 12 ? "PM" : "AM";
+
+    hours = hours % 12;
+
+    if (hours === 0) {
+      hours = 12;
+    }
+
+    return `${hours}:${minute} ${ampm}`;
+  };
 
   return (
     <ScreenWrapper>
@@ -78,19 +108,30 @@ export default function AttendanceHistoryScreen() {
               </Text>
             </LinearGradient>
 
-            <Text style={styles.sectionLabel}>ALL ATTENDANCE RECORDS</Text>
+            <Text style={styles.sectionLabel}>
+              {userRole === "ADMIN"
+                ? "ALL ATTENDANCE RECORDS"
+                : "MY ATTENDANCE HISTORY"}
+            </Text>
           </>
         }
         renderItem={({ item }) => (
           <View style={styles.attendanceCard}>
-            <Text style={styles.employeeName}>👤 {item.employeeName}</Text>
+            {userRole === "ADMIN" && (
+              <Text style={styles.employeeName}>👤 {item.employeeName}</Text>
+            )}
 
             <Text style={styles.info}>📅 {item.date}</Text>
 
-            <Text style={styles.info}>⏰ Check In : {item.checkInTime}</Text>
+            <Text style={styles.info}>
+              ⏰ Check In : {formatTime(item.checkInTime)}
+            </Text>
 
             <Text style={styles.info}>
-              ⏰ Check Out : {item.checkOutTime || "Not Checked Out"}
+              ⏰ Check Out :{" "}
+              {item.checkOutTime
+                ? formatTime(item.checkOutTime)
+                : "Not Checked Out"}
             </Text>
 
             <View style={styles.statusContainer}>

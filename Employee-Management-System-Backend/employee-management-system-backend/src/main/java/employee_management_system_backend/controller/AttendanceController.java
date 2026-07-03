@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.*;
 
 import employee_management_system_backend.entity.Attendance;
 import employee_management_system_backend.service.AttendanceService;
+import org.springframework.security.core.Authentication;
+
+import employee_management_system_backend.entity.Employee;
+import employee_management_system_backend.service.EmployeeService;
 
 @RestController
 @RequestMapping("/api/attendance")
@@ -16,6 +20,9 @@ public class AttendanceController {
 
     @Autowired
     private AttendanceService attendanceService;
+    
+    @Autowired
+    private EmployeeService employeeService;
 
     @PostMapping
     public Attendance markAttendance(
@@ -43,6 +50,46 @@ public class AttendanceController {
 
         return attendanceService
                 .checkOut(employeeId);
+    }
+    
+ // Get Today's Attendance For Logged In Employee
+    @GetMapping("/me/today")
+    public Attendance getTodayAttendance(
+            Authentication authentication
+    ) {
+
+        Employee employee =
+                employeeService.getEmployeeByEmail(
+                        authentication.getName()
+                );
+
+        if (employee == null) {
+            return null;
+        }
+
+        return attendanceService.getTodayAttendance(
+                employee.getId()
+        );
+    }
+    
+ // Get Attendance History Of Logged In Employee
+    @GetMapping("/me")
+    public List<Attendance> getMyAttendance(
+            Authentication authentication
+    ) {
+
+        Employee employee =
+                employeeService.getEmployeeByEmail(
+                        authentication.getName()
+                );
+
+        if (employee == null) {
+            return List.of();
+        }
+
+        return attendanceService.getAttendanceHistory(
+                employee.getId()
+        );
     }
 
     @GetMapping

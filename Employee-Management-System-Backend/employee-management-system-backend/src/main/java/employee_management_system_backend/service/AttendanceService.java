@@ -39,6 +39,17 @@ public class AttendanceService {
 
         return attendance.orElse(null);
     }
+    
+ // Get Attendance History By Employee
+    public List<Attendance> getAttendanceHistory(
+            Long employeeId
+    ) {
+
+        return attendanceRepository
+                .findByEmployeeIdOrderByDateDesc(
+                        employeeId
+                );
+    }
 
     // Update Attendance
     public Attendance updateAttendance(
@@ -141,6 +152,21 @@ public class AttendanceService {
         );
     }
 
+ // Get Today's Attendance
+    public Attendance getTodayAttendance(
+            Long employeeId
+    ) {
+
+        String today =
+                LocalDate.now().toString();
+
+        return attendanceRepository
+                .findByEmployeeIdAndDate(
+                        employeeId,
+                        today
+                );
+    }
+    
     // Delete Attendance
     public String deleteAttendance(
             Long id

@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.service.EmployeeService;
 
+import org.springframework.security.core.Authentication;
+
 @RestController
 @RequestMapping("/api/employees")
 public class EmployeeController {
@@ -29,6 +31,17 @@ public class EmployeeController {
     public List<Employee> getAllEmployees() {
 
         return employeeService.getAllEmployees();
+    }
+    
+ // Get Logged In Employee
+    @GetMapping("/me")
+    public Employee getLoggedInEmployee(
+            Authentication authentication
+    ) {
+
+        return employeeService.getEmployeeByEmail(
+                authentication.getName()
+        );
     }
 
     // Get Employee By ID
