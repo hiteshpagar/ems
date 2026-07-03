@@ -9,16 +9,56 @@ import org.springframework.stereotype.Service;
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.repository.EmployeeRepository;
 
+import employee_management_system_backend.entity.User;
+import employee_management_system_backend.repository.UserRepository;
+
 @Service
 public class EmployeeService {
 
     @Autowired
     private EmployeeRepository employeeRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
 
     // Add Employee
     public Employee addEmployee(Employee employee) {
 
-        return employeeRepository.save(employee);
+        // Save Employee
+        Employee savedEmployee =
+                employeeRepository.save(employee);
+
+        // Check if user already exists
+        User existingUser =
+                userRepository.findByEmail(
+                        employee.getEmail()
+                );
+
+        if (existingUser == null) {
+
+            User user = new User();
+
+            user.setFullName(
+                    employee.getName()
+            );
+
+            user.setEmail(
+                    employee.getEmail()
+            );
+
+            // Temporary Password
+            user.setPassword(
+                    "Welcome@123"
+            );
+
+            user.setRole(
+                    "EMPLOYEE"
+            );
+
+            userRepository.save(user);
+        }
+
+        return savedEmployee;
     }
 
     // Get All Employees

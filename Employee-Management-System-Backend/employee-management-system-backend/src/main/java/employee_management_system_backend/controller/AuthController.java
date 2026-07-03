@@ -26,16 +26,6 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @PostMapping("/register")
-    public User register(
-            @RequestBody User user
-    ) {
-
-        user.setRole("EMPLOYEE");
-
-        return userService.register(user);
-    }
-
     @PostMapping("/login")
     public Map<String, String> loginUser(
             @RequestBody User user
