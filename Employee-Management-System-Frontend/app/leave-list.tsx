@@ -19,6 +19,9 @@ import { router } from "expo-router";
 
 import { TouchableOpacity } from "react-native";
 
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+
 export default function LeaveListScreen() {
   const [leaves, setLeaves] = useState<any[]>([]);
 
@@ -26,9 +29,14 @@ export default function LeaveListScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  const { userRole } = useContext(AuthContext);
+
   const fetchLeaves = async () => {
     try {
-      const response = await API.get("/leaves");
+      const response =
+        userRole === "ADMIN"
+          ? await API.get("/leaves")
+          : await API.get("/leaves/me");
 
       setLeaves(response.data);
     } catch (error) {
@@ -40,8 +48,10 @@ export default function LeaveListScreen() {
   };
 
   useEffect(() => {
-    fetchLeaves();
-  }, []);
+    if (userRole) {
+      fetchLeaves();
+    }
+  }, [userRole]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -91,11 +101,15 @@ export default function LeaveListScreen() {
               <Text style={styles.headerTitle}>Leave Management</Text>
 
               <Text style={styles.headerSubtitle}>
-                Track all leave requests
+                {userRole === "ADMIN"
+                  ? "Track all leave requests"
+                  : "Track your leave requests"}
               </Text>
             </LinearGradient>
 
-            <Text style={styles.sectionLabel}>ALL LEAVE REQUESTS</Text>
+            <Text style={styles.sectionLabel}>
+              {userRole === "ADMIN" ? "ALL LEAVE REQUESTS" : "MY LEAVE HISTORY"}
+            </Text>
           </>
         }
         renderItem={({ item }) => (
@@ -105,7 +119,9 @@ export default function LeaveListScreen() {
           >
             <View style={styles.leaveCard}>
               <View style={styles.cardTop}>
-                <Text style={styles.employeeName}>{item.employeeName}</Text>
+                {userRole === "ADMIN" && (
+                  <Text style={styles.employeeName}>{item.employeeName}</Text>
+                )}
 
                 <View
                   style={[

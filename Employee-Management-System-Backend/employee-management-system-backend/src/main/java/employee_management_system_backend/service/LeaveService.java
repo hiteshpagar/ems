@@ -28,6 +28,31 @@ public class LeaveService {
 
         return leaveRepository.findAll();
     }
+    
+ // Get Logged In Employee Leaves
+    public List<Leave> getMyLeaves(
+            Long employeeId
+    ) {
+
+        return leaveRepository
+                .findByEmployeeIdOrderByIdDesc(
+                        employeeId
+                );
+    }
+    
+ // Get Logged In Employee Leave By Id
+    public Leave getMyLeave(
+            Long id,
+            Long employeeId
+    ) {
+
+        return leaveRepository
+                .findByIdAndEmployeeId(
+                        id,
+                        employeeId
+                )
+                .orElse(null);
+    }
 
     // Get Leave By Id
     public Leave getLeaveById(Long id) {

@@ -18,6 +18,9 @@ import API from "../services/api";
 
 import ScreenWrapper from "../components/ScreenWrapper";
 
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+
 export default function LeaveDetailsScreen() {
   const { id } = useLocalSearchParams();
 
@@ -25,9 +28,14 @@ export default function LeaveDetailsScreen() {
 
   const [loading, setLoading] = useState(true);
 
+  const { userRole } = useContext(AuthContext);
+
   const fetchLeave = async () => {
     try {
-      const response = await API.get(`/leaves/${id}`);
+      const response =
+        userRole === "ADMIN"
+          ? await API.get(`/leaves/${id}`)
+          : await API.get(`/leaves/me/${id}`);
 
       setLeave(response.data);
     } catch (error) {
@@ -182,27 +190,34 @@ export default function LeaveDetailsScreen() {
           </View>
         </View>
 
-        {leave.status === "Pending" && (
+        {userRole === "ADMIN" && (
           <>
-            <TouchableOpacity
-              style={styles.approveButton}
-              onPress={() => updateStatus("Approved")}
-            >
-              <Text style={styles.buttonText}>✅ Approve Leave</Text>
-            </TouchableOpacity>
+            {leave.status === "Pending" && (
+              <>
+                <TouchableOpacity
+                  style={styles.approveButton}
+                  onPress={() => updateStatus("Approved")}
+                >
+                  <Text style={styles.buttonText}>✅ Approve Leave</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.rejectButton}
+                  onPress={() => updateStatus("Rejected")}
+                >
+                  <Text style={styles.buttonText}>❌ Reject Leave</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             <TouchableOpacity
-              style={styles.rejectButton}
-              onPress={() => updateStatus("Rejected")}
+              style={styles.deleteButton}
+              onPress={handleDelete}
             >
-              <Text style={styles.buttonText}>❌ Reject Leave</Text>
+              <Text style={styles.buttonText}>🗑 Delete Leave</Text>
             </TouchableOpacity>
           </>
         )}
-
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.buttonText}>🗑 Delete Leave</Text>
-        </TouchableOpacity>
       </ScrollView>
     </ScreenWrapper>
   );
