@@ -449,6 +449,35 @@ export default function DashboardScreen() {
 
           <TouchableOpacity
             activeOpacity={0.85}
+            onPress={() => router.push("/profile")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#3498DB",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>👤</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>My Profile</Text>
+
+                <Text style={styles.actionSub}>View your profile</Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
             onPress={() => router.push("/leave-list")}
           >
             <LinearGradient

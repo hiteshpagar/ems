@@ -43,6 +43,11 @@ public class SecurityConfig {
             	            "/api/auth/**",
             	            "/uploads/**"
             	    ).permitAll()
+            	    
+            	 // Profile APIs
+            	    .requestMatchers(
+            	            "/api/profile/**"
+            	    ).authenticated()
 
             	 // Employee Management
             	    .requestMatchers(
