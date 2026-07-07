@@ -118,6 +118,34 @@ public class EmployeeService {
 
         return null;
     }
+    
+ // Update Logged In Employee Profile
+    public Employee updateMyProfile(
+            String email,
+            Employee updatedEmployee
+    ) {
+
+        Employee employee =
+                employeeRepository.findByEmail(email);
+
+        if (employee == null) {
+            return null;
+        }
+
+        // Editable Fields
+        employee.setName(
+                updatedEmployee.getName()
+        );
+
+        // Non-editable fields:
+        // Email
+        // Department
+        // Salary
+        // Photo
+        // Role
+
+        return employeeRepository.save(employee);
+    }
 
     // Delete Employee
     public String deleteEmployee(Long id) {
