@@ -447,36 +447,40 @@ export default function DashboardScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {userRole === "ADMIN" && (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => router.push("/leave-list")}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/leave-list")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
             >
-              <LinearGradient
-                colors={["#1a1a2e", "#16213e"]}
-                style={styles.actionCard}
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#27AE60",
+                  },
+                ]}
               >
-                <View
-                  style={[
-                    styles.actionIconBg,
-                    {
-                      backgroundColor: "#27AE60",
-                    },
-                  ]}
-                >
-                  <Text style={styles.actionIconText}>📋</Text>
-                </View>
+                <Text style={styles.actionIconText}>📋</Text>
+              </View>
 
-                <View style={styles.actionTextGroup}>
-                  <Text style={styles.actionTitle}>View Leaves</Text>
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>
+                  {userRole === "ADMIN" ? "View Leaves" : "Leave History"}
+                </Text>
 
-                  <Text style={styles.actionSub}>Track leave requests</Text>
-                </View>
+                <Text style={styles.actionSub}>
+                  {userRole === "ADMIN"
+                    ? "Track leave requests"
+                    : "View your leave requests"}
+                </Text>
+              </View>
 
-                <Text style={styles.actionChevron}>›</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
           {userRole === "ADMIN" && (
             <View style={styles.sectionWrapper}>

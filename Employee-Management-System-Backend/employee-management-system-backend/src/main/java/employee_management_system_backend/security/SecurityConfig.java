@@ -78,6 +78,13 @@ public class SecurityConfig {
             	            HttpMethod.POST,
             	            "/api/leaves"
             	    ).authenticated()
+            	    
+            	 // Logged In Employee Leave History
+            	    .requestMatchers(
+            	            HttpMethod.GET,
+            	            "/api/leaves/me",
+            	            "/api/leaves/me/**"
+            	    ).authenticated()
 
             	    // View Leaves
             	    .requestMatchers(
@@ -96,6 +103,8 @@ public class SecurityConfig {
             	            HttpMethod.DELETE,
             	            "/api/leaves/**"
             	    ).hasRole("ADMIN")
+            	    
+            	    
 
             	    // Attendance APIs
             	    .requestMatchers(

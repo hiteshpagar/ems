@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.*;
 import employee_management_system_backend.entity.Leave;
 import employee_management_system_backend.service.LeaveService;
 
+import org.springframework.security.core.Authentication;
+
+import employee_management_system_backend.entity.Employee;
+import employee_management_system_backend.service.EmployeeService;
+
 @RestController
 @RequestMapping("/api/leaves")
 @CrossOrigin("*")
@@ -16,6 +21,9 @@ public class LeaveController {
 
     @Autowired
     private LeaveService leaveService;
+    
+    @Autowired
+    private EmployeeService employeeService;
 
     // Apply Leave
     @PostMapping
@@ -31,6 +39,48 @@ public class LeaveController {
     public List<Leave> getAllLeaves() {
 
         return leaveService.getAllLeaves();
+    }
+    
+ // Get Logged In Employee Leaves
+    @GetMapping("/me")
+    public List<Leave> getMyLeaves(
+            Authentication authentication
+    ) {
+
+        Employee employee =
+                employeeService.getEmployeeByEmail(
+                        authentication.getName()
+                );
+
+        if (employee == null) {
+            return List.of();
+        }
+
+        return leaveService.getMyLeaves(
+                employee.getId()
+        );
+    }
+    
+ // Get Logged In Employee Leave By Id
+    @GetMapping("/me/{id}")
+    public Leave getMyLeave(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+
+        Employee employee =
+                employeeService.getEmployeeByEmail(
+                        authentication.getName()
+                );
+
+        if (employee == null) {
+            return null;
+        }
+
+        return leaveService.getMyLeave(
+                id,
+                employee.getId()
+        );
     }
 
     // Get Leave By Id

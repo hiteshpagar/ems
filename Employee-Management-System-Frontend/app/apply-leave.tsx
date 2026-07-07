@@ -41,11 +41,25 @@ export default function ApplyLeaveScreen() {
     }
   };
 
+  const fetchLoggedInEmployee = async () => {
+    try {
+      const response = await API.get("/employees/me");
+
+      setEmployeeId(response.data.id);
+
+      setEmployeeName(response.data.name);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const { userRole, userName } = useContext(AuthContext);
 
   useEffect(() => {
     if (userRole === "ADMIN") {
       fetchEmployees();
+    } else {
+      fetchLoggedInEmployee();
     }
   }, [userRole]);
 
@@ -63,7 +77,7 @@ export default function ApplyLeaveScreen() {
     try {
       await API.post("/leaves", {
         employeeId,
-        employeeName: leaveEmployeeName,
+        employeeName,
         leaveType,
         startDate,
         endDate,
@@ -79,12 +93,6 @@ export default function ApplyLeaveScreen() {
       Alert.alert("Error", "Failed To Apply Leave");
     }
   };
-
-  let leaveEmployeeName = employeeName;
-
-  if (userRole === "EMPLOYEE") {
-    leaveEmployeeName = userName;
-  }
 
   return (
     <ScreenWrapper>
