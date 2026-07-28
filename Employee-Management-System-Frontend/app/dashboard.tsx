@@ -421,6 +421,39 @@ export default function DashboardScreen() {
                   <Text style={styles.actionChevron}>›</Text>
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* HOLIDAYS */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/holiday-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#F2994A",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>H</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Holidays</Text>
+
+                    <Text style={styles.actionSub}>
+                      Manage company holiday calendar
+                    </Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </>
           )}
 

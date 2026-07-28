@@ -172,6 +172,27 @@ public class SecurityConfig {
             	        "/api/designations/**"
             	).authenticated()
 
+            	// Holiday APIs
+            	.requestMatchers(
+            	        HttpMethod.POST,
+            	        "/api/holidays/**"
+            	).hasRole("ADMIN")
+
+            	.requestMatchers(
+            	        HttpMethod.PUT,
+            	        "/api/holidays/**"
+            	).hasRole("ADMIN")
+
+            	.requestMatchers(
+            	        HttpMethod.DELETE,
+            	        "/api/holidays/**"
+            	).hasRole("ADMIN")
+
+            	.requestMatchers(
+            	        HttpMethod.GET,
+            	        "/api/holidays/**"
+            	).authenticated()
+
             	    // Dashboard APIs
             	    .requestMatchers(
             	            "/api/dashboard/**"
