@@ -117,7 +117,7 @@ export default function EmployeeDetailsScreen() {
 
           <View style={styles.departmentBadge}>
             <Text style={styles.departmentBadgeText}>
-              {employee?.department}
+              {employee?.designation || employee?.department}
             </Text>
           </View>
         </LinearGradient>
@@ -135,6 +135,20 @@ export default function EmployeeDetailsScreen() {
             <Text style={styles.statLabel}>Salary</Text>
           </View>
         </View>
+
+        {employee?.designation ? (
+          <View style={styles.infoCard}>
+            <Text style={styles.sectionTitle}>ROLE INFORMATION</Text>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoIcon}>💼</Text>
+              <View>
+                <Text style={styles.infoLabel}>Designation</Text>
+                <Text style={styles.infoValue}>{employee?.designation}</Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {/* Details */}
         <View style={styles.infoCard}>
@@ -167,6 +181,20 @@ export default function EmployeeDetailsScreen() {
               <Text style={styles.infoValue}>₹ {employee?.salary}</Text>
             </View>
           </View>
+
+          {employee?.designation ? (
+            <>
+              <View style={styles.infoDivider} />
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoIcon}>💼</Text>
+                <View>
+                  <Text style={styles.infoLabel}>Designation</Text>
+                  <Text style={styles.infoValue}>{employee?.designation}</Text>
+                </View>
+              </View>
+            </>
+          ) : null}
         </View>
 
         {/* Buttons */}

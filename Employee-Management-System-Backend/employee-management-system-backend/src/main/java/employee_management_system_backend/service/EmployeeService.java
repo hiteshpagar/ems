@@ -107,6 +107,9 @@ public class EmployeeService {
             employee.setDepartment(
                     updatedEmployee.getDepartment());
 
+            employee.setDesignation(
+                    updatedEmployee.getDesignation());
+
             employee.setSalary(
                     updatedEmployee.getSalary());
             

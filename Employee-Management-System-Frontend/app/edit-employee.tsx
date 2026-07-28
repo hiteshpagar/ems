@@ -1,6 +1,7 @@
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Picker } from "@react-native-picker/picker";
+import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { router, useLocalSearchParams } from "expo-router";
 
@@ -12,6 +13,18 @@ import ScreenWrapper from "../components/ScreenWrapper";
 
 import { LinearGradient } from "expo-linear-gradient";
 
+interface Department {
+  id: number;
+  name: string;
+}
+
+interface Designation {
+  id: number;
+  name: string;
+  departmentId: number;
+  departmentName: string;
+}
+
 export default function EditEmployeeScreen() {
   const { id } = useLocalSearchParams();
 
@@ -19,36 +32,112 @@ export default function EditEmployeeScreen() {
 
   const [email, setEmail] = useState("");
 
-  const [department, setDepartment] = useState("");
+  const [departmentId, setDepartmentId] = useState<number | null>(null);
+
+  const [designationId, setDesignationId] = useState<number | null>(null);
 
   const [salary, setSalary] = useState("");
 
   const [photoUrl, setPhotoUrl] = useState("");
 
-  // Fetch Employee By ID
-  const fetchEmployee = async () => {
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  const [designations, setDesignations] = useState<Designation[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const filteredDesignations = useMemo(
+    () =>
+      designations.filter(
+        (designation) => designation.departmentId === departmentId,
+      ),
+    [departmentId, designations],
+  );
+
+  const selectedDepartment = departments.find(
+    (department) => department.id === departmentId,
+  );
+
+  const selectedDesignation = designations.find(
+    (designation) => designation.id === designationId,
+  );
+
+  // Fetch Employee By ID and master data
+  const fetchEmployeeData = useCallback(async () => {
     try {
-      const response = await API.get(`/employees/${id}`);
+      const [employeeResponse, departmentResponse, designationResponse] =
+        await Promise.all([
+          API.get(`/employees/${id}`),
+          API.get<Department[]>("/departments"),
+          API.get<Designation[]>("/designations"),
+        ]);
 
-      const employee = response.data;
+      const employee = employeeResponse.data;
+      const departmentData = Array.isArray(departmentResponse.data)
+        ? departmentResponse.data
+        : [];
+      const designationData = Array.isArray(designationResponse.data)
+        ? designationResponse.data
+        : [];
+      const matchedDepartment = departmentData.find(
+        (department) => department.name === employee.department,
+      );
+      const matchedDesignation = designationData.find(
+        (designation) =>
+          designation.name === employee.designation &&
+          designation.departmentId === matchedDepartment?.id,
+      );
 
+      setDepartments(departmentData);
+      setDesignations(designationData);
       setName(employee.name);
       setEmail(employee.email);
-      setDepartment(employee.department);
+      setDepartmentId(matchedDepartment?.id ?? departmentData[0]?.id ?? null);
+      setDesignationId(matchedDesignation?.id ?? null);
       setSalary(employee.salary.toString());
       setPhotoUrl(employee.photoUrl || "");
     } catch (error) {
       console.log(error);
+      Alert.alert("Error", "Failed to load employee data");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    setDesignationId((currentDesignationId) => {
+      const currentStillValid = filteredDesignations.some(
+        (designation) => designation.id === currentDesignationId,
+      );
+
+      if (currentStillValid) {
+        return currentDesignationId;
+      }
+
+      return filteredDesignations[0]?.id ?? null;
+    });
+  }, [filteredDesignations]);
 
   // Update Employee
   const handleUpdateEmployee = async () => {
+    if (!name || !email || !salary) {
+      Alert.alert("Error", "Please fill all fields");
+
+      return;
+    }
+
+    if (!selectedDepartment || !selectedDesignation) {
+      Alert.alert("Error", "Please select department and designation");
+
+      return;
+    }
+
     try {
       await API.put(`/employees/${id}`, {
         name,
         email,
-        department,
+        department: selectedDepartment.name,
+        designation: selectedDesignation.name,
         salary: Number(salary),
         photoUrl,
       });
@@ -64,8 +153,18 @@ export default function EditEmployeeScreen() {
   };
 
   useEffect(() => {
-    fetchEmployee();
-  }, []);
+    fetchEmployeeData();
+  }, [fetchEmployeeData]);
+
+  if (loading) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color="#2F80ED" />
+        </View>
+      </ScreenWrapper>
+    );
+  }
 
   return (
     <ScreenWrapper>
@@ -94,11 +193,51 @@ export default function EditEmployeeScreen() {
           />
 
           <Text style={styles.label}>🏢 Department</Text>
-          <CustomInput
-            placeholder="Enter Department"
-            value={department}
-            onChangeText={setDepartment}
-          />
+          <View style={styles.pickerBox}>
+            <Picker
+              selectedValue={departmentId}
+              onValueChange={(value) => setDepartmentId(value)}
+              enabled={departments.length > 0}
+              style={styles.picker}
+            >
+              {departments.length === 0 ? (
+                <Picker.Item label="Create a department first" value={null} />
+              ) : (
+                departments.map((department) => (
+                  <Picker.Item
+                    key={department.id}
+                    label={department.name}
+                    value={department.id}
+                  />
+                ))
+              )}
+            </Picker>
+          </View>
+
+          <Text style={styles.label}>Designation</Text>
+          <View style={styles.pickerBox}>
+            <Picker
+              selectedValue={designationId}
+              onValueChange={(value) => setDesignationId(value)}
+              enabled={filteredDesignations.length > 0}
+              style={styles.picker}
+            >
+              {filteredDesignations.length === 0 ? (
+                <Picker.Item
+                  label="Create a designation for this department first"
+                  value={null}
+                />
+              ) : (
+                filteredDesignations.map((designation) => (
+                  <Picker.Item
+                    key={designation.id}
+                    label={designation.name}
+                    value={designation.id}
+                  />
+                ))
+              )}
+            </Picker>
+          </View>
 
           <Text style={styles.label}>💰 Salary</Text>
           <CustomInput
@@ -167,5 +306,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 10,
     color: "#444",
+  },
+
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  pickerBox: {
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    justifyContent: "center",
+    marginBottom: 15,
+    overflow: "hidden",
+  },
+
+  picker: {
+    color: "#111827",
   },
 });

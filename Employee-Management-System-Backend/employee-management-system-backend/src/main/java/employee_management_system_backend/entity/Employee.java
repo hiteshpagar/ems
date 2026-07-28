@@ -16,6 +16,8 @@ public class Employee {
 
     private String department;
 
+    private String designation;
+
     private Double salary;
     
     private String photoUrl;
@@ -62,6 +64,14 @@ public class Employee {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public String getDesignation() {
+        return designation;
+    }
+
+    public void setDesignation(String designation) {
+        this.designation = designation;
     }
 
     // Getter and Setter for salary
