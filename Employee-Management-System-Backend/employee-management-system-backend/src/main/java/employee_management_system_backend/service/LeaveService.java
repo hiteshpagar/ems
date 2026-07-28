@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import employee_management_system_backend.entity.Leave;
+import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.repository.LeaveRepository;
 
 @Service
@@ -14,6 +15,12 @@ public class LeaveService {
 
     @Autowired
     private LeaveRepository leaveRepository;
+
+    @Autowired
+    private EmployeeService employeeService;
+
+    @Autowired
+    private EmailService emailService;
 
     // Apply Leave
     public Leave applyLeave(Leave leave) {
@@ -77,7 +84,16 @@ public class LeaveService {
 
             leave.setStatus(status);
 
-            return leaveRepository.save(leave);
+            Leave updatedLeave = leaveRepository.save(leave);
+
+            Employee employee =
+                    employeeService.getEmployeeById(leave.getEmployeeId());
+
+            if (employee != null && employee.getEmail() != null) {
+                emailService.sendLeaveStatusEmail(employee, updatedLeave);
+            }
+
+            return updatedLeave;
         }
 
         return null;

@@ -76,6 +76,10 @@ export default function LoginScreen() {
         />
 
         <CustomButton title="Login" onPress={handleLogin} />
+
+        <TouchableOpacity onPress={() => router.push("/forgot-password")}>
+          <Text style={styles.link}>Forgot Password?</Text>
+        </TouchableOpacity>
       </View>
     </ScreenWrapper>
   );

@@ -21,6 +21,9 @@ public class EmployeeService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private EmailService emailService;
+
     // Add Employee
     public Employee addEmployee(Employee employee) {
 
@@ -37,6 +40,7 @@ public class EmployeeService {
         if (existingUser == null) {
 
             User user = new User();
+            String temporaryPassword = "Welcome@123";
 
             user.setFullName(
                     employee.getName()
@@ -48,7 +52,7 @@ public class EmployeeService {
 
             // Temporary Password
             user.setPassword(
-                    "Welcome@123"
+                    temporaryPassword
             );
 
             user.setRole(
@@ -56,6 +60,11 @@ public class EmployeeService {
             );
 
             userRepository.save(user);
+
+            emailService.sendWelcomeEmail(
+                    savedEmployee,
+                    temporaryPassword
+            );
         }
 
         return savedEmployee;

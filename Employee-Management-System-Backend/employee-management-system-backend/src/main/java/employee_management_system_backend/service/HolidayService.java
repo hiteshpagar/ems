@@ -15,9 +15,16 @@ import employee_management_system_backend.repository.HolidayRepository;
 public class HolidayService {
 
     private final HolidayRepository holidayRepository;
+    private final EmployeeService employeeService;
+    private final EmailService emailService;
 
-    public HolidayService(HolidayRepository holidayRepository) {
+    public HolidayService(
+            HolidayRepository holidayRepository,
+            EmployeeService employeeService,
+            EmailService emailService) {
         this.holidayRepository = holidayRepository;
+        this.employeeService = employeeService;
+        this.emailService = emailService;
     }
 
     public HolidayResponse createHoliday(HolidayRequest request) {
@@ -30,7 +37,15 @@ public class HolidayService {
         Holiday holiday = new Holiday();
         applyRequest(holiday, request);
 
-        return convertToResponse(holidayRepository.save(holiday));
+        Holiday savedHoliday = holidayRepository.save(holiday);
+
+        employeeService.getAllEmployees()
+                .stream()
+                .filter(employee -> employee.getEmail() != null)
+                .forEach(employee ->
+                        emailService.sendHolidayAnnouncement(employee, savedHoliday));
+
+        return convertToResponse(savedHoliday);
     }
 
     public List<HolidayResponse> getAllHolidays() {
