@@ -120,6 +120,57 @@ public class SecurityConfig {
             	            HttpMethod.GET,
             	            "/api/attendance/me/today"
             	    ).authenticated()
+            	    
+            	 // Department APIs
+
+            	 // Create Department
+            	    .requestMatchers(
+            	            HttpMethod.POST,
+            	            "/api/departments/**"
+            	    ).hasRole("ADMIN")
+            	 // Update Department
+            	 .requestMatchers(
+            	         HttpMethod.PUT,
+            	         "/api/departments/**"
+            	 ).hasRole("ADMIN")
+
+            	 // Delete Department
+            	 .requestMatchers(
+            	         HttpMethod.DELETE,
+            	         "/api/departments/**"
+            	 ).hasRole("ADMIN")
+
+            	 // View Departments
+            	 .requestMatchers(
+            	         HttpMethod.GET,
+            	         "/api/departments/**"
+            	 ).authenticated()
+            	 
+            	// Designation APIs
+
+            	// Create Designation
+            	.requestMatchers(
+            	        HttpMethod.POST,
+            	        "/api/designations/**"
+            	).hasRole("ADMIN")
+
+            	// Update Designation
+            	.requestMatchers(
+            	        HttpMethod.PUT,
+            	        "/api/designations/**"
+            	).hasRole("ADMIN")
+
+            	// Delete Designation
+            	.requestMatchers(
+            	        HttpMethod.DELETE,
+            	        "/api/designations/**"
+            	).hasRole("ADMIN")
+
+            	// View Designations
+            	.requestMatchers(
+            	        HttpMethod.GET,
+            	        "/api/designations/**"
+            	).authenticated()
 
             	    // Dashboard APIs
             	    .requestMatchers(

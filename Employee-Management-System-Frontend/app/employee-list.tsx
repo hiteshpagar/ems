@@ -263,6 +263,14 @@ export default function EmployeeListScreen() {
                     <View style={styles.salaryChip}>
                       <Text style={styles.salaryText}>₹ {item.salary}</Text>
                     </View>
+
+                    {item.designation ? (
+                      <View style={styles.designationChip}>
+                        <Text style={styles.designationText}>
+                          {item.designation}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
 
                   {/* divider */}
@@ -474,6 +482,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   salaryText: { fontSize: 12, fontWeight: "700", color: "#11998e" },
+  designationChip: {
+    backgroundColor: "rgba(142,68,173,0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  designationText: { fontSize: 12, fontWeight: "700", color: "#8E44AD" },
 
   /* divider */
   cardDivider: { height: 1, backgroundColor: "#F4F6FB", marginHorizontal: 16 },

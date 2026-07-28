@@ -75,7 +75,9 @@ export default function ProfileScreen() {
 
           <Text style={styles.name}>{profile?.name}</Text>
 
-          <Text style={styles.department}>{profile?.department}</Text>
+          <Text style={styles.department}>
+            {profile?.designation || profile?.department}
+          </Text>
         </LinearGradient>
 
         <View style={styles.card}>
@@ -101,6 +103,17 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.divider} />
+
+          {profile?.designation ? (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>💼 Designation</Text>
+                <Text style={styles.infoValue}>{profile?.designation}</Text>
+              </View>
+
+              <View style={styles.divider} />
+            </>
+          ) : null}
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>💰 Salary</Text>

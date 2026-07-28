@@ -1,5 +1,6 @@
 import {
   Alert,
+  ActivityIndicator,
   StyleSheet,
   Text,
   View,
@@ -9,9 +10,9 @@ import {
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 
-import { useState } from "react";
+import { Picker } from "@react-native-picker/picker";
+import { useEffect, useMemo, useState } from "react";
 
 import { router } from "expo-router";
 
@@ -23,18 +24,95 @@ import ScreenWrapper from "../components/ScreenWrapper";
 
 import { LinearGradient } from "expo-linear-gradient";
 
+interface Department {
+  id: number;
+  name: string;
+}
+
+interface Designation {
+  id: number;
+  name: string;
+  departmentId: number;
+  departmentName: string;
+}
+
 export default function AddEmployeeScreen() {
   const [name, setName] = useState("");
 
   const [email, setEmail] = useState("");
 
-  const [department, setDepartment] = useState("");
+  const [departmentId, setDepartmentId] = useState<number | null>(null);
+
+  const [designationId, setDesignationId] = useState<number | null>(null);
 
   const [salary, setSalary] = useState("");
 
-  const [photoUrl, setPhotoUrl] = useState("");
-
   const [imageUri, setImageUri] = useState("");
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  const [designations, setDesignations] = useState<Designation[]>([]);
+
+  const [masterLoading, setMasterLoading] = useState(true);
+
+  const filteredDesignations = useMemo(
+    () =>
+      designations.filter(
+        (designation) => designation.departmentId === departmentId,
+      ),
+    [departmentId, designations],
+  );
+
+  const selectedDepartment = departments.find(
+    (department) => department.id === departmentId,
+  );
+
+  const selectedDesignation = designations.find(
+    (designation) => designation.id === designationId,
+  );
+
+  const fetchMasterData = async () => {
+    try {
+      const [departmentResponse, designationResponse] = await Promise.all([
+        API.get<Department[]>("/departments"),
+        API.get<Designation[]>("/designations"),
+      ]);
+
+      const departmentData = Array.isArray(departmentResponse.data)
+        ? departmentResponse.data
+        : [];
+      const designationData = Array.isArray(designationResponse.data)
+        ? designationResponse.data
+        : [];
+
+      setDepartments(departmentData);
+      setDesignations(designationData);
+      setDepartmentId(departmentData[0]?.id ?? null);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Failed to load departments and designations");
+    } finally {
+      setMasterLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMasterData();
+  }, []);
+
+  useEffect(() => {
+    setDesignationId((currentDesignationId) => {
+      const currentStillValid = filteredDesignations.some(
+        (designation) => designation.id === currentDesignationId,
+      );
+
+      if (currentStillValid) {
+        return currentDesignationId;
+      }
+
+      return filteredDesignations[0]?.id ?? null;
+    });
+  }, [filteredDesignations]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -76,8 +154,14 @@ export default function AddEmployeeScreen() {
   };
 
   const handleAddEmployee = async () => {
-    if (!name || !email || !department || !salary) {
+    if (!name || !email || !salary) {
       Alert.alert("Error", "Please fill all fields");
+
+      return;
+    }
+
+    if (!selectedDepartment || !selectedDesignation) {
+      Alert.alert("Error", "Please select department and designation");
 
       return;
     }
@@ -88,7 +172,8 @@ export default function AddEmployeeScreen() {
       const response = await API.post("/employees", {
         name,
         email,
-        department,
+        department: selectedDepartment.name,
+        designation: selectedDesignation.name,
         salary: Number(salary),
         photoUrl: uploadedPhotoUrl,
       });
@@ -141,11 +226,59 @@ export default function AddEmployeeScreen() {
             />
 
             <Text style={styles.label}>🏢 Department</Text>
-            <CustomInput
-              placeholder="Enter Department"
-              value={department}
-              onChangeText={setDepartment}
-            />
+            <View style={styles.pickerBox}>
+              {masterLoading ? (
+                <ActivityIndicator color="#2F80ED" />
+              ) : (
+                <Picker
+                  selectedValue={departmentId}
+                  onValueChange={(value) => setDepartmentId(value)}
+                  enabled={departments.length > 0}
+                  style={styles.picker}
+                >
+                  {departments.length === 0 ? (
+                    <Picker.Item label="Create a department first" value={null} />
+                  ) : (
+                    departments.map((department) => (
+                      <Picker.Item
+                        key={department.id}
+                        label={department.name}
+                        value={department.id}
+                      />
+                    ))
+                  )}
+                </Picker>
+              )}
+            </View>
+
+            <Text style={styles.label}>Designation</Text>
+            <View style={styles.pickerBox}>
+              {masterLoading ? (
+                <ActivityIndicator color="#2F80ED" />
+              ) : (
+                <Picker
+                  selectedValue={designationId}
+                  onValueChange={(value) => setDesignationId(value)}
+                  enabled={filteredDesignations.length > 0}
+                  style={styles.picker}
+                >
+                  {filteredDesignations.length === 0 ? (
+                    <Picker.Item
+                      label="Create a designation for this department first"
+                      value={null}
+                    />
+                  ) : (
+                    filteredDesignations.map((designation) => (
+                      <Picker.Item
+                        key={designation.id}
+                        label={designation.name}
+                        value={designation.id}
+                      />
+                    ))
+                  )}
+                </Picker>
+              )}
+            </View>
 
             <Text style={styles.label}>💰 Salary</Text>
             <CustomInput
@@ -227,6 +360,20 @@ const styles = StyleSheet.create({
   imagePickerText: {
     color: "#fff",
     fontWeight: "600",
+  },
+
+  pickerBox: {
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    justifyContent: "center",
+    marginBottom: 15,
+    overflow: "hidden",
+  },
+
+  picker: {
+    color: "#111827",
   },
 
   previewImage: {

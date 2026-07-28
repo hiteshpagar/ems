@@ -355,6 +355,72 @@ export default function DashboardScreen() {
                   <Text style={styles.actionChevron}>›</Text>
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* DEPARTMENTS */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/department-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#2F80ED",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>🏢</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Departments</Text>
+
+                    <Text style={styles.actionSub}>
+                      Manage company departments
+                    </Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* DESIGNATIONS */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/designation-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#8E44AD",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>ID</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Designations</Text>
+
+                    <Text style={styles.actionSub}>
+                      Manage employee job titles
+                    </Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </>
           )}
 
