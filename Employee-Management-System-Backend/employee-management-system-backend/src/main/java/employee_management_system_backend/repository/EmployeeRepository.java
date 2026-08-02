@@ -10,4 +10,9 @@ public interface EmployeeRepository
     Employee findByEmail(
             String email
     );
+
+    boolean existsByEmailIgnoreCase(String email);
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+    long countByDepartmentIgnoreCase(String department);
+    long countByDesignationIgnoreCase(String designation);
 }

@@ -13,6 +13,7 @@ import employee_management_system_backend.exception.ResourceNotFoundException;
 import employee_management_system_backend.mapper.DesignationMapper;
 import employee_management_system_backend.repository.DepartmentRepository;
 import employee_management_system_backend.repository.DesignationRepository;
+import employee_management_system_backend.repository.EmployeeRepository;
 
 @Service
 public class DesignationService {
@@ -20,15 +21,17 @@ public class DesignationService {
     private final DesignationRepository designationRepository;
     private final DepartmentRepository departmentRepository;
     private final DesignationMapper designationMapper;
+    private final EmployeeRepository employeeRepository;
 
     public DesignationService(
             DesignationRepository designationRepository,
             DepartmentRepository departmentRepository,
-            DesignationMapper designationMapper) {
+            DesignationMapper designationMapper, EmployeeRepository employeeRepository) {
 
         this.designationRepository = designationRepository;
         this.departmentRepository = departmentRepository;
         this.designationMapper = designationMapper;
+        this.employeeRepository = employeeRepository;
     }
 
     // ADD THIS METHOD
@@ -114,7 +117,10 @@ public class DesignationService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Designation not found."));
 
-        // Delete designation
+        if (employeeRepository.countByDesignationIgnoreCase(designation.getName()) > 0) {
+            throw new IllegalStateException("This designation is assigned to employees and cannot be deleted.");
+        }
+
         designationRepository.delete(designation);
     }
 }

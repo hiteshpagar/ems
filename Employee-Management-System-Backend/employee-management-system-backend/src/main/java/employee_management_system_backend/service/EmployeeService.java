@@ -13,6 +13,8 @@ import employee_management_system_backend.repository.SalaryStructureRepository;
 
 import employee_management_system_backend.entity.User;
 import employee_management_system_backend.repository.UserRepository;
+import employee_management_system_backend.exception.ResourceAlreadyExistsException;
+import employee_management_system_backend.exception.ResourceNotFoundException;
 
 @Service
 public class EmployeeService {
@@ -31,6 +33,11 @@ public class EmployeeService {
 
     // Add Employee
     public Employee addEmployee(Employee employee) {
+
+        employee.setEmail(employee.getEmail().trim().toLowerCase());
+        if (employeeRepository.existsByEmailIgnoreCase(employee.getEmail())) {
+            throw new ResourceAlreadyExistsException("An employee with this email already exists.");
+        }
 
         // Save Employee
         Employee savedEmployee =
@@ -116,11 +123,16 @@ public class EmployeeService {
 
         if (employee != null) {
 
+            String email = updatedEmployee.getEmail().trim().toLowerCase();
+            if (employeeRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
+                throw new ResourceAlreadyExistsException("An employee with this email already exists.");
+            }
+
             employee.setName(
                     updatedEmployee.getName());
 
             employee.setEmail(
-                    updatedEmployee.getEmail());
+                    email);
 
             employee.setDepartment(
                     updatedEmployee.getDepartment());
@@ -176,6 +188,9 @@ public class EmployeeService {
     // Delete Employee
     public String deleteEmployee(Long id) {
 
+        if (!employeeRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Employee not found.");
+        }
         salaryStructureRepository.deleteByEmployeeId(id);
         employeeRepository.deleteById(id);
 

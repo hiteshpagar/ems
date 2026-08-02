@@ -21,6 +21,17 @@ public class FileUploadController {
             @RequestParam("file") MultipartFile file
     ) throws IOException {
 
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Please choose an image to upload.");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException("Profile image must be 5 MB or smaller.");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files can be uploaded.");
+        }
+
         Path uploadPath =
                 Paths.get("uploads");
 
@@ -28,10 +39,11 @@ public class FileUploadController {
             Files.createDirectories(uploadPath);
         }
 
-        String fileName =
-                UUID.randomUUID()
-                + "_"
-                + file.getOriginalFilename();
+        String originalName = file.getOriginalFilename() == null ? "photo" : file.getOriginalFilename();
+        String extension = originalName.contains(".")
+                ? originalName.substring(originalName.lastIndexOf('.')).replaceAll("[^A-Za-z0-9.]", "")
+                : ".jpg";
+        String fileName = UUID.randomUUID() + extension;
 
         Path filePath =
                 uploadPath.resolve(fileName);

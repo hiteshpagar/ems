@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.service.EmployeeService;
+import jakarta.validation.Valid;
 
 import org.springframework.security.core.Authentication;
 
@@ -20,7 +21,7 @@ public class EmployeeController {
     // Add Employee
     @PostMapping
     public Employee addEmployee(
-            @RequestBody Employee employee
+            @Valid @RequestBody Employee employee
     ) {
 
         return employeeService.addEmployee(employee);
@@ -57,7 +58,7 @@ public class EmployeeController {
     @PutMapping("/{id}")
     public Employee updateEmployee(
             @PathVariable Long id,
-            @RequestBody Employee employee
+            @Valid @RequestBody Employee employee
     ) {
 
         return employeeService.updateEmployee(

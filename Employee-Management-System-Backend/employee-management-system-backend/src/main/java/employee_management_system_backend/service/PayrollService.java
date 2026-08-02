@@ -11,6 +11,8 @@ import employee_management_system_backend.repository.AttendanceRepository;
 import employee_management_system_backend.repository.EmployeeRepository;
 import employee_management_system_backend.repository.PayslipRepository;
 import employee_management_system_backend.repository.SalaryStructureRepository;
+import employee_management_system_backend.exception.ResourceAlreadyExistsException;
+import jakarta.transaction.Transactional;
 
 @Service
 public class PayrollService {
@@ -28,6 +30,7 @@ public class PayrollService {
     public SalaryStructure saveStructure(SalaryStructure structure) {
         if (structure.getEmployeeId() == null || !employees.existsById(structure.getEmployeeId()))
             throw new IllegalArgumentException("A valid employee is required");
+        validateStructure(structure);
         SalaryStructure existing = salaryStructures.findByEmployeeId(structure.getEmployeeId()).orElse(null);
         if (existing != null) structure.setId(existing.getId());
         SalaryStructure savedStructure = salaryStructures.save(structure);
@@ -45,8 +48,11 @@ public class PayrollService {
     public List<Payslip> getPayslips() { return payslips.findAllByOrderByPayrollMonthDescEmployeeNameAsc(); }
     public List<Payslip> getEmployeePayslips(Long employeeId) { return payslips.findByEmployeeIdOrderByPayrollMonthDesc(employeeId); }
 
+    @Transactional
     public List<Payslip> generate(String month) {
         YearMonth payMonth = YearMonth.parse(month);
+        if (payMonth.isAfter(YearMonth.now())) throw new IllegalArgumentException("Payroll cannot be generated for a future month.");
+        if (payslips.existsByPayrollMonth(month)) throw new ResourceAlreadyExistsException("Payroll has already been generated for this month.");
         return employees.findAll().stream().map(employee -> createPayslip(employee, payMonth)).toList();
     }
     private Payslip createPayslip(Employee employee, YearMonth month) {
@@ -70,4 +76,12 @@ public class PayrollService {
     private SalaryStructure defaultStructure(Employee employee) { SalaryStructure s = new SalaryStructure(); s.setEmployeeId(employee.getId()); s.setBasicSalary(amount(employee.getSalary())); return s; }
     private double amount(Double value) { return value == null ? 0 : value; }
     private double round(double value) { return Math.round(value * 100.0) / 100.0; }
+    private void validateStructure(SalaryStructure structure) {
+        if (amount(structure.getBasicSalary()) < 0 || amount(structure.getHouseRentAllowance()) < 0
+                || amount(structure.getTransportAllowance()) < 0 || amount(structure.getOtherAllowance()) < 0
+                || amount(structure.getProvidentFund()) < 0 || amount(structure.getProfessionalTax()) < 0
+                || amount(structure.getIncomeTax()) < 0 || amount(structure.getOtherDeductions()) < 0) {
+            throw new IllegalArgumentException("Salary components and deductions cannot be negative.");
+        }
+    }
 }

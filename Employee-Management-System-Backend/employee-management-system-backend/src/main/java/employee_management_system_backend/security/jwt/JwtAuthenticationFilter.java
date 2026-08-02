@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -72,7 +73,7 @@ public class JwtAuthenticationFilter
         	     role =
         	            jwtUtil.extractRole(token);
 
-        	} catch (ExpiredJwtException e) {
+        } catch (ExpiredJwtException e) {
 
         	    response.setStatus(
         	            HttpServletResponse.SC_UNAUTHORIZED
@@ -82,8 +83,14 @@ public class JwtAuthenticationFilter
         	            "JWT Token Expired"
         	    );
 
-        	    return;
-        	}
+	    return;
+
+        } catch (JwtException | IllegalArgumentException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Invalid authentication token\"}");
+            return;
+        }
         }
 
         // Validate User

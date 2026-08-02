@@ -1,6 +1,7 @@
 package employee_management_system_backend.service;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,8 @@ public class HolidayService {
     }
 
     public HolidayResponse createHoliday(HolidayRequest request) {
+
+        validateFutureOrToday(request.getHolidayDate());
 
         if (holidayRepository.existsByHolidayDate(request.getHolidayDate())) {
             throw new ResourceAlreadyExistsException(
@@ -65,6 +68,8 @@ public class HolidayService {
 
     public HolidayResponse updateHoliday(Long id, HolidayRequest request) {
 
+        validateFutureOrToday(request.getHolidayDate());
+
         Holiday holiday = getHolidayEntity(id);
 
         if (holidayRepository.existsByHolidayDateAndIdNot(
@@ -98,6 +103,12 @@ public class HolidayService {
         holiday.setHolidayDate(request.getHolidayDate());
         holiday.setType(request.getType().trim());
         holiday.setDescription(request.getDescription());
+    }
+
+    private void validateFutureOrToday(LocalDate date) {
+        if (date.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Holiday date cannot be in the past.");
+        }
     }
 
     private HolidayResponse convertToResponse(Holiday holiday) {

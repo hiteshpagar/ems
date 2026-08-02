@@ -9,4 +9,5 @@ public interface PayslipRepository extends JpaRepository<Payslip, Long> {
     List<Payslip> findAllByOrderByPayrollMonthDescEmployeeNameAsc();
     List<Payslip> findByEmployeeIdOrderByPayrollMonthDesc(Long employeeId);
     Optional<Payslip> findByEmployeeIdAndPayrollMonth(Long employeeId, String payrollMonth);
+    boolean existsByPayrollMonth(String payrollMonth);
 }
