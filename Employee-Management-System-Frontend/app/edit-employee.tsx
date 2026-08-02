@@ -239,9 +239,9 @@ export default function EditEmployeeScreen() {
             </Picker>
           </View>
 
-          <Text style={styles.label}>💰 Salary</Text>
+          <Text style={styles.label}>💰 Monthly Basic Salary</Text>
           <CustomInput
-            placeholder="Enter Salary"
+            placeholder="Enter monthly basic salary"
             value={salary}
             onChangeText={setSalary}
             keyboardType="numeric"

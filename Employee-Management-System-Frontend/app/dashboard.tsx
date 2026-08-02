@@ -454,6 +454,14 @@ export default function DashboardScreen() {
                   <Text style={styles.actionChevron}>›</Text>
                 </LinearGradient>
               </TouchableOpacity>
+
+              <TouchableOpacity activeOpacity={0.85} onPress={() => router.push("/payroll" as any)}>
+                <LinearGradient colors={["#1a1a2e", "#16213e"]} style={styles.actionCard}>
+                  <View style={[styles.actionIconBg, { backgroundColor: "#16A085" }]}><Text style={styles.actionIconText}>₹</Text></View>
+                  <View style={styles.actionTextGroup}><Text style={styles.actionTitle}>Payroll</Text><Text style={styles.actionSub}>Salary structures and payslips</Text></View>
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </>
           )}
 
@@ -609,6 +617,16 @@ export default function DashboardScreen() {
               <Text style={styles.actionChevron}>›</Text>
             </LinearGradient>
           </TouchableOpacity>
+
+          {userRole !== "ADMIN" && (
+            <TouchableOpacity activeOpacity={0.85} onPress={() => router.push("/payslips" as any)}>
+              <LinearGradient colors={["#1a1a2e", "#16213e"]} style={styles.actionCard}>
+                <View style={[styles.actionIconBg, { backgroundColor: "#16A085" }]}><Text style={styles.actionIconText}>₹</Text></View>
+                <View style={styles.actionTextGroup}><Text style={styles.actionTitle}>My Payslips</Text><Text style={styles.actionSub}>View monthly salary statements</Text></View>
+                <Text style={styles.actionChevron}>›</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
 
           {userRole === "ADMIN" && (
             <View style={styles.sectionWrapper}>

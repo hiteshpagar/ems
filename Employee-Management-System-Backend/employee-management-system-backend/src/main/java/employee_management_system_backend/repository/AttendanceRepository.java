@@ -28,4 +28,6 @@ public interface AttendanceRepository
     long countByDate(
             String date
     );
+
+    int countByEmployeeIdAndDateStartingWithAndStatusIgnoreCase(Long employeeId, String date, String status);
 }
