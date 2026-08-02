@@ -1,5 +1,10 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useEffect, useState } from "react";
+import {
+  clearRememberedSession,
+  getRememberedSession,
+  saveRememberedSession,
+  setSessionToken,
+} from "../utils/storage";
 
 export const AuthContext = createContext<any>(null);
 
@@ -10,6 +15,8 @@ export const AuthProvider = ({ children }: any) => {
 
   const [userName, setUserName] = useState<string | null>(null);
 
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   // Check Login On App Start
@@ -19,16 +26,13 @@ export const AuthProvider = ({ children }: any) => {
 
   const checkLogin = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const session = await getRememberedSession();
 
-      const role = await AsyncStorage.getItem("role");
-
-      const fullName = await AsyncStorage.getItem("fullName");
-
-      if (token) {
-        setUserToken(token);
-        setUserRole(role);
-        setUserName(fullName);
+      if (session) {
+        setUserToken(session.token);
+        setUserRole(session.role ?? null);
+        setUserName(session.fullName ?? null);
+        setUserEmail(session.email ?? null);
       }
     } catch (error) {
       console.log(error);
@@ -38,28 +42,39 @@ export const AuthProvider = ({ children }: any) => {
   };
 
   // Login
-  const login = async (token: string, role: string, fullName: string) => {
-    await AsyncStorage.setItem("token", token);
-
-    await AsyncStorage.setItem("role", role);
-
-    await AsyncStorage.setItem("fullName", fullName);
+  const login = async (
+    token: string,
+    role: string,
+    fullName: string,
+    email: string,
+    rememberMe: boolean,
+  ) => {
+    if (rememberMe) {
+      await saveRememberedSession(token, role, fullName, email);
+    } else {
+      await clearRememberedSession();
+      setSessionToken(token);
+    }
 
     setUserToken(token);
 
     setUserRole(role);
 
     setUserName(fullName);
+
+    setUserEmail(email);
   };
   // Logout
   const logout = async () => {
-    await AsyncStorage.multiRemove(["token", "role", "fullName"]);
+    await clearRememberedSession();
 
     setUserToken(null);
 
     setUserRole(null);
 
     setUserName(null);
+
+    setUserEmail(null);
   };
 
   return (
@@ -68,6 +83,7 @@ export const AuthProvider = ({ children }: any) => {
         userToken,
         userRole,
         userName,
+        userEmail,
         login,
         logout,
         loading,
