@@ -26,4 +26,6 @@ public interface DesignationRepository extends JpaRepository<Designation, Long> 
     );
 
     List<Designation> findByDepartmentId(Long departmentId);
+
+    long countByDepartmentId(Long departmentId);
 }

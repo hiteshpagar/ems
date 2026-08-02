@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SESSION_KEYS = ["token", "role", "fullName", "userEmail"];
 let inMemoryToken: string | null = null;
+const sessionClearListeners = new Set<() => void>();
 
 // Save Token
 export const saveToken = async (token: string) => {
@@ -66,4 +67,12 @@ export const getRememberedSession = async () => {
 export const clearRememberedSession = async () => {
   inMemoryToken = null;
   await AsyncStorage.multiRemove(SESSION_KEYS);
+  sessionClearListeners.forEach((listener) => listener());
+};
+
+export const onSessionCleared = (listener: () => void) => {
+  sessionClearListeners.add(listener);
+  return () => {
+    sessionClearListeners.delete(listener);
+  };
 };

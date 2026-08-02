@@ -10,19 +10,26 @@ import employee_management_system_backend.entity.Department;
 import employee_management_system_backend.exception.ResourceAlreadyExistsException;
 import employee_management_system_backend.exception.ResourceNotFoundException;
 import employee_management_system_backend.repository.DepartmentRepository;
+import employee_management_system_backend.repository.DesignationRepository;
+import employee_management_system_backend.repository.EmployeeRepository;
 
 @Service
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
+    private final DesignationRepository designationRepository;
+    private final EmployeeRepository employeeRepository;
 
-    public DepartmentService(DepartmentRepository departmentRepository) {
+    public DepartmentService(DepartmentRepository departmentRepository,
+            DesignationRepository designationRepository, EmployeeRepository employeeRepository) {
         this.departmentRepository = departmentRepository;
+        this.designationRepository = designationRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     public DepartmentResponse createDepartment(DepartmentRequest request) {
 
-        if (departmentRepository.existsByName(request.getName().trim())) {
+        if (departmentRepository.existsByNameIgnoreCase(request.getName().trim())) {
         	throw new ResourceAlreadyExistsException(
         	        "Department already exists.");
         }
@@ -61,7 +68,7 @@ public class DepartmentService {
 
         String requestedName = request.getName().trim();
 
-        departmentRepository.findByName(requestedName)
+        departmentRepository.findByNameIgnoreCase(requestedName)
                 .filter(existingDepartment -> !existingDepartment.getId().equals(id))
                 .ifPresent(existingDepartment -> {
                     throw new ResourceAlreadyExistsException(
@@ -82,6 +89,10 @@ public class DepartmentService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Department not found."));
 
+        if (designationRepository.countByDepartmentId(id) > 0
+                || employeeRepository.countByDepartmentIgnoreCase(department.getName()) > 0) {
+            throw new IllegalStateException("This department is assigned to employees or designations and cannot be deleted.");
+        }
         departmentRepository.delete(department);
     }
 

@@ -28,8 +28,17 @@ public class LeaveController {
     // Apply Leave
     @PostMapping
     public Leave applyLeave(
-            @RequestBody Leave leave
+            @RequestBody Leave leave,
+            Authentication authentication
     ) {
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            Employee employee = employeeService.getEmployeeByEmail(authentication.getName());
+            if (employee == null) throw new IllegalArgumentException("No employee profile is linked to this account.");
+            leave.setEmployeeId(employee.getId());
+        }
 
         return leaveService.applyLeave(leave);
     }

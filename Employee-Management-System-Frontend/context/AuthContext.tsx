@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import {
   clearRememberedSession,
   getRememberedSession,
+  onSessionCleared,
   saveRememberedSession,
   setSessionToken,
 } from "../utils/storage";
@@ -22,6 +23,12 @@ export const AuthProvider = ({ children }: any) => {
   // Check Login On App Start
   useEffect(() => {
     checkLogin();
+    return onSessionCleared(() => {
+      setUserToken(null);
+      setUserRole(null);
+      setUserName(null);
+      setUserEmail(null);
+    });
   }, []);
 
   const checkLogin = async () => {
