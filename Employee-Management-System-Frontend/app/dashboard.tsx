@@ -20,15 +20,13 @@ import API from "../services/api";
 
 import ScreenWrapper from "../components/ScreenWrapper";
 
-import { removeToken } from "../utils/storage";
-
 import { useContext } from "react";
 
 import { AuthContext } from "../context/AuthContext";
 
 export default function DashboardScreen() {
   const [employeeCount, setEmployeeCount] = useState(0);
-  const { userRole, userName } = useContext(AuthContext);
+  const { userRole, userName, logout } = useContext(AuthContext);
 
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -141,7 +139,7 @@ export default function DashboardScreen() {
         text: "Logout",
 
         onPress: async () => {
-          await removeToken();
+          await logout();
           router.dismissAll();
 
           router.replace("/login");

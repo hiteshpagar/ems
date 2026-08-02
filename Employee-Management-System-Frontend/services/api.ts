@@ -1,6 +1,6 @@
 import axios from "axios";
 import { router } from "expo-router";
-import { removeToken } from "../utils/storage";
+import { clearRememberedSession } from "../utils/storage";
 
 import { getToken } from "../utils/storage";
 
@@ -30,7 +30,7 @@ API.interceptors.response.use(
 
   async (error) => {
    if (error.response?.status === 401) {
-  await removeToken();
+  await clearRememberedSession();
 
   router.replace("/login");
 }
