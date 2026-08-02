@@ -193,10 +193,14 @@ public class SecurityConfig {
             	        "/api/holidays/**"
             	).authenticated()
 
-            	    // Dashboard APIs
+	            // Dashboard APIs
             	    .requestMatchers(
             	            "/api/dashboard/**"
             	    ).hasRole("ADMIN")
+
+                    // Payroll: administrators create structures and generate/view all payslips.
+                    .requestMatchers("/api/payroll/salary-structures/**", "/api/payroll/generate", "/api/payroll/payslips").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/payroll/payslips/me").authenticated()
 
             	    // Upload APIs
             	    .requestMatchers(

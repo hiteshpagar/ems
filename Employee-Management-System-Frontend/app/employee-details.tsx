@@ -132,7 +132,7 @@ export default function EmployeeDetailsScreen() {
           <View style={styles.statCard}>
             <Text style={styles.statEmoji}>💰</Text>
             <Text style={styles.statValue}>₹ {employee?.salary}</Text>
-            <Text style={styles.statLabel}>Salary</Text>
+            <Text style={styles.statLabel}>Basic Salary</Text>
           </View>
         </View>
 
@@ -177,7 +177,7 @@ export default function EmployeeDetailsScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>💰</Text>
             <View>
-              <Text style={styles.infoLabel}>Salary</Text>
+              <Text style={styles.infoLabel}>Monthly Basic Salary</Text>
               <Text style={styles.infoValue}>₹ {employee?.salary}</Text>
             </View>
           </View>

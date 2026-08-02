@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.repository.EmployeeRepository;
+import employee_management_system_backend.entity.SalaryStructure;
+import employee_management_system_backend.repository.SalaryStructureRepository;
 
 import employee_management_system_backend.entity.User;
 import employee_management_system_backend.repository.UserRepository;
@@ -24,12 +26,19 @@ public class EmployeeService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private SalaryStructureRepository salaryStructureRepository;
+
     // Add Employee
     public Employee addEmployee(Employee employee) {
 
         // Save Employee
         Employee savedEmployee =
                 employeeRepository.save(employee);
+
+        // The salary entered at onboarding is the employee's monthly basic pay.
+        // Create its matching structure immediately so payroll always uses the same value.
+        syncBasicSalary(savedEmployee);
 
         // Check if user already exists
         User existingUser =
@@ -125,7 +134,12 @@ public class EmployeeService {
             employee.setPhotoUrl(
                     updatedEmployee.getPhotoUrl());
 
-            return employeeRepository.save(employee);
+            Employee savedEmployee = employeeRepository.save(employee);
+
+            // Keep the employee record and payroll structure in sync when basic pay changes.
+            syncBasicSalary(savedEmployee);
+
+            return savedEmployee;
         }
 
         return null;
@@ -162,8 +176,20 @@ public class EmployeeService {
     // Delete Employee
     public String deleteEmployee(Long id) {
 
+        salaryStructureRepository.deleteByEmployeeId(id);
         employeeRepository.deleteById(id);
 
         return "Employee Deleted Successfully";
+    }
+
+    private void syncBasicSalary(Employee employee) {
+        SalaryStructure structure = salaryStructureRepository
+                .findByEmployeeId(employee.getId())
+                .orElseGet(SalaryStructure::new);
+
+        structure.setEmployeeId(employee.getId());
+        structure.setBasicSalary(employee.getSalary() == null ? 0.0 : employee.getSalary());
+
+        salaryStructureRepository.save(structure);
     }
 }
