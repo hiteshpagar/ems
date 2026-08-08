@@ -12,6 +12,7 @@ import employee_management_system_backend.repository.EmployeeRepository;
 import employee_management_system_backend.repository.PayslipRepository;
 import employee_management_system_backend.repository.SalaryStructureRepository;
 import employee_management_system_backend.exception.ResourceAlreadyExistsException;
+import employee_management_system_backend.entity.NotificationType;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -20,11 +21,12 @@ public class PayrollService {
     private final PayslipRepository payslips;
     private final EmployeeRepository employees;
     private final AttendanceRepository attendance;
+    private final NotificationService notifications;
 
     public PayrollService(SalaryStructureRepository salaryStructures, PayslipRepository payslips,
-            EmployeeRepository employees, AttendanceRepository attendance) {
+            EmployeeRepository employees, AttendanceRepository attendance, NotificationService notifications) {
         this.salaryStructures = salaryStructures; this.payslips = payslips;
-        this.employees = employees; this.attendance = attendance;
+        this.employees = employees; this.attendance = attendance; this.notifications = notifications;
     }
 
     public SalaryStructure saveStructure(SalaryStructure structure) {
@@ -71,7 +73,10 @@ public class PayrollService {
         slip.setIncomeTax(round(amount(structure.getIncomeTax()))); slip.setOtherDeductions(round(amount(structure.getOtherDeductions())));
         slip.setAbsenceDeduction(round(absenceDeduction)); slip.setTotalDeductions(round(deductions)); slip.setNetSalary(round(Math.max(0, gross - deductions)));
         slip.setUnpaidDays(absentDays); slip.setGeneratedAt(LocalDateTime.now());
-        return payslips.save(slip);
+        Payslip savedSlip = payslips.save(slip);
+        notifications.createForEmail(employee.getEmail(), "Payslip available",
+                "Your payslip for " + month + " has been generated.", NotificationType.PAYROLL);
+        return savedSlip;
     }
     private SalaryStructure defaultStructure(Employee employee) { SalaryStructure s = new SalaryStructure(); s.setEmployeeId(employee.getId()); s.setBasicSalary(amount(employee.getSalary())); return s; }
     private double amount(Double value) { return value == null ? 0 : value; }

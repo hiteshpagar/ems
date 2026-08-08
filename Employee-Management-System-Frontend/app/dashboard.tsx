@@ -27,6 +27,7 @@ import { AuthContext } from "../context/AuthContext";
 export default function DashboardScreen() {
   const [employeeCount, setEmployeeCount] = useState(0);
   const { userRole, userName, logout } = useContext(AuthContext);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -66,6 +67,15 @@ export default function DashboardScreen() {
       const response = await API.get("/dashboard/attendance-stats");
 
       setAttendanceStats(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchUnreadNotificationCount = async () => {
+    try {
+      const response = await API.get("/notifications/unread-count");
+      setUnreadNotificationCount(response.data.count ?? 0);
     } catch (error) {
       console.log(error);
     }
@@ -116,6 +126,7 @@ export default function DashboardScreen() {
     fetchDashboardData();
     fetchDashboardStats();
     fetchAttendanceStats();
+    fetchUnreadNotificationCount();
   }, []);
 
   // Pull To Refresh
@@ -125,6 +136,7 @@ export default function DashboardScreen() {
     fetchDashboardData();
     fetchDashboardStats();
     fetchAttendanceStats();
+    fetchUnreadNotificationCount();
   };
 
   // Logout
@@ -214,10 +226,21 @@ export default function DashboardScreen() {
               <View style={styles.onlineDot} />
             </View>
 
-            <TouchableOpacity style={styles.notifBadge}>
+            <TouchableOpacity
+              style={styles.notifBadge}
+              onPress={() => router.push("/notifications")}
+              accessibilityRole="button"
+              accessibilityLabel={`${unreadNotificationCount} unread notifications`}
+            >
               <Text style={styles.notifIcon}>🔔</Text>
 
-              <View style={styles.notifDot} />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.notifCount}>
+                  <Text style={styles.notifCountText}>
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -804,14 +827,23 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
 
-  notifDot: {
+  notifCount: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 1,
+    right: 0,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 3,
+    borderRadius: 9,
     backgroundColor: "#FF416C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  notifCountText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
   },
 
   greeting: {

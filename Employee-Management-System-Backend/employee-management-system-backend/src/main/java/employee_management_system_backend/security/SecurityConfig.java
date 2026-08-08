@@ -194,9 +194,12 @@ public class SecurityConfig {
             	).authenticated()
 
 	            // Dashboard APIs
-            	    .requestMatchers(
-            	            "/api/dashboard/**"
-            	    ).hasRole("ADMIN")
+	            .requestMatchers(
+	                    "/api/dashboard/**"
+	            ).hasRole("ADMIN")
+
+                    // Notification APIs: identity is always taken from the JWT security context.
+                    .requestMatchers("/api/notifications/**").authenticated()
 
                     // Payroll: administrators create structures and generate/view all payslips.
                     .requestMatchers("/api/payroll/salary-structures/**", "/api/payroll/generate", "/api/payroll/payslips").hasRole("ADMIN")

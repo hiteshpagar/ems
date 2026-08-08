@@ -12,6 +12,7 @@ import employee_management_system_backend.entity.Leave;
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.repository.LeaveRepository;
 import employee_management_system_backend.exception.ResourceNotFoundException;
+import employee_management_system_backend.entity.NotificationType;
 
 @Service
 public class LeaveService {
@@ -26,6 +27,9 @@ public class LeaveService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // Apply Leave
     public Leave applyLeave(Leave leave) {
@@ -54,7 +58,12 @@ public class LeaveService {
         leave.setEmployeeName(employee.getName());
         leave.setStatus("Pending");
 
-        return leaveRepository.save(leave);
+        Leave savedLeave = leaveRepository.save(leave);
+        notificationService.createForEmail(employee.getEmail(), "Leave request submitted",
+                "Your " + savedLeave.getLeaveType() + " leave request has been submitted.", NotificationType.LEAVE);
+        notificationService.createForAdministrators("New leave request",
+                employee.getName() + " submitted a " + savedLeave.getLeaveType() + " leave request.", NotificationType.LEAVE);
+        return savedLeave;
     }
 
     // Get All Leaves
@@ -122,6 +131,8 @@ public class LeaveService {
 
             if (employee != null && employee.getEmail() != null) {
                 emailService.sendLeaveStatusEmail(employee, updatedLeave);
+                notificationService.createForEmail(employee.getEmail(), "Leave request " + updatedLeave.getStatus(),
+                        "Your " + updatedLeave.getLeaveType() + " leave request was " + updatedLeave.getStatus().toLowerCase() + ".", NotificationType.LEAVE);
             }
 
             return updatedLeave;

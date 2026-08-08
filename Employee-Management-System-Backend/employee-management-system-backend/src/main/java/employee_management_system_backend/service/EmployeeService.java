@@ -15,6 +15,7 @@ import employee_management_system_backend.entity.User;
 import employee_management_system_backend.repository.UserRepository;
 import employee_management_system_backend.exception.ResourceAlreadyExistsException;
 import employee_management_system_backend.exception.ResourceNotFoundException;
+import employee_management_system_backend.entity.NotificationType;
 
 @Service
 public class EmployeeService {
@@ -30,6 +31,9 @@ public class EmployeeService {
 
     @Autowired
     private SalaryStructureRepository salaryStructureRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // Add Employee
     public Employee addEmployee(Employee employee) {
@@ -75,7 +79,10 @@ public class EmployeeService {
                     "EMPLOYEE"
             );
 
-            userRepository.save(user);
+            User savedUser = userRepository.save(user);
+
+            notificationService.createForUser(savedUser, "Welcome to Employee Management System",
+                    "Your employee account has been created. Please sign in and change your temporary password.", NotificationType.EMPLOYEE);
 
             emailService.sendWelcomeEmail(
                     savedEmployee,

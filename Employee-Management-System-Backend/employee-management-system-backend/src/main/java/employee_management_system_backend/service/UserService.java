@@ -13,6 +13,7 @@ import employee_management_system_backend.dto.ResetPasswordRequest;
 import employee_management_system_backend.entity.User;
 import employee_management_system_backend.exception.ResourceNotFoundException;
 import employee_management_system_backend.repository.UserRepository;
+import employee_management_system_backend.entity.NotificationType;
 
 @Service
 public class UserService {
@@ -22,6 +23,9 @@ public class UserService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Value("${app.password-reset.otp-expiry-minutes:10}")
     private int otpExpiryMinutes;
@@ -89,6 +93,8 @@ public class UserService {
                 user.getEmail(),
                 otp,
                 otpExpiryMinutes);
+        notificationService.createForUser(user, "Password reset requested",
+                "A password reset OTP was requested for your account.", NotificationType.PASSWORD);
     }
 
     public void resetPassword(ResetPasswordRequest request) {
@@ -114,5 +120,7 @@ public class UserService {
         userRepository.save(user);
 
         emailService.sendPasswordResetConfirmation(user.getEmail());
+        notificationService.createForUser(user, "Password reset completed",
+                "Your account password was reset successfully.", NotificationType.PASSWORD);
     }
 }
