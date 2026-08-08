@@ -1,6 +1,18 @@
-import { Alert, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 
-import { useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+
+import { Picker } from "@react-native-picker/picker";
+import { useEffect, useMemo, useState } from "react";
 
 import { router } from "expo-router";
 
@@ -10,28 +22,160 @@ import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
 import ScreenWrapper from "../components/ScreenWrapper";
 
+import { LinearGradient } from "expo-linear-gradient";
+
+interface Department {
+  id: number;
+  name: string;
+}
+
+interface Designation {
+  id: number;
+  name: string;
+  departmentId: number;
+  departmentName: string;
+}
+
 export default function AddEmployeeScreen() {
   const [name, setName] = useState("");
 
   const [email, setEmail] = useState("");
 
-  const [department, setDepartment] = useState("");
+  const [departmentId, setDepartmentId] = useState<number | null>(null);
+
+  const [designationId, setDesignationId] = useState<number | null>(null);
 
   const [salary, setSalary] = useState("");
 
+  const [imageUri, setImageUri] = useState("");
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  const [designations, setDesignations] = useState<Designation[]>([]);
+
+  const [masterLoading, setMasterLoading] = useState(true);
+
+  const filteredDesignations = useMemo(
+    () =>
+      designations.filter(
+        (designation) => designation.departmentId === departmentId,
+      ),
+    [departmentId, designations],
+  );
+
+  const selectedDepartment = departments.find(
+    (department) => department.id === departmentId,
+  );
+
+  const selectedDesignation = designations.find(
+    (designation) => designation.id === designationId,
+  );
+
+  const fetchMasterData = async () => {
+    try {
+      const [departmentResponse, designationResponse] = await Promise.all([
+        API.get<Department[]>("/departments"),
+        API.get<Designation[]>("/designations"),
+      ]);
+
+      const departmentData = Array.isArray(departmentResponse.data)
+        ? departmentResponse.data
+        : [];
+      const designationData = Array.isArray(designationResponse.data)
+        ? designationResponse.data
+        : [];
+
+      setDepartments(departmentData);
+      setDesignations(designationData);
+      setDepartmentId(departmentData[0]?.id ?? null);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Failed to load departments and designations");
+    } finally {
+      setMasterLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMasterData();
+  }, []);
+
+  useEffect(() => {
+    setDesignationId((currentDesignationId) => {
+      const currentStillValid = filteredDesignations.some(
+        (designation) => designation.id === currentDesignationId,
+      );
+
+      if (currentStillValid) {
+        return currentDesignationId;
+      }
+
+      return filteredDesignations[0]?.id ?? null;
+    });
+  }, [filteredDesignations]);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!imageUri) return "";
+
+    const formData = new FormData();
+
+    formData.append("file", {
+      uri: imageUri,
+      name: "profile.jpg",
+      type: "image/jpeg",
+    } as any);
+
+    try {
+      const response = await API.post("/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      return response.data.photoUrl;
+    } catch (error) {
+      console.log(error);
+
+      return "";
+    }
+  };
+
   const handleAddEmployee = async () => {
-    if (!name || !email || !department || !salary) {
+    if (!name || !email || !salary) {
       Alert.alert("Error", "Please fill all fields");
 
       return;
     }
 
+    if (!selectedDepartment || !selectedDesignation) {
+      Alert.alert("Error", "Please select department and designation");
+
+      return;
+    }
+
     try {
+      const uploadedPhotoUrl = await uploadImage();
+
       const response = await API.post("/employees", {
         name,
         email,
-        department,
+        department: selectedDepartment.name,
+        designation: selectedDesignation.name,
         salary: Number(salary),
+        photoUrl: uploadedPhotoUrl,
       });
 
       console.log(response.data);
@@ -48,36 +192,116 @@ export default function AddEmployeeScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
-        <Text style={styles.title}>Add Employee</Text>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: 80,
+        }}
+      >
+        <View style={styles.container}>
+          <LinearGradient
+            colors={["#0F2027", "#203A43", "#2C5364"]}
+            style={styles.header}
+          >
+            <Text style={styles.headerTitle}>Add Employee</Text>
 
-        <CustomInput
-          placeholder="Enter Name"
-          value={name}
-          onChangeText={setName}
-        />
+            <Text style={styles.headerSubtitle}>
+              Build your team and manage employees
+            </Text>
+          </LinearGradient>
+          <View style={styles.formCard}>
+            <Text style={styles.label}>👤 Full Name</Text>
+            <CustomInput
+              placeholder="Enter Name"
+              value={name}
+              onChangeText={setName}
+            />
 
-        <CustomInput
-          placeholder="Enter Email"
-          value={email}
-          onChangeText={setEmail}
-        />
+            <Text style={styles.label}>📧 Email Address</Text>
+            <CustomInput
+              placeholder="Enter Email"
+              value={email}
+              onChangeText={setEmail}
+            />
 
-        <CustomInput
-          placeholder="Enter Department"
-          value={department}
-          onChangeText={setDepartment}
-        />
+            <Text style={styles.label}>🏢 Department</Text>
+            <View style={styles.pickerBox}>
+              {masterLoading ? (
+                <ActivityIndicator color="#2F80ED" />
+              ) : (
+                <Picker
+                  selectedValue={departmentId}
+                  onValueChange={(value) => setDepartmentId(value)}
+                  enabled={departments.length > 0}
+                  style={styles.picker}
+                >
+                  {departments.length === 0 ? (
+                    <Picker.Item label="Create a department first" value={null} />
+                  ) : (
+                    departments.map((department) => (
+                      <Picker.Item
+                        key={department.id}
+                        label={department.name}
+                        value={department.id}
+                      />
+                    ))
+                  )}
+                </Picker>
+              )}
+            </View>
 
-        <CustomInput
-          placeholder="Enter Salary"
-          value={salary}
-          onChangeText={setSalary}
-          keyboardType="numeric"
-        />
+            <Text style={styles.label}>Designation</Text>
+            <View style={styles.pickerBox}>
+              {masterLoading ? (
+                <ActivityIndicator color="#2F80ED" />
+              ) : (
+                <Picker
+                  selectedValue={designationId}
+                  onValueChange={(value) => setDesignationId(value)}
+                  enabled={filteredDesignations.length > 0}
+                  style={styles.picker}
+                >
+                  {filteredDesignations.length === 0 ? (
+                    <Picker.Item
+                      label="Create a designation for this department first"
+                      value={null}
+                    />
+                  ) : (
+                    filteredDesignations.map((designation) => (
+                      <Picker.Item
+                        key={designation.id}
+                        label={designation.name}
+                        value={designation.id}
+                      />
+                    ))
+                  )}
+                </Picker>
+              )}
+            </View>
 
-        <CustomButton title="Add Employee" onPress={handleAddEmployee} />
-      </View>
+            <Text style={styles.label}>💰 Monthly Basic Salary</Text>
+            <CustomInput
+              placeholder="Enter monthly basic salary"
+              value={salary}
+              onChangeText={setSalary}
+              keyboardType="numeric"
+            />
+
+            <Text style={styles.label}>📷 Profile Photo</Text>
+
+            <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+              <Text style={styles.imagePickerText}>Choose Image</Text>
+            </TouchableOpacity>
+
+            {imageUri ? (
+              <Image source={{ uri: imageUri }} style={styles.previewImage} />
+            ) : null}
+
+            <CustomButton title="Add Employee" onPress={handleAddEmployee} />
+          </View>
+        </View>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
@@ -85,13 +309,78 @@ export default function AddEmployeeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#F4F6FB",
   },
 
-  title: {
+  header: {
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 20,
+  },
+
+  headerTitle: {
+    color: "#fff",
     fontSize: 28,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 40,
+  },
+
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 5,
+  },
+
+  formCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+  },
+
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginTop: 10,
+    color: "#444",
+  },
+
+  imagePicker: {
+    backgroundColor: "#2F80ED",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 15,
+  },
+
+  imagePickerText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+
+  pickerBox: {
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    justifyContent: "center",
+    marginBottom: 15,
+    overflow: "hidden",
+  },
+
+  picker: {
+    color: "#111827",
+  },
+
+  previewImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignSelf: "center",
+    marginBottom: 20,
   },
 });

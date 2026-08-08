@@ -7,10 +7,12 @@ import org.springframework.web.bind.annotation.*;
 
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.service.EmployeeService;
+import jakarta.validation.Valid;
+
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/employees")
-@CrossOrigin("*")
 public class EmployeeController {
 
     @Autowired
@@ -19,7 +21,7 @@ public class EmployeeController {
     // Add Employee
     @PostMapping
     public Employee addEmployee(
-            @RequestBody Employee employee
+            @Valid @RequestBody Employee employee
     ) {
 
         return employeeService.addEmployee(employee);
@@ -30,6 +32,17 @@ public class EmployeeController {
     public List<Employee> getAllEmployees() {
 
         return employeeService.getAllEmployees();
+    }
+    
+ // Get Logged In Employee
+    @GetMapping("/me")
+    public Employee getLoggedInEmployee(
+            Authentication authentication
+    ) {
+
+        return employeeService.getEmployeeByEmail(
+                authentication.getName()
+        );
     }
 
     // Get Employee By ID
@@ -45,7 +58,7 @@ public class EmployeeController {
     @PutMapping("/{id}")
     public Employee updateEmployee(
             @PathVariable Long id,
-            @RequestBody Employee employee
+            @Valid @RequestBody Employee employee
     ) {
 
         return employeeService.updateEmployee(

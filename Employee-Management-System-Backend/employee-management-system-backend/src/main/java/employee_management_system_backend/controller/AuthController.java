@@ -6,19 +6,22 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import employee_management_system_backend.dto.ForgotPasswordRequest;
+import employee_management_system_backend.dto.ResetPasswordRequest;
 import employee_management_system_backend.entity.User;
 import employee_management_system_backend.security.jwt.JwtUtil;
 import employee_management_system_backend.service.UserService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin("*")
 public class AuthController {
 
     @Autowired
@@ -26,14 +29,6 @@ public class AuthController {
     
     @Autowired
     private JwtUtil jwtUtil;
-
-    @PostMapping("/register")
-    public User register(
-            @RequestBody User user
-    ) {
-
-        return userService.register(user);
-    }
 
     @PostMapping("/login")
     public Map<String, String> loginUser(
@@ -45,7 +40,8 @@ public class AuthController {
 
         String token =
                 jwtUtil.generateToken(
-                        existingUser.getEmail()
+                        existingUser.getEmail(),
+                        existingUser.getRole()
                 );
 
         Map<String, String> response =
@@ -53,6 +49,36 @@ public class AuthController {
 
         response.put("token", token);
 
+        response.put(
+                "role",
+                existingUser.getRole()
+        );
+
+        response.put(
+                "fullName",
+                existingUser.getFullName()
+        );
+
         return response;
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+
+        userService.requestPasswordReset(request);
+
+        return ResponseEntity.ok("Password reset OTP sent successfully.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+
+        userService.resetPassword(request);
+
+        return ResponseEntity.ok("Password reset successfully.");
     }
 }

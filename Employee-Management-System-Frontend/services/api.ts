@@ -1,9 +1,11 @@
 import axios from "axios";
+import { router } from "expo-router";
+import { clearRememberedSession } from "../utils/storage";
 
 import { getToken } from "../utils/storage";
 
 const API = axios.create({
-  baseURL: "http://192.168.110.19:8080/api",
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
 });
 
 // Add JWT Token Automatically
@@ -19,6 +21,20 @@ API.interceptors.request.use(
   },
 
   (error) => {
+    return Promise.reject(error);
+  },
+);
+
+API.interceptors.response.use(
+  (response) => response,
+
+  async (error) => {
+   if (error.response?.status === 401) {
+  await clearRememberedSession();
+
+  router.replace("/login");
+}
+
     return Promise.reject(error);
   },
 );

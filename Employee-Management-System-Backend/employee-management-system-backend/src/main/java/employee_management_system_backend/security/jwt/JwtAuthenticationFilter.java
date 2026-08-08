@@ -6,6 +6,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -18,6 +20,10 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.util.List;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @Component
 public class JwtAuthenticationFilter
@@ -46,6 +52,8 @@ public class JwtAuthenticationFilter
         String token = null;
 
         String email = null;
+        
+        String role = null;
 
         // Check Bearer Token
         if (
@@ -56,11 +64,33 @@ public class JwtAuthenticationFilter
             )
         ) {
 
-            token =
-                    authHeader.substring(7);
+        	token = authHeader.substring(7);
 
-            email =
-                    jwtUtil.extractEmail(token);
+        	try {
+
+        	    email = jwtUtil.extractEmail(token);
+        	    
+        	     role =
+        	            jwtUtil.extractRole(token);
+
+        } catch (ExpiredJwtException e) {
+
+        	    response.setStatus(
+        	            HttpServletResponse.SC_UNAUTHORIZED
+        	    );
+
+        	    response.getWriter().write(
+        	            "JWT Token Expired"
+        	    );
+
+	    return;
+
+        } catch (JwtException | IllegalArgumentException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Invalid authentication token\"}");
+            return;
+        }
         }
 
         // Validate User
@@ -80,18 +110,22 @@ public class JwtAuthenticationFilter
                 )
             ) {
 
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                email,
-                                null,
-                                null
-                        );
+            	UsernamePasswordAuthenticationToken authToken =
+            	        new UsernamePasswordAuthenticationToken(
+            	                email,
+            	                null,
+            	                List.of(
+            	                        new SimpleGrantedAuthority(
+            	                                "ROLE_" + role
+            	                        )
+            	                )
+            	        );
 
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource()
                                 .buildDetails(request)
                 );
-
+                
                 SecurityContextHolder
                         .getContext()
                         .setAuthentication(authToken);

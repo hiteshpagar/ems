@@ -1,13 +1,13 @@
 import {
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { useEffect, useState } from "react";
@@ -20,21 +20,99 @@ import API from "../services/api";
 
 import ScreenWrapper from "../components/ScreenWrapper";
 
-import { removeToken } from "../utils/storage";
+import { useContext } from "react";
+
+import { AuthContext } from "../context/AuthContext";
 
 export default function DashboardScreen() {
   const [employeeCount, setEmployeeCount] = useState(0);
+  const { userRole, userName, logout } = useContext(AuthContext);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    pendingLeaves: 0,
+    approvedLeaves: 0,
+    rejectedLeaves: 0,
+  });
+
+  const [departmentCount, setDepartmentCount] = useState(0);
+  const [averageSalary, setAverageSalary] = useState(0);
+  const [highestSalary, setHighestSalary] = useState(0);
 
   const [loading, setLoading] = useState(true);
 
   const [refreshing, setRefreshing] = useState(false);
+
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  const [attendanceStats, setAttendanceStats] = useState({
+    presentToday: 0,
+    absentToday: 0,
+    checkedInToday: 0,
+  });
+
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await API.get("/dashboard/stats");
+
+      setStats(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchAttendanceStats = async () => {
+    try {
+      const response = await API.get("/dashboard/attendance-stats");
+
+      setAttendanceStats(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchUnreadNotificationCount = async () => {
+    try {
+      const response = await API.get("/notifications/unread-count");
+      setUnreadNotificationCount(response.data.count ?? 0);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   // Fetch Employee Count
   const fetchDashboardData = async () => {
     try {
       const response = await API.get("/employees");
 
-      setEmployeeCount(response.data.length);
+      const employees = response.data;
+
+      setEmployees(employees);
+
+      setEmployeeCount(employees.length);
+
+      // Unique Departments
+      const departments = new Set(employees.map((emp: any) => emp.department));
+
+      setDepartmentCount(departments.size);
+
+      // Average Salary
+      const totalSalary = employees.reduce(
+        (sum: number, emp: any) => sum + Number(emp.salary),
+        0,
+      );
+
+      setAverageSalary(
+        employees.length ? Math.round(totalSalary / employees.length) : 0,
+      );
+
+      // Highest Salary
+      const maxSalary = employees.length
+        ? Math.max(...employees.map((emp: any) => Number(emp.salary)))
+        : 0;
+
+      setHighestSalary(maxSalary);
     } catch (error) {
       console.log(error);
     } finally {
@@ -46,6 +124,9 @@ export default function DashboardScreen() {
   // Initial Load
   useEffect(() => {
     fetchDashboardData();
+    fetchDashboardStats();
+    fetchAttendanceStats();
+    fetchUnreadNotificationCount();
   }, []);
 
   // Pull To Refresh
@@ -53,6 +134,9 @@ export default function DashboardScreen() {
     setRefreshing(true);
 
     fetchDashboardData();
+    fetchDashboardStats();
+    fetchAttendanceStats();
+    fetchUnreadNotificationCount();
   };
 
   // Logout
@@ -67,7 +151,7 @@ export default function DashboardScreen() {
         text: "Logout",
 
         onPress: async () => {
-          await removeToken();
+          await logout();
           router.dismissAll();
 
           router.replace("/login");
@@ -87,6 +171,24 @@ export default function DashboardScreen() {
       </ScreenWrapper>
     );
   }
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+
+    if (hour < 12) {
+      return "Good Morning ☀️";
+    }
+
+    if (hour < 18) {
+      return "Good Afternoon 🌤️";
+    }
+
+    return "Good Evening 🌙";
+  };
+
+  const recentEmployees = [...employees]
+    .sort((a, b) => b.id - a.id)
+    .slice(0, 3);
 
   return (
     <ScreenWrapper>
@@ -116,24 +218,40 @@ export default function DashboardScreen() {
                 colors={["#56CCF2", "#2F80ED"]}
                 style={styles.avatar}
               >
-                <Text style={styles.avatarInitial}>H</Text>
+                <Text style={styles.avatarInitial}>
+                  {userName?.charAt(0)?.toUpperCase() || "U"}
+                </Text>
               </LinearGradient>
 
               <View style={styles.onlineDot} />
             </View>
 
-            <TouchableOpacity style={styles.notifBadge}>
+            <TouchableOpacity
+              style={styles.notifBadge}
+              onPress={() => router.push("/notifications")}
+              accessibilityRole="button"
+              accessibilityLabel={`${unreadNotificationCount} unread notifications`}
+            >
               <Text style={styles.notifIcon}>🔔</Text>
 
-              <View style={styles.notifDot} />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.notifCount}>
+                  <Text style={styles.notifCountText}>
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
           {/* GREETING */}
 
-          <Text style={styles.greeting}>Welcome Back 👋</Text>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
 
-          <Text style={styles.heroTitle}>Employee{"\n"}Dashboard</Text>
+          <Text style={styles.heroTitle}>
+            {userRole === "ADMIN" ? "Admin" : "Employee"}
+            {"\n"}Dashboard
+          </Text>
 
           {/* STATUS TAG */}
 
@@ -146,72 +264,233 @@ export default function DashboardScreen() {
 
         {/* OVERVIEW */}
 
-        <View style={styles.sectionWrapper}>
-          <Text style={styles.sectionLabel}>OVERVIEW</Text>
+        {userRole === "ADMIN" && (
+          <View style={styles.sectionWrapper}>
+            <Text style={styles.sectionLabel}>OVERVIEW</Text>
 
-          <View style={styles.statsRow}>
-            {/* TOTAL EMPLOYEES */}
+            <View style={styles.statsRow}>
+              <LinearGradient
+                colors={["#2F80ED", "#56CCF2"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>👥</Text>
+                <Text style={styles.statNumber}>{stats.totalEmployees}</Text>
+                <Text style={styles.statLabel}>Employees</Text>
+              </LinearGradient>
 
-            <LinearGradient
-              colors={["#2F80ED", "#56CCF2"]}
-              style={styles.statCard}
-            >
-              <Text style={styles.statEmoji}>👥</Text>
+              <LinearGradient
+                colors={["#F2994A", "#F2C94C"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🟡</Text>
 
-              <Text style={styles.statNumber}>{employeeCount}</Text>
+                <Text style={styles.statNumber}>{stats.pendingLeaves}</Text>
 
-              <Text style={styles.statLabel}>Total Employees</Text>
-            </LinearGradient>
+                <Text style={styles.statLabel}>Pending Leaves</Text>
+              </LinearGradient>
+            </View>
 
-            {/* ACTIVE STATUS */}
+            <View style={[styles.statsRow, { marginTop: 14 }]}>
+              <LinearGradient
+                colors={["#27AE60", "#6FCF97"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🟢</Text>
 
-            <LinearGradient
-              colors={["#11998e", "#38ef7d"]}
-              style={styles.statCard}
-            >
-              <Text style={styles.statEmoji}>✅</Text>
+                <Text style={styles.statNumber}>{stats.approvedLeaves}</Text>
 
-              <Text style={styles.statNumber}>Active</Text>
+                <Text style={styles.statLabel}>Approved Leaves</Text>
+              </LinearGradient>
 
-              <Text style={styles.statLabel}>System Status</Text>
-            </LinearGradient>
+              <LinearGradient
+                colors={["#EB5757", "#FF416C"]}
+                style={styles.statCard}
+              >
+                <Text style={styles.statEmoji}>🔴</Text>
+
+                <Text style={styles.statNumber}>{stats.rejectedLeaves}</Text>
+
+                <Text style={styles.statLabel}>Rejected Leaves</Text>
+              </LinearGradient>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* QUICK ACTIONS */}
 
         <View style={styles.sectionWrapper}>
           <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
 
-          {/* ADD EMPLOYEE */}
+          {userRole === "ADMIN" && (
+            <>
+              {/* ADD EMPLOYEE */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/add-employee")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View style={styles.actionIconBg}>
+                    <Text style={styles.actionIconText}>+</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Add Employee</Text>
+
+                    <Text style={styles.actionSub}>Register new employee</Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* VIEW EMPLOYEES */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/employee-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#11998e",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>☰</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>View Employees</Text>
+
+                    <Text style={styles.actionSub}>Browse employee list</Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* DEPARTMENTS */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/department-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#2F80ED",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>🏢</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Departments</Text>
+
+                    <Text style={styles.actionSub}>
+                      Manage company departments
+                    </Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* DESIGNATIONS */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/designation-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#8E44AD",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>ID</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Designations</Text>
+
+                    <Text style={styles.actionSub}>
+                      Manage employee job titles
+                    </Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* HOLIDAYS */}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/holiday-list")}
+              >
+                <LinearGradient
+                  colors={["#1a1a2e", "#16213e"]}
+                  style={styles.actionCard}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      {
+                        backgroundColor: "#F2994A",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.actionIconText}>H</Text>
+                  </View>
+
+                  <View style={styles.actionTextGroup}>
+                    <Text style={styles.actionTitle}>Holidays</Text>
+
+                    <Text style={styles.actionSub}>
+                      Manage company holiday calendar
+                    </Text>
+                  </View>
+
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity activeOpacity={0.85} onPress={() => router.push("/payroll" as any)}>
+                <LinearGradient colors={["#1a1a2e", "#16213e"]} style={styles.actionCard}>
+                  <View style={[styles.actionIconBg, { backgroundColor: "#16A085" }]}><Text style={styles.actionIconText}>₹</Text></View>
+                  <View style={styles.actionTextGroup}><Text style={styles.actionTitle}>Payroll</Text><Text style={styles.actionSub}>Salary structures and payslips</Text></View>
+                  <Text style={styles.actionChevron}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* APPLY LEAVE */}
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => router.push("/add-employee")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View style={styles.actionIconBg}>
-                <Text style={styles.actionIconText}>+</Text>
-              </View>
-
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>Add Employee</Text>
-
-                <Text style={styles.actionSub}>Register new employee</Text>
-              </View>
-
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* VIEW EMPLOYEES */}
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/employee-list")}
+            onPress={() => router.push("/apply-leave")}
           >
             <LinearGradient
               colors={["#1a1a2e", "#16213e"]}
@@ -221,23 +500,227 @@ export default function DashboardScreen() {
                 style={[
                   styles.actionIconBg,
                   {
-                    backgroundColor: "#11998e",
+                    backgroundColor: "#F2994A",
                   },
                 ]}
               >
-                <Text style={styles.actionIconText}>☰</Text>
+                <Text style={styles.actionIconText}>🏖</Text>
               </View>
 
               <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>View Employees</Text>
+                <Text style={styles.actionTitle}>Apply Leave</Text>
 
-                <Text style={styles.actionSub}>Browse employee list</Text>
+                <Text style={styles.actionSub}>Submit leave request</Text>
               </View>
 
               <Text style={styles.actionChevron}>›</Text>
             </LinearGradient>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/attendance")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#8E44AD",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>🕒</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>Attendance</Text>
+
+                <Text style={styles.actionSub}>Mark employee attendance</Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/attendance-history")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#16A085",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>📊</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>Attendance History</Text>
+
+                <Text style={styles.actionSub}>View attendance records</Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/profile")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#3498DB",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>👤</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>My Profile</Text>
+
+                <Text style={styles.actionSub}>View your profile</Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/leave-list")}
+          >
+            <LinearGradient
+              colors={["#1a1a2e", "#16213e"]}
+              style={styles.actionCard}
+            >
+              <View
+                style={[
+                  styles.actionIconBg,
+                  {
+                    backgroundColor: "#27AE60",
+                  },
+                ]}
+              >
+                <Text style={styles.actionIconText}>📋</Text>
+              </View>
+
+              <View style={styles.actionTextGroup}>
+                <Text style={styles.actionTitle}>
+                  {userRole === "ADMIN" ? "View Leaves" : "Leave History"}
+                </Text>
+
+                <Text style={styles.actionSub}>
+                  {userRole === "ADMIN"
+                    ? "Track leave requests"
+                    : "View your leave requests"}
+                </Text>
+              </View>
+
+              <Text style={styles.actionChevron}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {userRole !== "ADMIN" && (
+            <TouchableOpacity activeOpacity={0.85} onPress={() => router.push("/payslips" as any)}>
+              <LinearGradient colors={["#1a1a2e", "#16213e"]} style={styles.actionCard}>
+                <View style={[styles.actionIconBg, { backgroundColor: "#16A085" }]}><Text style={styles.actionIconText}>₹</Text></View>
+                <View style={styles.actionTextGroup}><Text style={styles.actionTitle}>My Payslips</Text><Text style={styles.actionSub}>View monthly salary statements</Text></View>
+                <Text style={styles.actionChevron}>›</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {userRole === "ADMIN" && (
+            <View style={styles.sectionWrapper}>
+              <Text style={styles.sectionLabel}>ATTENDANCE ANALYTICS</Text>
+
+              <View style={styles.statsRow}>
+                <LinearGradient
+                  colors={["#27AE60", "#6FCF97"]}
+                  style={styles.statCard}
+                >
+                  <Text style={styles.statEmoji}>🟢</Text>
+                  <Text style={styles.statNumber}>
+                    {attendanceStats.presentToday}
+                  </Text>
+                  <Text style={styles.statLabel}>Present Today</Text>
+                </LinearGradient>
+
+                <LinearGradient
+                  colors={["#EB5757", "#FF416C"]}
+                  style={styles.statCard}
+                >
+                  <Text style={styles.statEmoji}>🔴</Text>
+                  <Text style={styles.statNumber}>
+                    {attendanceStats.absentToday}
+                  </Text>
+                  <Text style={styles.statLabel}>Absent Today</Text>
+                </LinearGradient>
+              </View>
+
+              <View style={[styles.statsRow, { marginTop: 14 }]}>
+                <LinearGradient
+                  colors={["#9B51E0", "#BB6BD9"]}
+                  style={styles.statCard}
+                >
+                  <Text style={styles.statEmoji}>🕒</Text>
+                  <Text style={styles.statNumber}>
+                    {attendanceStats.checkedInToday}
+                  </Text>
+                  <Text style={styles.statLabel}>Checked In Today</Text>
+                </LinearGradient>
+              </View>
+            </View>
+          )}
         </View>
+
+        {userRole === "ADMIN" && (
+          <View style={styles.sectionWrapper}>
+            <Text style={styles.sectionLabel}>RECENT EMPLOYEES</Text>
+
+            {recentEmployees.map((employee) => (
+              <View key={employee.id} style={styles.employeeCard}>
+                <View style={styles.employeeAvatar}>
+                  <Text style={styles.employeeAvatarText}>
+                    {employee.name
+                      ?.split(" ")
+                      .map((word: string) => word[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.employeeName}>{employee.name}</Text>
+
+                  <Text style={styles.employeeDepartment}>
+                    {employee.department}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* LOGOUT */}
 
@@ -344,14 +827,23 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
 
-  notifDot: {
+  notifCount: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 1,
+    right: 0,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 3,
+    borderRadius: 9,
     backgroundColor: "#FF416C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  notifCountText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
   },
 
   greeting: {
@@ -423,7 +915,7 @@ const styles = StyleSheet.create({
 
   statNumber: {
     color: "#fff",
-    fontSize: 34,
+    fontSize: 25,
     fontWeight: "bold",
   },
 
@@ -497,5 +989,52 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+
+  employeeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    elevation: 2,
+  },
+
+  employeeAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#2F80ED",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 14,
+  },
+
+  employeeAvatarText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+
+  employeeName: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  employeeDepartment: {
+    color: "gray",
+    marginTop: 2,
+  },
+
+  actionIcon: {
+    fontSize: 28,
+    marginBottom: 10,
+  },
+
+  actionSubtitle: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
   },
 });

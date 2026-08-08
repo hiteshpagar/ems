@@ -1,6 +1,6 @@
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
 
 import { router } from "expo-router";
 
@@ -9,12 +9,27 @@ import API from "../services/api";
 import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
 import ScreenWrapper from "../components/ScreenWrapper";
-import { saveToken } from "../utils/storage";
+
+import { AuthContext } from "../context/AuthContext";
+import { getRememberedSession } from "../utils/storage";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
 
   const [password, setPassword] = useState("");
+
+  const [rememberMe, setRememberMe] = useState(false);
+
+  const { login } = useContext(AuthContext);
+
+  useEffect(() => {
+    getRememberedSession().then((session) => {
+      if (session?.email) {
+        setEmail(session.email);
+        setRememberMe(true);
+      }
+    });
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,7 +48,15 @@ export default function LoginScreen() {
 
       if (response.data) {
         // Save user in AsyncStorage
-        await saveToken(response.data.token);
+        await login(
+          response.data.token,
+          response.data.role,
+          response.data.fullName,
+          email.trim(),
+          rememberMe,
+        );
+
+        console.log(response.data);
 
         Alert.alert("Success", "Login Successful");
 
@@ -66,10 +89,24 @@ export default function LoginScreen() {
           onChangeText={setPassword}
         />
 
+        <TouchableOpacity
+          style={styles.rememberRow}
+          onPress={() => setRememberMe((value) => !value)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: rememberMe }}
+        >
+          <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+            {rememberMe ? <Text style={styles.checkmark}>✓</Text> : null}
+          </View>
+          <View>
+            <Text style={styles.rememberText}>Remember Me</Text>
+          </View>
+        </TouchableOpacity>
+
         <CustomButton title="Login" onPress={handleLogin} />
 
-        <TouchableOpacity onPress={() => router.push("/register")}>
-          <Text style={styles.link}>Don't have an account? Register</Text>
+        <TouchableOpacity onPress={() => router.push("/forgot-password")}>
+          <Text style={styles.link}>Forgot Password?</Text>
         </TouchableOpacity>
       </View>
     </ScreenWrapper>
@@ -94,5 +131,43 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: "#007AFF",
     fontSize: 16,
+  },
+
+  rememberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: -3,
+    marginBottom: 18,
+  },
+
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderColor: "#2F80ED",
+    borderRadius: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+
+  checkboxChecked: {
+    backgroundColor: "#2F80ED",
+  },
+
+  checkmark: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+
+  rememberText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  rememberHint: {
+    color: "#64748B",
+    fontSize: 11,
+    marginTop: 2,
   },
 });

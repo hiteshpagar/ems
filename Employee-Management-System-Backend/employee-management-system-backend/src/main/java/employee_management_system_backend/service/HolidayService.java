@@ -1,0 +1,125 @@
+package employee_management_system_backend.service;
+
+import java.util.List;
+import java.time.LocalDate;
+
+import org.springframework.stereotype.Service;
+
+import employee_management_system_backend.dto.HolidayRequest;
+import employee_management_system_backend.dto.HolidayResponse;
+import employee_management_system_backend.entity.Holiday;
+import employee_management_system_backend.exception.ResourceAlreadyExistsException;
+import employee_management_system_backend.exception.ResourceNotFoundException;
+import employee_management_system_backend.repository.HolidayRepository;
+
+@Service
+public class HolidayService {
+
+    private final HolidayRepository holidayRepository;
+    private final EmployeeService employeeService;
+    private final EmailService emailService;
+
+    public HolidayService(
+            HolidayRepository holidayRepository,
+            EmployeeService employeeService,
+            EmailService emailService) {
+        this.holidayRepository = holidayRepository;
+        this.employeeService = employeeService;
+        this.emailService = emailService;
+    }
+
+    public HolidayResponse createHoliday(HolidayRequest request) {
+
+        validateFutureOrToday(request.getHolidayDate());
+
+        if (holidayRepository.existsByHolidayDate(request.getHolidayDate())) {
+            throw new ResourceAlreadyExistsException(
+                    "Holiday already exists for this date.");
+        }
+
+        Holiday holiday = new Holiday();
+        applyRequest(holiday, request);
+
+        Holiday savedHoliday = holidayRepository.save(holiday);
+
+        employeeService.getAllEmployees()
+                .stream()
+                .filter(employee -> employee.getEmail() != null)
+                .forEach(employee ->
+                        emailService.sendHolidayAnnouncement(employee, savedHoliday));
+
+        return convertToResponse(savedHoliday);
+    }
+
+    public List<HolidayResponse> getAllHolidays() {
+
+        return holidayRepository.findAllByOrderByHolidayDateAsc()
+                .stream()
+                .map(this::convertToResponse)
+                .toList();
+    }
+
+    public HolidayResponse getHolidayById(Long id) {
+
+        Holiday holiday = getHolidayEntity(id);
+
+        return convertToResponse(holiday);
+    }
+
+    public HolidayResponse updateHoliday(Long id, HolidayRequest request) {
+
+        validateFutureOrToday(request.getHolidayDate());
+
+        Holiday holiday = getHolidayEntity(id);
+
+        if (holidayRepository.existsByHolidayDateAndIdNot(
+                request.getHolidayDate(), id)) {
+            throw new ResourceAlreadyExistsException(
+                    "Holiday already exists for this date.");
+        }
+
+        applyRequest(holiday, request);
+
+        return convertToResponse(holidayRepository.save(holiday));
+    }
+
+    public void deleteHoliday(Long id) {
+
+        Holiday holiday = getHolidayEntity(id);
+
+        holidayRepository.delete(holiday);
+    }
+
+    private Holiday getHolidayEntity(Long id) {
+
+        return holidayRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Holiday not found."));
+    }
+
+    private void applyRequest(Holiday holiday, HolidayRequest request) {
+
+        holiday.setName(request.getName().trim());
+        holiday.setHolidayDate(request.getHolidayDate());
+        holiday.setType(request.getType().trim());
+        holiday.setDescription(request.getDescription());
+    }
+
+    private void validateFutureOrToday(LocalDate date) {
+        if (date.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Holiday date cannot be in the past.");
+        }
+    }
+
+    private HolidayResponse convertToResponse(Holiday holiday) {
+
+        return new HolidayResponse(
+                holiday.getId(),
+                holiday.getName(),
+                holiday.getHolidayDate(),
+                holiday.getType(),
+                holiday.getDescription(),
+                holiday.getCreatedAt(),
+                holiday.getUpdatedAt());
+    }
+}

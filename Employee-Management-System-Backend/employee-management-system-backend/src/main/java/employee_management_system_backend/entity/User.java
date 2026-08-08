@@ -1,5 +1,7 @@
 package employee_management_system_backend.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -17,7 +19,22 @@ public class User {
 
     private String password;
 
-    // Getter and Setter for id
+    private String resetOtp;
+
+    private LocalDateTime resetOtpExpiresAt;
+    
+    @Column(nullable = false)
+    private String role;
+
+    public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
+	}
+
+	// Getter and Setter for id
     public Long getId() {
         return id;
     }
@@ -51,5 +68,21 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getResetOtp() {
+        return resetOtp;
+    }
+
+    public void setResetOtp(String resetOtp) {
+        this.resetOtp = resetOtp;
+    }
+
+    public LocalDateTime getResetOtpExpiresAt() {
+        return resetOtpExpiresAt;
+    }
+
+    public void setResetOtpExpiresAt(LocalDateTime resetOtpExpiresAt) {
+        this.resetOtpExpiresAt = resetOtpExpiresAt;
     }
 }

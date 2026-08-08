@@ -1,6 +1,10 @@
 package employee_management_system_backend.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @Entity
 @Table(name = "employees")
@@ -10,15 +14,35 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Employee name is required.")
     private String name;
 
+    @Email(message = "A valid email address is required.")
+    @NotBlank(message = "Employee email is required.")
+    @Column(nullable = false, unique = true)
     private String email;
 
+    @NotBlank(message = "Department is required.")
     private String department;
 
-    private Double salary;
+    @NotBlank(message = "Designation is required.")
+    private String designation;
 
-    // Getter and Setter for id
+    @NotNull(message = "Monthly basic salary is required.")
+    @PositiveOrZero(message = "Monthly basic salary cannot be negative.")
+    private Double salary;
+    
+    private String photoUrl;
+
+    public String getPhotoUrl() {
+		return photoUrl;
+	}
+
+	public void setPhotoUrl(String photoUrl) {
+		this.photoUrl = photoUrl;
+	}
+
+	// Getter and Setter for id
     public Long getId() {
         return id;
     }
@@ -52,6 +76,14 @@ public class Employee {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public String getDesignation() {
+        return designation;
+    }
+
+    public void setDesignation(String designation) {
+        this.designation = designation;
     }
 
     // Getter and Setter for salary
