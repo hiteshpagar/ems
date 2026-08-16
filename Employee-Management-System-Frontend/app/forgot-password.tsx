@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { router } from "expo-router";
 import { useState } from "react";
@@ -47,13 +47,14 @@ export default function ForgotPasswordScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
-        <Text style={styles.title}>Forgot Password</Text>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Text style={styles.eyebrow}>ACCOUNT RECOVERY</Text>
+        <Text style={styles.title}>Reset your password</Text>
         <Text style={styles.subtitle}>
           Enter your registered email to receive a reset OTP.
         </Text>
 
-        <CustomInput
+        <View style={styles.card}><Text style={styles.label}>Email address</Text><CustomInput
           placeholder="Enter Email"
           value={email}
           onChangeText={setEmail}
@@ -65,37 +66,41 @@ export default function ForgotPasswordScreen() {
 
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.link}>Back to Login</Text>
-        </TouchableOpacity>
-      </View>
+        </TouchableOpacity></View>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
+    padding: 20,
   },
 
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#0F172A",
     marginBottom: 10,
   },
 
   subtitle: {
     color: "#64748B",
     fontSize: 15,
-    textAlign: "center",
+    textAlign: "left",
     marginBottom: 28,
   },
 
   link: {
     textAlign: "center",
     marginTop: 20,
-    color: "#007AFF",
-    fontSize: 16,
+    color: "#2563EB",
+    fontSize: 14,
     fontWeight: "600",
   },
+  eyebrow: { color: "#2563EB", fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 8 },
+  card: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, padding: 16 },
+  label: { color: "#475569", fontSize: 13, fontWeight: "600", marginBottom: 7 },
 });

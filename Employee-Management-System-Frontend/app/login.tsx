@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useState, useContext, useEffect } from "react";
 
@@ -19,6 +19,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
 
   const [rememberMe, setRememberMe] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useContext(AuthContext);
 
@@ -73,21 +75,38 @@ export default function LoginScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
-        <Text style={styles.title}>Employee Management System</Text>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.brandMark}><Text style={styles.brandInitial}>E</Text></View>
+        <Text style={styles.eyebrow}>EMPLOYEE MANAGEMENT SYSTEM</Text>
+        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.subtitle}>Sign in to manage your workday.</Text>
 
+        <View style={styles.formCard}>
+        <Text style={styles.label}>Email address</Text>
         <CustomInput
-          placeholder="Enter Email"
+          placeholder="name@company.com"
           value={email}
           onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
         />
 
-        <CustomInput
-          placeholder="Enter Password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+        <Text style={styles.label}>Password</Text>
+        <View style={styles.passwordRow}>
+          <CustomInput
+            placeholder="Enter your password"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+            autoComplete="password"
+            style={styles.passwordInput}
+          />
+          <TouchableOpacity style={styles.showButton} onPress={() => setShowPassword((current) => !current)} accessibilityRole="button" accessibilityLabel={showPassword ? "Hide password" : "Show password"}>
+            <Text style={styles.showText}>{showPassword ? "Hide" : "Show"}</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={styles.rememberRow}
@@ -108,7 +127,9 @@ export default function LoginScreen() {
         <TouchableOpacity onPress={() => router.push("/forgot-password")}>
           <Text style={styles.link}>Forgot Password?</Text>
         </TouchableOpacity>
-      </View>
+        </View>
+        <Text style={styles.footer}>Secure access for your organization</Text>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
@@ -117,20 +138,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
+    padding: 20,
+    paddingVertical: 32,
   },
+
+  brandMark: { width: 48, height: 48, borderRadius: 12, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  brandInitial: { color: "#fff", fontSize: 22, fontWeight: "700" },
+  eyebrow: { color: "#2563EB", fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 8 },
 
   title: {
     fontSize: 28,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 40,
+    fontWeight: "700",
+    color: "#0F172A",
   },
+  subtitle: { color: "#64748B", fontSize: 15, marginTop: 8, marginBottom: 28 },
+  formCard: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, padding: 16 },
+  label: { color: "#475569", fontSize: 13, fontWeight: "600", marginBottom: 7 },
+  passwordRow: { position: "relative" },
+  passwordInput: { paddingRight: 58 },
+  showButton: { position: "absolute", right: 10, top: 10, padding: 6 },
+  showText: { color: "#2563EB", fontSize: 13, fontWeight: "600" },
 
   link: {
     textAlign: "center",
     marginTop: 20,
     color: "#007AFF",
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   rememberRow: {
@@ -141,8 +175,8 @@ const styles = StyleSheet.create({
   },
 
   checkbox: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     borderWidth: 2,
     borderColor: "#2F80ED",
     borderRadius: 5,
@@ -161,7 +195,7 @@ const styles = StyleSheet.create({
   },
 
   rememberText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
   },
 
@@ -170,4 +204,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  footer: { textAlign: "center", color: "#94A3B8", fontSize: 12, marginTop: 24 },
 });

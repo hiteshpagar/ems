@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import ScreenWrapper from "../components/ScreenWrapper";
 import API from "../services/api";
+import { formatDate } from "../utils/date";
 
 interface Holiday {
   id: number;
@@ -31,20 +32,6 @@ function getErrorMessage(error: any) {
     error?.message ||
     "Something went wrong. Please try again."
   );
-}
-
-function formatDate(date: string) {
-  const parsedDate = new Date(`${date}T00:00:00`);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return date;
-  }
-
-  return parsedDate.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 export default function HolidayListScreen() {
@@ -207,7 +194,7 @@ export default function HolidayListScreen() {
                     {item.holidayDate.slice(8, 10)}
                   </Text>
                   <Text style={styles.dateMonth}>
-                    {formatDate(item.holidayDate).split(" ")[1] ?? ""}
+                    {formatDate(item.holidayDate).split("/")[0] ?? ""}
                   </Text>
                 </View>
 

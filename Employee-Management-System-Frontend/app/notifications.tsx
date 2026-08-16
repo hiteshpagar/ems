@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
+import { formatDate } from "../utils/date";
 
 type NotificationItem = {
   id: number;
@@ -70,7 +71,7 @@ export default function NotificationsScreen() {
           {items.some((item) => !item.read) && <TouchableOpacity onPress={markAllRead}><Text style={styles.markAll}>Mark all read</Text></TouchableOpacity>}</View>
       </LinearGradient>{error ? <Text style={styles.error}>{error}</Text> : null}</>}
       renderItem={({ item }) => <TouchableOpacity activeOpacity={0.8} onPress={() => markRead(item)} style={[styles.card, !item.read && styles.unreadCard]}>
-        <View style={styles.icon}><Text>{typeIcons[item.type] ?? "🔔"}</Text></View><View style={styles.copy}><View style={styles.row}><Text style={styles.cardTitle}>{item.title}</Text>{!item.read && <View style={styles.unreadDot} />}</View><Text style={styles.message}>{item.message}</Text><Text style={styles.date}>{new Date(item.createdAt).toLocaleString()}</Text></View>
+        <View style={styles.icon}><Text>{typeIcons[item.type] ?? "🔔"}</Text></View><View style={styles.copy}><View style={styles.row}><Text style={styles.cardTitle}>{item.title}</Text>{!item.read && <View style={styles.unreadDot} />}</View><Text style={styles.message}>{item.message}</Text><Text style={styles.date}>{formatDate(item.createdAt)}</Text></View>
       </TouchableOpacity>}
       ListEmptyComponent={!error ? <View style={styles.empty}><Text style={styles.emptyIcon}>🔔</Text><Text style={styles.emptyTitle}>No notifications yet</Text><Text style={styles.emptyText}>Important updates will appear here.</Text></View> : null}
     />

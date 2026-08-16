@@ -21,6 +21,7 @@ import { TouchableOpacity } from "react-native";
 
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
+import { formatDate } from "../utils/date";
 
 export default function LeaveListScreen() {
   const [leaves, setLeaves] = useState<any[]>([]);
@@ -138,7 +139,7 @@ export default function LeaveListScreen() {
               <Text style={styles.leaveType}>🏖 {item.leaveType}</Text>
 
               <Text style={styles.dateText}>
-                📅 {item.startDate} → {item.endDate}
+                📅 {formatDate(item.startDate)} → {formatDate(item.endDate)}
               </Text>
 
               <Text style={styles.reason}>📝 {item.reason}</Text>

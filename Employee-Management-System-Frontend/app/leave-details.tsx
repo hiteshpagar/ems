@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import API from "../services/api";
 
 import ScreenWrapper from "../components/ScreenWrapper";
+import { formatDate } from "../utils/date";
 
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
@@ -170,7 +171,7 @@ export default function LeaveDetailsScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Start Date</Text>
 
-            <Text style={styles.infoValue}>{leave.startDate}</Text>
+            <Text style={styles.infoValue}>{formatDate(leave.startDate)}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -178,7 +179,7 @@ export default function LeaveDetailsScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>End Date</Text>
 
-            <Text style={styles.infoValue}>{leave.endDate}</Text>
+            <Text style={styles.infoValue}>{formatDate(leave.endDate)}</Text>
           </View>
 
           <View style={styles.divider} />

@@ -6,6 +6,7 @@ import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
+import DatePickerField from "../components/DatePickerField";
 import ScreenWrapper from "../components/ScreenWrapper";
 import API from "../services/api";
 
@@ -37,7 +38,7 @@ export default function AddHolidayScreen() {
     }
 
     if (!DATE_PATTERN.test(trimmedDate)) {
-      Alert.alert("Error", "Date must be in YYYY-MM-DD format.");
+      Alert.alert("Error", "Please select a valid holiday date.");
       return;
     }
 
@@ -79,11 +80,7 @@ export default function AddHolidayScreen() {
           />
 
           <Text style={styles.label}>Holiday Date</Text>
-          <CustomInput
-            placeholder="YYYY-MM-DD"
-            value={holidayDate}
-            onChangeText={setHolidayDate}
-          />
+            <DatePickerField value={holidayDate} onChange={setHolidayDate} label="Holiday date" />
 
           <Text style={styles.label}>Holiday Type</Text>
           <View style={styles.pickerBox}>
