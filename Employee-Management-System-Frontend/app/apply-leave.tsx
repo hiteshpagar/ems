@@ -12,6 +12,7 @@ import API from "../services/api";
 
 import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
+import DatePickerField from "../components/DatePickerField";
 import ScreenWrapper from "../components/ScreenWrapper";
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
@@ -169,19 +170,11 @@ export default function ApplyLeaveScreen() {
 
           <Text style={styles.label}>📅 Start Date</Text>
 
-          <CustomInput
-            placeholder="YYYY-MM-DD"
-            value={startDate}
-            onChangeText={setStartDate}
-          />
+          <DatePickerField value={startDate} onChange={setStartDate} label="Leave start date" minimumDate={new Date()} />
 
           <Text style={styles.label}>📅 End Date</Text>
 
-          <CustomInput
-            placeholder="YYYY-MM-DD"
-            value={endDate}
-            onChangeText={setEndDate}
-          />
+          <DatePickerField value={endDate} onChange={setEndDate} label="Leave end date" minimumDate={startDate ? new Date(`${startDate}T00:00:00`) : new Date()} />
 
           <Text style={styles.label}>📝 Reason</Text>
 

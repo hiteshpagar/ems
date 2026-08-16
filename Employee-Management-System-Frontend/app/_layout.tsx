@@ -1,5 +1,6 @@
 import { Stack, router, useSegments } from "expo-router";
 import { useContext, useEffect } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthContext, AuthProvider } from "../context/AuthContext";
 
@@ -35,8 +36,10 @@ function MainLayout() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <MainLayout />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <MainLayout />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

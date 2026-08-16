@@ -1,5 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
-import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { Alert, ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -168,7 +168,12 @@ export default function EditEmployeeScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <LinearGradient
           colors={["#0F2027", "#203A43", "#2C5364"]}
           style={styles.header}
@@ -260,7 +265,7 @@ export default function EditEmployeeScreen() {
             onPress={handleUpdateEmployee}
           />
         </View>
-      </View>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
@@ -270,6 +275,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: "#F4F6FB",
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
 
   header: {

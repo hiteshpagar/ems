@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { router } from "expo-router";
 import { useState } from "react";
@@ -45,16 +45,18 @@ export default function RegisterScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
-        <Text style={styles.title}>Register</Text>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Text style={styles.eyebrow}>EMPLOYEE MANAGEMENT SYSTEM</Text>
+        <Text style={styles.title}>Create account</Text>
 
-        <CustomInput
+        <View style={styles.card}><Text style={styles.label}>Full name</Text>
+        <Text style={styles.label}>Email address</Text><CustomInput
           placeholder="Enter Full Name"
           value={fullName}
           onChangeText={setFullName}
         />
 
-        <CustomInput
+        <Text style={styles.label}>Password</Text><CustomInput
           placeholder="Enter Email"
           value={email}
           onChangeText={setEmail}
@@ -71,29 +73,33 @@ export default function RegisterScreen() {
 
         <TouchableOpacity onPress={() => router.push("/login")}>
           <Text style={styles.link}>Already have an account? Login</Text>
-        </TouchableOpacity>
-      </View>
+        </TouchableOpacity></View>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
+    padding: 20,
   },
 
   title: {
-    fontSize: 30,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 40,
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 24,
   },
 
   link: {
     textAlign: "center",
     marginTop: 20,
-    color: "#007AFF",
-    fontSize: 16,
+    color: "#2563EB",
+    fontSize: 14,
   },
+  eyebrow: { color: "#2563EB", fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 8 },
+  card: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, padding: 16 },
+  label: { color: "#475569", fontSize: 13, fontWeight: "600", marginBottom: 7 },
 });

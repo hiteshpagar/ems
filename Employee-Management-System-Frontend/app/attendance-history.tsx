@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import API from "../services/api";
 
 import ScreenWrapper from "../components/ScreenWrapper";
+import { formatDate } from "../utils/date";
 
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
@@ -121,7 +122,7 @@ export default function AttendanceHistoryScreen() {
               <Text style={styles.employeeName}>👤 {item.employeeName}</Text>
             )}
 
-            <Text style={styles.info}>📅 {item.date}</Text>
+            <Text style={styles.info}>📅 {formatDate(item.date)}</Text>
 
             <Text style={styles.info}>
               ⏰ Check In : {formatTime(item.checkInTime)}

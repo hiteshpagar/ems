@@ -50,7 +50,7 @@ export default function ProfileScreen() {
 
   return (
     <ScreenWrapper>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <LinearGradient
           colors={["#0F2027", "#203A43", "#2C5364"]}
           style={styles.header}
@@ -233,6 +233,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#EEF2F7",
     padding: 20,
+  },
+  content: {
+    paddingBottom: 36,
   },
 
   space: {
