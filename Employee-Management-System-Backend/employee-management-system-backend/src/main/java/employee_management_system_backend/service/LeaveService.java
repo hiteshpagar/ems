@@ -8,6 +8,8 @@ import java.time.temporal.ChronoUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import employee_management_system_backend.entity.AuditAction;
+import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.Leave;
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.repository.LeaveRepository;
@@ -30,6 +32,9 @@ public class LeaveService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     // Apply Leave
     public Leave applyLeave(Leave leave) {
@@ -59,6 +64,14 @@ public class LeaveService {
         leave.setStatus("Pending");
 
         Leave savedLeave = leaveRepository.save(leave);
+
+        auditLogService.log(
+                AuditAction.CREATE,
+                AuditModule.LEAVE,
+                savedLeave.getId() != null ? savedLeave.getId().toString() : null,
+                "Applied for " + savedLeave.getLeaveType() + " leave (" + savedLeave.getStartDate() + " to " + savedLeave.getEndDate() + ") for " + savedLeave.getEmployeeName()
+        );
+
         notificationService.createForEmail(employee.getEmail(), "Leave request submitted",
                 "Your " + savedLeave.getLeaveType() + " leave request has been submitted.", NotificationType.LEAVE);
         notificationService.createForAdministrators("New leave request",
@@ -126,6 +139,14 @@ public class LeaveService {
 
             Leave updatedLeave = leaveRepository.save(leave);
 
+            AuditAction action = status.equalsIgnoreCase("Approved") ? AuditAction.APPROVE : AuditAction.REJECT;
+            auditLogService.log(
+                    action,
+                    AuditModule.LEAVE,
+                    updatedLeave.getId().toString(),
+                    (status.equalsIgnoreCase("Approved") ? "Approved " : "Rejected ") + updatedLeave.getLeaveType() + " leave request for " + (updatedLeave.getEmployeeName() != null ? updatedLeave.getEmployeeName() : "Employee ID " + updatedLeave.getEmployeeId())
+            );
+
             Employee employee =
                     employeeService.getEmployeeById(leave.getEmployeeId());
 
@@ -144,7 +165,19 @@ public class LeaveService {
     // Delete Leave
     public String deleteLeave(Long id) {
 
+        Leave leave = leaveRepository.findById(id).orElse(null);
+        if (leave == null) {
+            throw new ResourceNotFoundException("Leave not found.");
+        }
+
         leaveRepository.deleteById(id);
+
+        auditLogService.log(
+                AuditAction.DELETE,
+                AuditModule.LEAVE,
+                id.toString(),
+                "Deleted " + leave.getLeaveType() + " leave request (ID: " + id + ") for " + (leave.getEmployeeName() != null ? leave.getEmployeeName() : "Employee ID " + leave.getEmployeeId())
+        );
 
         return "Leave Deleted Successfully";
     }

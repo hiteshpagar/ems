@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import employee_management_system_backend.entity.Attendance;
+import employee_management_system_backend.entity.AuditAction;
+import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.repository.AttendanceRepository;
 
 @Service
@@ -18,11 +20,21 @@ public class AttendanceService {
     @Autowired
     private AttendanceRepository attendanceRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     // Mark Attendance
     public Attendance markAttendance(
             Attendance attendance
     ) {
-        return attendanceRepository.save(attendance);
+        Attendance saved = attendanceRepository.save(attendance);
+        auditLogService.log(
+                AuditAction.CREATE,
+                AuditModule.ATTENDANCE,
+                saved.getId() != null ? saved.getId().toString() : null,
+                "Marked attendance for " + saved.getEmployeeName() + " on " + saved.getDate()
+        );
+        return saved;
     }
 
     // Get All Attendance
@@ -80,7 +92,14 @@ public class AttendanceService {
             attendance.setStatus(
                     updatedAttendance.getStatus());
 
-            return attendanceRepository.save(attendance);
+            Attendance saved = attendanceRepository.save(attendance);
+            auditLogService.log(
+                    AuditAction.UPDATE,
+                    AuditModule.ATTENDANCE,
+                    saved.getId().toString(),
+                    "Updated attendance record for " + saved.getEmployeeName() + " on " + saved.getDate()
+            );
+            return saved;
         }
 
         return null;
@@ -114,9 +133,18 @@ public class AttendanceService {
 
         attendance.setStatus("Present");
 
-        return attendanceRepository.save(
+        Attendance saved = attendanceRepository.save(
                 attendance
         );
+
+        auditLogService.log(
+                AuditAction.CREATE,
+                AuditModule.ATTENDANCE,
+                saved.getId() != null ? saved.getId().toString() : null,
+                "Employee " + saved.getEmployeeName() + " checked in at " + saved.getCheckInTime()
+        );
+
+        return saved;
     }
     
     public Attendance checkOut(
@@ -147,9 +175,18 @@ public class AttendanceService {
                         .toString()
         );
 
-        return attendanceRepository.save(
+        Attendance saved = attendanceRepository.save(
                 attendance
         );
+
+        auditLogService.log(
+                AuditAction.UPDATE,
+                AuditModule.ATTENDANCE,
+                saved.getId() != null ? saved.getId().toString() : null,
+                "Employee " + saved.getEmployeeName() + " checked out at " + saved.getCheckOutTime()
+        );
+
+        return saved;
     }
 
  // Get Today's Attendance
@@ -172,6 +209,12 @@ public class AttendanceService {
             Long id
     ) {
         attendanceRepository.deleteById(id);
+        auditLogService.log(
+                AuditAction.DELETE,
+                AuditModule.ATTENDANCE,
+                id.toString(),
+                "Deleted attendance record (ID: " + id + ")"
+        );
 
         return "Attendance Deleted Successfully";
     }

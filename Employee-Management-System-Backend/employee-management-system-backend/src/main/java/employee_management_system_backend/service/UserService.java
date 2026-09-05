@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import employee_management_system_backend.dto.ForgotPasswordRequest;
 import employee_management_system_backend.dto.ResetPasswordRequest;
+import employee_management_system_backend.entity.AuditAction;
+import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.User;
 import employee_management_system_backend.exception.ResourceNotFoundException;
 import employee_management_system_backend.repository.UserRepository;
@@ -26,6 +28,9 @@ public class UserService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     @Value("${app.password-reset.otp-expiry-minutes:10}")
     private int otpExpiryMinutes;
@@ -122,5 +127,13 @@ public class UserService {
         emailService.sendPasswordResetConfirmation(user.getEmail());
         notificationService.createForUser(user, "Password reset completed",
                 "Your account password was reset successfully.", NotificationType.PASSWORD);
+
+        auditLogService.log(
+                AuditAction.PASSWORD_RESET,
+                AuditModule.AUTH,
+                user.getId() != null ? user.getId().toString() : null,
+                "Password reset completed for user " + user.getEmail(),
+                user
+        );
     }
 }

@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import employee_management_system_backend.entity.AuditAction;
+import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.entity.Payslip;
 import employee_management_system_backend.entity.SalaryStructure;
@@ -22,11 +24,14 @@ public class PayrollService {
     private final EmployeeRepository employees;
     private final AttendanceRepository attendance;
     private final NotificationService notifications;
+    private final AuditLogService auditLogService;
 
     public PayrollService(SalaryStructureRepository salaryStructures, PayslipRepository payslips,
-            EmployeeRepository employees, AttendanceRepository attendance, NotificationService notifications) {
+            EmployeeRepository employees, AttendanceRepository attendance,
+            NotificationService notifications, AuditLogService auditLogService) {
         this.salaryStructures = salaryStructures; this.payslips = payslips;
         this.employees = employees; this.attendance = attendance; this.notifications = notifications;
+        this.auditLogService = auditLogService;
     }
 
     public SalaryStructure saveStructure(SalaryStructure structure) {
@@ -43,6 +48,13 @@ public class PayrollService {
         employee.setSalary(amount(savedStructure.getBasicSalary()));
         employees.save(employee);
 
+        auditLogService.log(
+                AuditAction.UPDATE,
+                AuditModule.PAYROLL,
+                savedStructure.getId() != null ? savedStructure.getId().toString() : null,
+                "Saved salary structure for employee " + employee.getName() + " (Basic: ₹" + savedStructure.getBasicSalary() + ")"
+        );
+
         return savedStructure;
     }
     public List<SalaryStructure> getStructures() { return salaryStructures.findAll(); }
@@ -55,7 +67,14 @@ public class PayrollService {
         YearMonth payMonth = YearMonth.parse(month);
         if (payMonth.isAfter(YearMonth.now())) throw new IllegalArgumentException("Payroll cannot be generated for a future month.");
         if (payslips.existsByPayrollMonth(month)) throw new ResourceAlreadyExistsException("Payroll has already been generated for this month.");
-        return employees.findAll().stream().map(employee -> createPayslip(employee, payMonth)).toList();
+        List<Payslip> generated = employees.findAll().stream().map(employee -> createPayslip(employee, payMonth)).toList();
+        auditLogService.log(
+                AuditAction.CREATE,
+                AuditModule.PAYROLL,
+                month,
+                "Generated monthly payroll payslips for " + month + " (" + generated.size() + " employees)"
+        );
+        return generated;
     }
     private Payslip createPayslip(Employee employee, YearMonth month) {
         SalaryStructure structure = salaryStructures.findByEmployeeId(employee.getId()).orElseGet(() -> defaultStructure(employee));

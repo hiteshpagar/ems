@@ -361,6 +361,13 @@ export default function DashboardScreen() {
                     onPress={() => router.push("/holiday-list")}
                   />
                   <ActionTile
+                    title="Audit Logs"
+                    subtitle="Activity tracking"
+                    icon="📜"
+                    iconBg={AppColors.indigoLight}
+                    onPress={() => router.push("/audit-logs" as any)}
+                  />
+                  <ActionTile
                     title="Employees"
                     subtitle="Team directory"
                     icon="👥"
