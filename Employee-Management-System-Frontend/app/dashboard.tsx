@@ -3,31 +3,26 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-
-import { useEffect, useState } from "react";
-
+import { useContext, useEffect, useState } from "react";
 import { router } from "expo-router";
 
-import { LinearGradient } from "expo-linear-gradient";
-
 import API from "../services/api";
-
 import ScreenWrapper from "../components/ScreenWrapper";
-
-import { useContext } from "react";
-
+import StatCard from "../components/StatCard";
+import StatusBadge from "../components/StatusBadge";
+import BottomNav from "../components/BottomNav";
 import { AuthContext } from "../context/AuthContext";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 export default function DashboardScreen() {
-  const [employeeCount, setEmployeeCount] = useState(0);
   const { userRole, userName, logout } = useContext(AuthContext);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -36,39 +31,32 @@ export default function DashboardScreen() {
     rejectedLeaves: 0,
   });
 
-  const [departmentCount, setDepartmentCount] = useState(0);
-  const [averageSalary, setAverageSalary] = useState(0);
-  const [highestSalary, setHighestSalary] = useState(0);
-
-  const [loading, setLoading] = useState(true);
-
-  const [refreshing, setRefreshing] = useState(false);
-
-  const [employees, setEmployees] = useState<any[]>([]);
-
   const [attendanceStats, setAttendanceStats] = useState({
     presentToday: 0,
     absentToday: 0,
     checkedInToday: 0,
   });
 
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [departmentCount, setDepartmentCount] = useState(0);
+  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+
   const fetchDashboardStats = async () => {
     try {
       const response = await API.get("/dashboard/stats");
-
       setStats(response.data);
     } catch (error) {
-      console.log(error);
+      console.log("Error fetching dashboard stats:", error);
     }
   };
 
   const fetchAttendanceStats = async () => {
     try {
       const response = await API.get("/dashboard/attendance-stats");
-
       setAttendanceStats(response.data);
     } catch (error) {
-      console.log(error);
+      console.log("Error fetching attendance stats:", error);
     }
   };
 
@@ -77,964 +65,804 @@ export default function DashboardScreen() {
       const response = await API.get("/notifications/unread-count");
       setUnreadNotificationCount(response.data.count ?? 0);
     } catch (error) {
-      console.log(error);
+      console.log("Error fetching unread notification count:", error);
     }
   };
 
-  // Fetch Employee Count
+  const fetchTodayAttendance = async () => {
+    try {
+      const response = await API.get("/attendance/me/today");
+      setTodayAttendance(response.data);
+    } catch (error) {
+      console.log("Error fetching today's attendance:", error);
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       const response = await API.get("/employees");
+      const emps = Array.isArray(response.data) ? response.data : [];
+      setEmployees(emps);
 
-      const employees = response.data;
-
-      setEmployees(employees);
-
-      setEmployeeCount(employees.length);
-
-      // Unique Departments
-      const departments = new Set(employees.map((emp: any) => emp.department));
-
+      const departments = new Set(emps.map((emp: any) => emp.department).filter(Boolean));
       setDepartmentCount(departments.size);
-
-      // Average Salary
-      const totalSalary = employees.reduce(
-        (sum: number, emp: any) => sum + Number(emp.salary),
-        0,
-      );
-
-      setAverageSalary(
-        employees.length ? Math.round(totalSalary / employees.length) : 0,
-      );
-
-      // Highest Salary
-      const maxSalary = employees.length
-        ? Math.max(...employees.map((emp: any) => Number(emp.salary)))
-        : 0;
-
-      setHighestSalary(maxSalary);
     } catch (error) {
-      console.log(error);
+      console.log("Error fetching employees:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // Initial Load
-  useEffect(() => {
+  const loadAllData = () => {
     fetchDashboardData();
     fetchDashboardStats();
     fetchAttendanceStats();
     fetchUnreadNotificationCount();
-  }, []);
-
-  // Pull To Refresh
-  const onRefresh = () => {
-    setRefreshing(true);
-
-    fetchDashboardData();
-    fetchDashboardStats();
-    fetchAttendanceStats();
-    fetchUnreadNotificationCount();
+    if (userRole !== "ADMIN") {
+      fetchTodayAttendance();
+    }
   };
 
-  // Logout
+  useEffect(() => {
+    loadAllData();
+  }, [userRole]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadAllData();
+  };
+
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Cancel",
-        style: "cancel",
-      },
-
-      {
-        text: "Logout",
-
+        text: "Sign Out",
+        style: "destructive",
         onPress: async () => {
           await logout();
           router.dismissAll();
-
           router.replace("/login");
         },
       },
     ]);
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const recentEmployees = [...employees].slice(0, 4);
+
   if (loading) {
     return (
       <ScreenWrapper>
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#2F80ED" />
-
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
           <Text style={styles.loadingText}>Loading Dashboard...</Text>
         </View>
       </ScreenWrapper>
     );
   }
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-
-    if (hour < 12) {
-      return "Good Morning ☀️";
-    }
-
-    if (hour < 18) {
-      return "Good Afternoon 🌤️";
-    }
-
-    return "Good Evening 🌙";
-  };
-
-  const recentEmployees = [...employees]
-    .sort((a, b) => b.id - a.id)
-    .slice(0, 3);
+  const isAdmin = userRole === "ADMIN";
 
   return (
     <ScreenWrapper>
-      <StatusBar barStyle="light-content" />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* HERO SECTION */}
-
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          style={styles.heroGradient}
-        >
-          <View style={styles.circleTopRight} />
-
-          <View style={styles.circleBottomLeft} />
-
-          {/* TOP ROW */}
-
-          <View style={styles.heroTopRow}>
-            <View style={styles.avatarContainer}>
-              <LinearGradient
-                colors={["#56CCF2", "#2F80ED"]}
-                style={styles.avatar}
-              >
-                <Text style={styles.avatarInitial}>
-                  {userName?.charAt(0)?.toUpperCase() || "U"}
-                </Text>
-              </LinearGradient>
-
-              <View style={styles.onlineDot} />
+      <View style={styles.screen}>
+        {/* Top Header */}
+        <View style={styles.header}>
+          <View style={styles.headerUserRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {userName?.charAt(0)?.toUpperCase() || (isAdmin ? "A" : "E")}
+              </Text>
             </View>
-
-            <TouchableOpacity
-              style={styles.notifBadge}
-              onPress={() => router.push("/notifications")}
-              accessibilityRole="button"
-              accessibilityLabel={`${unreadNotificationCount} unread notifications`}
-            >
-              <Text style={styles.notifIcon}>🔔</Text>
-
-              {unreadNotificationCount > 0 && (
-                <View style={styles.notifCount}>
-                  <Text style={styles.notifCountText}>
-                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* GREETING */}
-
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-
-          <Text style={styles.heroTitle}>
-            {userRole === "ADMIN" ? "Admin" : "Employee"}
-            {"\n"}Dashboard
-          </Text>
-
-          {/* STATUS TAG */}
-
-          <View style={styles.pillTag}>
-            <View style={styles.pillDot} />
-
-            <Text style={styles.pillText}>System Running Smoothly</Text>
-          </View>
-        </LinearGradient>
-
-        {/* OVERVIEW */}
-
-        {userRole === "ADMIN" && (
-          <View style={styles.sectionWrapper}>
-            <Text style={styles.sectionLabel}>OVERVIEW</Text>
-
-            <View style={styles.statsRow}>
-              <LinearGradient
-                colors={["#2F80ED", "#56CCF2"]}
-                style={styles.statCard}
-              >
-                <Text style={styles.statEmoji}>👥</Text>
-                <Text style={styles.statNumber}>{stats.totalEmployees}</Text>
-                <Text style={styles.statLabel}>Employees</Text>
-              </LinearGradient>
-
-              <LinearGradient
-                colors={["#F2994A", "#F2C94C"]}
-                style={styles.statCard}
-              >
-                <Text style={styles.statEmoji}>🟡</Text>
-
-                <Text style={styles.statNumber}>{stats.pendingLeaves}</Text>
-
-                <Text style={styles.statLabel}>Pending Leaves</Text>
-              </LinearGradient>
-            </View>
-
-            <View style={[styles.statsRow, { marginTop: 14 }]}>
-              <LinearGradient
-                colors={["#27AE60", "#6FCF97"]}
-                style={styles.statCard}
-              >
-                <Text style={styles.statEmoji}>🟢</Text>
-
-                <Text style={styles.statNumber}>{stats.approvedLeaves}</Text>
-
-                <Text style={styles.statLabel}>Approved Leaves</Text>
-              </LinearGradient>
-
-              <LinearGradient
-                colors={["#EB5757", "#FF416C"]}
-                style={styles.statCard}
-              >
-                <Text style={styles.statEmoji}>🔴</Text>
-
-                <Text style={styles.statNumber}>{stats.rejectedLeaves}</Text>
-
-                <Text style={styles.statLabel}>Rejected Leaves</Text>
-              </LinearGradient>
+            <View style={styles.headerTitles}>
+              <Text style={styles.greetingText}>
+                {getGreeting()}, {userName?.split(" ")[0] || (isAdmin ? "Admin" : "Employee")} 👋
+              </Text>
+              <Text style={styles.subGreetingText}>
+                {isAdmin ? "Here's what's happening today." : "Manage your daily work & activities."}
+              </Text>
             </View>
           </View>
-        )}
-
-        {/* QUICK ACTIONS */}
-
-        <View style={styles.sectionWrapper}>
-          <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
-
-          {userRole === "ADMIN" && (
-            <>
-              {/* ADD EMPLOYEE */}
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => router.push("/add-employee")}
-              >
-                <LinearGradient
-                  colors={["#1a1a2e", "#16213e"]}
-                  style={styles.actionCard}
-                >
-                  <View style={styles.actionIconBg}>
-                    <Text style={styles.actionIconText}>+</Text>
-                  </View>
-
-                  <View style={styles.actionTextGroup}>
-                    <Text style={styles.actionTitle}>Add Employee</Text>
-
-                    <Text style={styles.actionSub}>Register new employee</Text>
-                  </View>
-
-                  <Text style={styles.actionChevron}>›</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* VIEW EMPLOYEES */}
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => router.push("/employee-list")}
-              >
-                <LinearGradient
-                  colors={["#1a1a2e", "#16213e"]}
-                  style={styles.actionCard}
-                >
-                  <View
-                    style={[
-                      styles.actionIconBg,
-                      {
-                        backgroundColor: "#11998e",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.actionIconText}>☰</Text>
-                  </View>
-
-                  <View style={styles.actionTextGroup}>
-                    <Text style={styles.actionTitle}>View Employees</Text>
-
-                    <Text style={styles.actionSub}>Browse employee list</Text>
-                  </View>
-
-                  <Text style={styles.actionChevron}>›</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* DEPARTMENTS */}
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => router.push("/department-list")}
-              >
-                <LinearGradient
-                  colors={["#1a1a2e", "#16213e"]}
-                  style={styles.actionCard}
-                >
-                  <View
-                    style={[
-                      styles.actionIconBg,
-                      {
-                        backgroundColor: "#2F80ED",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.actionIconText}>🏢</Text>
-                  </View>
-
-                  <View style={styles.actionTextGroup}>
-                    <Text style={styles.actionTitle}>Departments</Text>
-
-                    <Text style={styles.actionSub}>
-                      Manage company departments
-                    </Text>
-                  </View>
-
-                  <Text style={styles.actionChevron}>›</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* DESIGNATIONS */}
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => router.push("/designation-list")}
-              >
-                <LinearGradient
-                  colors={["#1a1a2e", "#16213e"]}
-                  style={styles.actionCard}
-                >
-                  <View
-                    style={[
-                      styles.actionIconBg,
-                      {
-                        backgroundColor: "#8E44AD",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.actionIconText}>ID</Text>
-                  </View>
-
-                  <View style={styles.actionTextGroup}>
-                    <Text style={styles.actionTitle}>Designations</Text>
-
-                    <Text style={styles.actionSub}>
-                      Manage employee job titles
-                    </Text>
-                  </View>
-
-                  <Text style={styles.actionChevron}>›</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* HOLIDAYS */}
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => router.push("/holiday-list")}
-              >
-                <LinearGradient
-                  colors={["#1a1a2e", "#16213e"]}
-                  style={styles.actionCard}
-                >
-                  <View
-                    style={[
-                      styles.actionIconBg,
-                      {
-                        backgroundColor: "#F2994A",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.actionIconText}>H</Text>
-                  </View>
-
-                  <View style={styles.actionTextGroup}>
-                    <Text style={styles.actionTitle}>Holidays</Text>
-
-                    <Text style={styles.actionSub}>
-                      Manage company holiday calendar
-                    </Text>
-                  </View>
-
-                  <Text style={styles.actionChevron}>›</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity activeOpacity={0.85} onPress={() => router.push("/payroll" as any)}>
-                <LinearGradient colors={["#1a1a2e", "#16213e"]} style={styles.actionCard}>
-                  <View style={[styles.actionIconBg, { backgroundColor: "#16A085" }]}><Text style={styles.actionIconText}>₹</Text></View>
-                  <View style={styles.actionTextGroup}><Text style={styles.actionTitle}>Payroll</Text><Text style={styles.actionSub}>Salary structures and payslips</Text></View>
-                  <Text style={styles.actionChevron}>›</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* APPLY LEAVE */}
 
           <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/apply-leave")}
+            style={styles.notifButton}
+            onPress={() => router.push("/notifications")}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${unreadNotificationCount} unread notifications`}
           >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View
-                style={[
-                  styles.actionIconBg,
-                  {
-                    backgroundColor: "#F2994A",
-                  },
-                ]}
-              >
-                <Text style={styles.actionIconText}>🏖</Text>
-              </View>
-
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>Apply Leave</Text>
-
-                <Text style={styles.actionSub}>Submit leave request</Text>
-              </View>
-
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/attendance")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View
-                style={[
-                  styles.actionIconBg,
-                  {
-                    backgroundColor: "#8E44AD",
-                  },
-                ]}
-              >
-                <Text style={styles.actionIconText}>🕒</Text>
-              </View>
-
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>Attendance</Text>
-
-                <Text style={styles.actionSub}>Mark employee attendance</Text>
-              </View>
-
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/attendance-history")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View
-                style={[
-                  styles.actionIconBg,
-                  {
-                    backgroundColor: "#16A085",
-                  },
-                ]}
-              >
-                <Text style={styles.actionIconText}>📊</Text>
-              </View>
-
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>Attendance History</Text>
-
-                <Text style={styles.actionSub}>View attendance records</Text>
-              </View>
-
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/profile")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View
-                style={[
-                  styles.actionIconBg,
-                  {
-                    backgroundColor: "#3498DB",
-                  },
-                ]}
-              >
-                <Text style={styles.actionIconText}>👤</Text>
-              </View>
-
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>My Profile</Text>
-
-                <Text style={styles.actionSub}>View your profile</Text>
-              </View>
-
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/leave-list")}
-          >
-            <LinearGradient
-              colors={["#1a1a2e", "#16213e"]}
-              style={styles.actionCard}
-            >
-              <View
-                style={[
-                  styles.actionIconBg,
-                  {
-                    backgroundColor: "#27AE60",
-                  },
-                ]}
-              >
-                <Text style={styles.actionIconText}>📋</Text>
-              </View>
-
-              <View style={styles.actionTextGroup}>
-                <Text style={styles.actionTitle}>
-                  {userRole === "ADMIN" ? "View Leaves" : "Leave History"}
-                </Text>
-
-                <Text style={styles.actionSub}>
-                  {userRole === "ADMIN"
-                    ? "Track leave requests"
-                    : "View your leave requests"}
+            <Text style={styles.notifIcon}>🔔</Text>
+            {unreadNotificationCount > 0 ? (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
                 </Text>
               </View>
-
-              <Text style={styles.actionChevron}>›</Text>
-            </LinearGradient>
+            ) : null}
           </TouchableOpacity>
-
-          {userRole !== "ADMIN" && (
-            <TouchableOpacity activeOpacity={0.85} onPress={() => router.push("/payslips" as any)}>
-              <LinearGradient colors={["#1a1a2e", "#16213e"]} style={styles.actionCard}>
-                <View style={[styles.actionIconBg, { backgroundColor: "#16A085" }]}><Text style={styles.actionIconText}>₹</Text></View>
-                <View style={styles.actionTextGroup}><Text style={styles.actionTitle}>My Payslips</Text><Text style={styles.actionSub}>View monthly salary statements</Text></View>
-                <Text style={styles.actionChevron}>›</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-
-          {userRole === "ADMIN" && (
-            <View style={styles.sectionWrapper}>
-              <Text style={styles.sectionLabel}>ATTENDANCE ANALYTICS</Text>
-
-              <View style={styles.statsRow}>
-                <LinearGradient
-                  colors={["#27AE60", "#6FCF97"]}
-                  style={styles.statCard}
-                >
-                  <Text style={styles.statEmoji}>🟢</Text>
-                  <Text style={styles.statNumber}>
-                    {attendanceStats.presentToday}
-                  </Text>
-                  <Text style={styles.statLabel}>Present Today</Text>
-                </LinearGradient>
-
-                <LinearGradient
-                  colors={["#EB5757", "#FF416C"]}
-                  style={styles.statCard}
-                >
-                  <Text style={styles.statEmoji}>🔴</Text>
-                  <Text style={styles.statNumber}>
-                    {attendanceStats.absentToday}
-                  </Text>
-                  <Text style={styles.statLabel}>Absent Today</Text>
-                </LinearGradient>
-              </View>
-
-              <View style={[styles.statsRow, { marginTop: 14 }]}>
-                <LinearGradient
-                  colors={["#9B51E0", "#BB6BD9"]}
-                  style={styles.statCard}
-                >
-                  <Text style={styles.statEmoji}>🕒</Text>
-                  <Text style={styles.statNumber}>
-                    {attendanceStats.checkedInToday}
-                  </Text>
-                  <Text style={styles.statLabel}>Checked In Today</Text>
-                </LinearGradient>
-              </View>
-            </View>
-          )}
         </View>
 
-        {userRole === "ADMIN" && (
-          <View style={styles.sectionWrapper}>
-            <Text style={styles.sectionLabel}>RECENT EMPLOYEES</Text>
-
-            {recentEmployees.map((employee) => (
-              <View key={employee.id} style={styles.employeeCard}>
-                <View style={styles.employeeAvatar}>
-                  <Text style={styles.employeeAvatarText}>
-                    {employee.name
-                      ?.split(" ")
-                      .map((word: string) => word[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={AppColors.primary}
+            />
+          }
+        >
+          {/* STATS OVERVIEW - ADMIN */}
+          {isAdmin ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Overview</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statsCol}>
+                  <StatCard
+                    label="Employees"
+                    value={stats.totalEmployees || employees.length}
+                    subtext="Total active"
+                    icon={<Text style={styles.statEmoji}>👥</Text>}
+                    iconBgColor={AppColors.primaryLight}
+                    onPress={() => router.push("/employee-list")}
+                  />
                 </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.employeeName}>{employee.name}</Text>
-
-                  <Text style={styles.employeeDepartment}>
-                    {employee.department}
-                  </Text>
+                <View style={styles.statsCol}>
+                  <StatCard
+                    label="Present Today"
+                    value={attendanceStats.presentToday}
+                    subtext="Checked in"
+                    icon={<Text style={styles.statEmoji}>🟢</Text>}
+                    iconBgColor={AppColors.successLight}
+                    onPress={() => router.push("/attendance")}
+                  />
                 </View>
               </View>
-            ))}
+
+              <View style={[styles.statsGrid, { marginTop: 12 }]}>
+                <View style={styles.statsCol}>
+                  <StatCard
+                    label="Pending Leaves"
+                    value={stats.pendingLeaves}
+                    subtext="Requires action"
+                    icon={<Text style={styles.statEmoji}>🏖️</Text>}
+                    iconBgColor={AppColors.warningLight}
+                    onPress={() => router.push("/leave-list")}
+                  />
+                </View>
+                <View style={styles.statsCol}>
+                  <StatCard
+                    label="Departments"
+                    value={departmentCount}
+                    subtext="Company units"
+                    icon={<Text style={styles.statEmoji}>🏢</Text>}
+                    iconBgColor={AppColors.purpleLight}
+                    onPress={() => router.push("/department-list")}
+                  />
+                </View>
+              </View>
+            </View>
+          ) : (
+            /* TODAY'S ATTENDANCE - EMPLOYEE */
+            <View style={styles.section}>
+              <View style={styles.employeeTodayCard}>
+                <View style={styles.todayCardHeader}>
+                  <View>
+                    <Text style={styles.todayTitle}>{"Today's Attendance"}</Text>
+                    <Text style={styles.todaySubtitle}>
+                      {new Date().toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                  <StatusBadge
+                    status={todayAttendance?.status || "Not Checked In"}
+                    showDot
+                  />
+                </View>
+
+                <View style={styles.timeRow}>
+                  <View style={styles.timeBox}>
+                    <Text style={styles.timeLabel}>Check-In</Text>
+                    <Text style={styles.timeValue}>
+                      {todayAttendance?.checkInTime || "--:--"}
+                    </Text>
+                  </View>
+                  <View style={styles.timeDivider} />
+                  <View style={styles.timeBox}>
+                    <Text style={styles.timeLabel}>Check-Out</Text>
+                    <Text style={styles.timeValue}>
+                      {todayAttendance?.checkOutTime || "--:--"}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.attendanceActionBtn}
+                  onPress={() => router.push("/attendance")}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.attendanceActionText}>
+                    {todayAttendance?.checkInTime && !todayAttendance?.checkOutTime
+                      ? "Check Out"
+                      : "Mark Attendance"}
+                  </Text>
+                  <Text style={styles.arrowIcon}>→</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* QUICK ACTIONS */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+
+            <View style={styles.actionGrid}>
+              {isAdmin ? (
+                <>
+                  <ActionTile
+                    title="Add Employee"
+                    subtitle="Register member"
+                    icon="➕"
+                    iconBg={AppColors.primaryLight}
+                    onPress={() => router.push("/add-employee")}
+                  />
+                  <ActionTile
+                    title="Leave Requests"
+                    subtitle={`${stats.pendingLeaves} pending`}
+                    icon="📋"
+                    iconBg={AppColors.warningLight}
+                    onPress={() => router.push("/leave-list")}
+                  />
+                  <ActionTile
+                    title="Attendance"
+                    subtitle="Daily records"
+                    icon="🕒"
+                    iconBg={AppColors.successLight}
+                    onPress={() => router.push("/attendance")}
+                  />
+                  <ActionTile
+                    title="Payroll"
+                    subtitle="Structures & slips"
+                    icon="💵"
+                    iconBg={AppColors.infoLight}
+                    onPress={() => router.push("/payroll" as any)}
+                  />
+                  <ActionTile
+                    title="Departments"
+                    subtitle={`${departmentCount} units`}
+                    icon="🏢"
+                    iconBg={AppColors.purpleLight}
+                    onPress={() => router.push("/department-list")}
+                  />
+                  <ActionTile
+                    title="Designations"
+                    subtitle="Job roles"
+                    icon="💼"
+                    iconBg={AppColors.indigoLight}
+                    onPress={() => router.push("/designation-list")}
+                  />
+                  <ActionTile
+                    title="Holidays"
+                    subtitle="Company calendar"
+                    icon="🗓️"
+                    iconBg={AppColors.warningLight}
+                    onPress={() => router.push("/holiday-list")}
+                  />
+                  <ActionTile
+                    title="Employees"
+                    subtitle="Team directory"
+                    icon="👥"
+                    iconBg={AppColors.primaryLight}
+                    onPress={() => router.push("/employee-list")}
+                  />
+                </>
+              ) : (
+                <>
+                  <ActionTile
+                    title="Apply Leave"
+                    subtitle="Request time off"
+                    icon="🏖️"
+                    iconBg={AppColors.warningLight}
+                    onPress={() => router.push("/apply-leave")}
+                  />
+                  <ActionTile
+                    title="My Leaves"
+                    subtitle="History & status"
+                    icon="📋"
+                    iconBg={AppColors.primaryLight}
+                    onPress={() => router.push("/leave-list")}
+                  />
+                  <ActionTile
+                    title="Attendance"
+                    subtitle="History & logs"
+                    icon="🕒"
+                    iconBg={AppColors.successLight}
+                    onPress={() => router.push("/attendance-history")}
+                  />
+                  <ActionTile
+                    title="My Payslips"
+                    subtitle="Salary statements"
+                    icon="💵"
+                    iconBg={AppColors.infoLight}
+                    onPress={() => router.push("/payslips" as any)}
+                  />
+                  <ActionTile
+                    title="Holidays"
+                    subtitle="Upcoming holidays"
+                    icon="🗓️"
+                    iconBg={AppColors.purpleLight}
+                    onPress={() => router.push("/holiday-list")}
+                  />
+                  <ActionTile
+                    title="My Profile"
+                    subtitle="View information"
+                    icon="👤"
+                    iconBg={AppColors.indigoLight}
+                    onPress={() => router.push("/profile")}
+                  />
+                </>
+              )}
+            </View>
           </View>
-        )}
 
-        {/* LOGOUT */}
+          {/* ATTENDANCE ANALYTICS - ADMIN */}
+          {isAdmin && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Attendance Analytics</Text>
+              <View style={styles.analyticsCard}>
+                <View style={styles.analyticsRow}>
+                  <View style={styles.analyticsItem}>
+                    <Text style={styles.analyticsEmoji}>🟢</Text>
+                    <Text style={styles.analyticsNum}>{attendanceStats.presentToday}</Text>
+                    <Text style={styles.analyticsLabel}>Present Today</Text>
+                  </View>
+                  <View style={styles.analyticsDivider} />
+                  <View style={styles.analyticsItem}>
+                    <Text style={styles.analyticsEmoji}>🔴</Text>
+                    <Text style={styles.analyticsNum}>{attendanceStats.absentToday}</Text>
+                    <Text style={styles.analyticsLabel}>Absent Today</Text>
+                  </View>
+                  <View style={styles.analyticsDivider} />
+                  <View style={styles.analyticsItem}>
+                    <Text style={styles.analyticsEmoji}>🕒</Text>
+                    <Text style={styles.analyticsNum}>{attendanceStats.checkedInToday}</Text>
+                    <Text style={styles.analyticsLabel}>Checked In</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
 
-        <View style={styles.sectionWrapper}>
-          <TouchableOpacity activeOpacity={0.85} onPress={handleLogout}>
-            <LinearGradient
-              colors={["#FF416C", "#FF4B2B"]}
-              style={styles.logoutCard}
+          {/* RECENT EMPLOYEES / RECENT TEAM */}
+          {isAdmin && recentEmployees.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Recent Employees</Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/employee-list")}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.cardList}>
+                {recentEmployees.map((emp) => (
+                  <TouchableOpacity
+                    key={emp.id}
+                    style={styles.empRow}
+                    onPress={() => router.push(`/employee-details?id=${emp.id}`)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.empAvatar}>
+                      <Text style={styles.empAvatarText}>
+                        {emp.name?.charAt(0)?.toUpperCase() || "E"}
+                      </Text>
+                    </View>
+                    <View style={styles.empInfo}>
+                      <Text style={styles.empName}>{emp.name}</Text>
+                      <Text style={styles.empDept}>{emp.department || "No department"}</Text>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* SIGN OUT */}
+          <View style={[styles.section, { marginBottom: 32 }]}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+              activeOpacity={0.8}
             >
               <Text style={styles.logoutIcon}>⏻</Text>
+              <Text style={styles.logoutText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
-              <Text style={styles.logoutTitle}>Sign Out</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        {/* Persistent Bottom Nav */}
+        <BottomNav role={userRole} />
+      </View>
     </ScreenWrapper>
   );
 }
 
+function ActionTile({
+  title,
+  subtitle,
+  icon,
+  iconBg,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  icon: string;
+  iconBg: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.actionTile}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={[styles.actionIconBg, { backgroundColor: iconBg }]}>
+        <Text style={styles.actionIcon}>{icon}</Text>
+      </View>
+      <Text style={styles.actionTitle} numberOfLines={1}>
+        {title}
+      </Text>
+      <Text style={styles.actionSubtitle} numberOfLines={1}>
+        {subtitle}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
-  loaderContainer: {
+  screen: {
+    flex: 1,
+    backgroundColor: AppColors.background,
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-
   loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    fontWeight: "600",
+    marginTop: 12,
+    fontSize: 15,
+    color: AppColors.textSecondary,
+    fontWeight: "500",
   },
-
-  heroGradient: {
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-    overflow: "hidden",
-  },
-
-  circleTopRight: {
-    position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(86,204,242,0.08)",
-    top: -60,
-    right: -60,
-  },
-
-  circleBottomLeft: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(47,128,237,0.1)",
-    bottom: -40,
-    left: -30,
-  },
-
-  heroTopRow: {
+  header: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
+    backgroundColor: AppColors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  headerUserRow: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 28,
+    flex: 1,
   },
-
-  avatarContainer: {
-    position: "relative",
-  },
-
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppColors.primary,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 12,
   },
-
-  avatarInitial: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+  avatarText: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "700",
   },
-
-  onlineDot: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#38ef7d",
-    borderWidth: 2,
-    borderColor: "#0F2027",
+  headerTitles: {
+    flex: 1,
   },
-
-  notifBadge: {
+  greetingText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  subGreetingText: {
+    fontSize: 12,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  notifButton: {
+    width: 40,
+    height: 40,
+    borderRadius: AppRadius.md,
+    backgroundColor: AppColors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    alignItems: "center",
+    justifyContent: "center",
     position: "relative",
-    padding: 8,
   },
-
   notifIcon: {
-    fontSize: 22,
+    fontSize: 18,
   },
-
-  notifCount: {
+  notifBadge: {
     position: "absolute",
-    top: 1,
-    right: 0,
-    minWidth: 17,
-    height: 17,
-    paddingHorizontal: 3,
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
     borderRadius: 9,
-    backgroundColor: "#FF416C",
+    backgroundColor: AppColors.danger,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 4,
   },
-
-  notifCountText: {
-    color: "#fff",
+  notifBadgeText: {
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "700",
   },
-
-  greeting: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 16,
-    marginBottom: 6,
-  },
-
-  heroTitle: {
-    color: "#fff",
-    fontSize: 40,
-    fontWeight: "bold",
-    lineHeight: 48,
-    marginBottom: 20,
-  },
-
-  pillTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(56,239,125,0.12)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: "flex-start",
-  },
-
-  pillDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#38ef7d",
-    marginRight: 8,
-  },
-
-  pillText: {
-    color: "#38ef7d",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  sectionWrapper: {
-    paddingHorizontal: 20,
-    marginTop: 28,
-  },
-
-  sectionLabel: {
-    color: "rgba(0,0,0,0.4)",
-    fontSize: 12,
-    fontWeight: "700",
-    marginBottom: 14,
-    letterSpacing: 1.2,
-  },
-
-  statsRow: {
-    flexDirection: "row",
-    gap: 14,
-  },
-
-  statCard: {
-    flex: 1,
-    borderRadius: 20,
+  scrollContent: {
     padding: 20,
+    paddingBottom: 24,
   },
-
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: AppColors.text,
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.primary,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  statsCol: {
+    flex: 1,
+  },
   statEmoji: {
-    fontSize: 22,
+    fontSize: 18,
+  },
+  actionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  actionTile: {
+    width: "48%",
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  actionIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 10,
   },
-
-  statNumber: {
-    color: "#fff",
-    fontSize: 25,
-    fontWeight: "bold",
-  },
-
-  statLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 14,
-    marginTop: 6,
-  },
-
-  actionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-  },
-
-  actionIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#2F80ED",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-
-  actionIconText: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "bold",
-  },
-
-  actionTextGroup: {
-    flex: 1,
-  },
-
-  actionTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-
-  actionSub: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 12,
-    marginTop: 3,
-  },
-
-  actionChevron: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: 28,
-  },
-
-  logoutCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 40,
-  },
-
-  logoutIcon: {
-    color: "#fff",
+  actionIcon: {
     fontSize: 20,
-    marginRight: 10,
   },
-
-  logoutTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+  actionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.text,
   },
-
-  employeeCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    elevation: 2,
-  },
-
-  employeeAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#2F80ED",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-
-  employeeAvatarText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-
-  employeeName: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  employeeDepartment: {
-    color: "gray",
+  actionSubtitle: {
+    fontSize: 11,
+    color: AppColors.textMuted,
     marginTop: 2,
   },
-
-  actionIcon: {
-    fontSize: 28,
-    marginBottom: 10,
+  employeeTodayCard: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
   },
-
-  actionSubtitle: {
+  todayCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  todayTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  todaySubtitle: {
+    fontSize: 13,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  timeRow: {
+    flexDirection: "row",
+    backgroundColor: AppColors.surfaceMuted,
+    borderRadius: AppRadius.md,
+    padding: 12,
+    marginBottom: 16,
+  },
+  timeBox: {
+    flex: 1,
+    alignItems: "center",
+  },
+  timeDivider: {
+    width: 1,
+    backgroundColor: AppColors.border,
+  },
+  timeLabel: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  timeValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  attendanceActionBtn: {
+    backgroundColor: AppColors.primary,
+    borderRadius: AppRadius.md,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  attendanceActionText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
+    marginRight: 6,
+  },
+  arrowIcon: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  analyticsCard: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  analyticsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  analyticsItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  analyticsDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: AppColors.border,
+  },
+  analyticsEmoji: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  analyticsNum: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  analyticsLabel: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  cardList: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    overflow: "hidden",
+    ...AppShadows.subtle,
+  },
+  empRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  empAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: AppColors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  empAvatarText: {
+    color: AppColors.primary,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  empInfo: {
+    flex: 1,
+  },
+  empName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: AppColors.text,
+  },
+  empDept: {
     fontSize: 12,
-    color: "#6B7280",
-    marginTop: 4,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  chevron: {
+    fontSize: 20,
+    color: AppColors.textMuted,
+  },
+  logoutButton: {
+    backgroundColor: AppColors.surface,
+    borderWidth: 1,
+    borderColor: AppColors.dangerLight,
+    borderRadius: AppRadius.md,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoutIcon: {
+    fontSize: 16,
+    color: AppColors.danger,
+    marginRight: 8,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: AppColors.danger,
   },
 });

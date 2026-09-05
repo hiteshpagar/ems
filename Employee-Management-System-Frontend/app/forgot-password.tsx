@@ -1,12 +1,19 @@
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-import { router } from "expo-router";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useState } from "react";
+import { router } from "expo-router";
 
+import API from "../services/api";
 import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
 import ScreenWrapper from "../components/ScreenWrapper";
-import API from "../services/api";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 function getErrorMessage(error: any) {
   return (
@@ -18,89 +25,149 @@ function getErrorMessage(error: any) {
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSendOtp = async () => {
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
-      Alert.alert("Error", "Please enter your email.");
+      Alert.alert("Required Field", "Please enter your registered email address.");
       return;
     }
 
     try {
+      setLoading(true);
       await API.post("/auth/forgot-password", {
         email: trimmedEmail,
       });
 
-      Alert.alert("Success", "Password reset OTP sent to your email.", [
-        {
-          text: "OK",
-          onPress: () =>
-            router.push(`/reset-password?email=${encodeURIComponent(trimmedEmail)}`),
-        },
-      ]);
-    } catch (error) {
-      console.log(error);
+      Alert.alert(
+        "OTP Sent",
+        "A 6-digit password reset OTP has been sent to your email.",
+        [
+          {
+            text: "Proceed",
+            onPress: () =>
+              router.push(
+                `/reset-password?email=${encodeURIComponent(trimmedEmail)}`
+              ),
+          },
+        ]
+      );
+    } catch (error: any) {
       Alert.alert("Error", getErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.eyebrow}>ACCOUNT RECOVERY</Text>
-        <Text style={styles.title}>Reset your password</Text>
-        <Text style={styles.subtitle}>
-          Enter your registered email to receive a reset OTP.
-        </Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
 
-        <View style={styles.card}><Text style={styles.label}>Email address</Text><CustomInput
-          placeholder="Enter Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+        <View style={styles.card}>
+          <Text style={styles.title}>Forgot Password</Text>
+          <Text style={styles.subtitle}>
+            Enter your email and we will send you an OTP to reset your password
+          </Text>
 
-        <CustomButton title="Send OTP" onPress={handleSendOtp} />
+          <CustomInput
+            label="Email"
+            placeholder="john.doe@example.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            required
+          />
 
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.link}>Back to Login</Text>
-        </TouchableOpacity></View>
+          <CustomButton
+            title="Send OTP"
+            onPress={handleSendOtp}
+            loading={loading}
+            style={styles.actionButton}
+          />
+        </View>
+
+        <TouchableOpacity
+          onPress={() => router.replace("/login")}
+          style={styles.backToLogin}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.backToLoginText}>Back to Login</Text>
+        </TouchableOpacity>
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 36,
   },
-
-  title: {
-    fontSize: 26,
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: AppRadius.md,
+    backgroundColor: AppColors.surface,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  backIcon: {
+    fontSize: 18,
+    color: AppColors.text,
     fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 10,
   },
-
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
   subtitle: {
-    color: "#64748B",
-    fontSize: 15,
-    textAlign: "left",
-    marginBottom: 28,
+    fontSize: 14,
+    color: AppColors.textMuted,
+    marginTop: 6,
+    marginBottom: 20,
+    lineHeight: 20,
   },
-
-  link: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#2563EB",
+  actionButton: {
+    marginTop: 8,
+  },
+  backToLogin: {
+    marginTop: 24,
+    alignItems: "center",
+  },
+  backToLoginText: {
     fontSize: 14,
     fontWeight: "600",
+    color: AppColors.primary,
   },
-  eyebrow: { color: "#2563EB", fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 8 },
-  card: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, padding: 16 },
-  label: { color: "#475569", fontSize: 13, fontWeight: "600", marginBottom: 7 },
 });
