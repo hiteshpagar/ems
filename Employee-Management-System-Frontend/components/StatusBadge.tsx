@@ -40,6 +40,8 @@ export default function StatusBadge({
     switch (normalized) {
       case "active":
       case "approved":
+      case "approve":
+      case "create":
       case "present":
       case "paid":
       case "completed":
@@ -50,11 +52,38 @@ export default function StatusBadge({
           dot: AppColors.success,
         };
 
+      case "update":
+      case "profile":
+      case "payroll":
+        return {
+          bg: AppColors.infoLight,
+          text: AppColors.info,
+          dot: AppColors.info,
+        };
+
+      case "login":
+      case "employee":
+      case "auth":
+        return {
+          bg: AppColors.indigoLight,
+          text: AppColors.indigo,
+          dot: AppColors.indigo,
+        };
+
+      case "department":
+      case "designation":
+        return {
+          bg: AppColors.purpleLight,
+          text: AppColors.purple,
+          dot: AppColors.purple,
+        };
+
       case "pending":
       case "warning":
       case "in progress":
       case "half day":
       case "half_day":
+      case "password_reset":
         return {
           bg: AppColors.warningLight,
           text: AppColors.warning,
@@ -63,6 +92,8 @@ export default function StatusBadge({
 
       case "inactive":
       case "rejected":
+      case "reject":
+      case "delete":
       case "absent":
       case "unpaid":
       case "danger":
@@ -78,12 +109,15 @@ export default function StatusBadge({
       case "holiday":
       case "public":
       case "optional":
+      case "leave":
+      case "attendance":
         return {
           bg: AppColors.infoLight,
           text: AppColors.info,
           dot: AppColors.info,
         };
 
+      case "logout":
       default:
         return {
           bg: AppColors.surfaceMuted,

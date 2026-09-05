@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 
 import employee_management_system_backend.dto.DepartmentRequest;
 import employee_management_system_backend.dto.DepartmentResponse;
+import employee_management_system_backend.entity.AuditAction;
+import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.Department;
 import employee_management_system_backend.exception.ResourceAlreadyExistsException;
 import employee_management_system_backend.exception.ResourceNotFoundException;
@@ -19,12 +21,15 @@ public class DepartmentService {
     private final DepartmentRepository departmentRepository;
     private final DesignationRepository designationRepository;
     private final EmployeeRepository employeeRepository;
+    private final AuditLogService auditLogService;
 
     public DepartmentService(DepartmentRepository departmentRepository,
-            DesignationRepository designationRepository, EmployeeRepository employeeRepository) {
+            DesignationRepository designationRepository, EmployeeRepository employeeRepository,
+            AuditLogService auditLogService) {
         this.departmentRepository = departmentRepository;
         this.designationRepository = designationRepository;
         this.employeeRepository = employeeRepository;
+        this.auditLogService = auditLogService;
     }
 
     public DepartmentResponse createDepartment(DepartmentRequest request) {
@@ -39,6 +44,13 @@ public class DepartmentService {
         department.setDescription(request.getDescription());
 
         Department savedDepartment = departmentRepository.save(department);
+
+        auditLogService.log(
+                AuditAction.CREATE,
+                AuditModule.DEPARTMENT,
+                savedDepartment.getId() != null ? savedDepartment.getId().toString() : null,
+                "Created department " + savedDepartment.getName()
+        );
 
         return convertToResponse(savedDepartment);
     }
@@ -80,6 +92,13 @@ public class DepartmentService {
 
         Department updatedDepartment = departmentRepository.save(department);
 
+        auditLogService.log(
+                AuditAction.UPDATE,
+                AuditModule.DEPARTMENT,
+                updatedDepartment.getId().toString(),
+                "Updated department " + updatedDepartment.getName()
+        );
+
         return convertToResponse(updatedDepartment);
     }
 
@@ -93,7 +112,15 @@ public class DepartmentService {
                 || employeeRepository.countByDepartmentIgnoreCase(department.getName()) > 0) {
             throw new IllegalStateException("This department is assigned to employees or designations and cannot be deleted.");
         }
+        String deptName = department.getName();
         departmentRepository.delete(department);
+
+        auditLogService.log(
+                AuditAction.DELETE,
+                AuditModule.DEPARTMENT,
+                id.toString(),
+                "Deleted department " + deptName + " (ID: " + id + ")"
+        );
     }
 
     private DepartmentResponse convertToResponse(Department department) {

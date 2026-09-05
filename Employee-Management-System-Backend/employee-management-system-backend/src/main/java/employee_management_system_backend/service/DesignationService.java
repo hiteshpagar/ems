@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import employee_management_system_backend.dto.DesignationRequest;
 import employee_management_system_backend.dto.DesignationResponse;
+import employee_management_system_backend.entity.AuditAction;
+import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.Department;
 import employee_management_system_backend.entity.Designation;
 import employee_management_system_backend.exception.ResourceAlreadyExistsException;
@@ -22,16 +24,20 @@ public class DesignationService {
     private final DepartmentRepository departmentRepository;
     private final DesignationMapper designationMapper;
     private final EmployeeRepository employeeRepository;
+    private final AuditLogService auditLogService;
 
     public DesignationService(
             DesignationRepository designationRepository,
             DepartmentRepository departmentRepository,
-            DesignationMapper designationMapper, EmployeeRepository employeeRepository) {
+            DesignationMapper designationMapper,
+            EmployeeRepository employeeRepository,
+            AuditLogService auditLogService) {
 
         this.designationRepository = designationRepository;
         this.departmentRepository = departmentRepository;
         this.designationMapper = designationMapper;
         this.employeeRepository = employeeRepository;
+        this.auditLogService = auditLogService;
     }
 
     // ADD THIS METHOD
@@ -56,6 +62,13 @@ public class DesignationService {
         designation.setDepartment(department);
 
         Designation savedDesignation = designationRepository.save(designation);
+
+        auditLogService.log(
+                AuditAction.CREATE,
+                AuditModule.DESIGNATION,
+                savedDesignation.getId() != null ? savedDesignation.getId().toString() : null,
+                "Created designation " + savedDesignation.getName() + " in department " + department.getName()
+        );
 
         return designationMapper.mapToResponse(savedDesignation);
     }
@@ -107,6 +120,13 @@ public class DesignationService {
         // Save updated designation
         Designation updatedDesignation = designationRepository.save(designation);
 
+        auditLogService.log(
+                AuditAction.UPDATE,
+                AuditModule.DESIGNATION,
+                updatedDesignation.getId().toString(),
+                "Updated designation " + updatedDesignation.getName()
+        );
+
         return designationMapper.mapToResponse(updatedDesignation);
     }
     
@@ -121,6 +141,14 @@ public class DesignationService {
             throw new IllegalStateException("This designation is assigned to employees and cannot be deleted.");
         }
 
+        String designationName = designation.getName();
         designationRepository.delete(designation);
+
+        auditLogService.log(
+                AuditAction.DELETE,
+                AuditModule.DESIGNATION,
+                id.toString(),
+                "Deleted designation " + designationName + " (ID: " + id + ")"
+        );
     }
 }

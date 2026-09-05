@@ -6,6 +6,8 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import employee_management_system_backend.entity.AuditAction;
+import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.repository.EmployeeRepository;
 import employee_management_system_backend.entity.SalaryStructure;
@@ -34,6 +36,9 @@ public class EmployeeService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     // Add Employee
     public Employee addEmployee(Employee employee) {
@@ -89,6 +94,13 @@ public class EmployeeService {
                     temporaryPassword
             );
         }
+
+        auditLogService.log(
+                AuditAction.CREATE,
+                AuditModule.EMPLOYEE,
+                savedEmployee.getId() != null ? savedEmployee.getId().toString() : null,
+                "Created employee " + savedEmployee.getName() + " (" + savedEmployee.getEmail() + ")"
+        );
 
         return savedEmployee;
     }
@@ -158,6 +170,13 @@ public class EmployeeService {
             // Keep the employee record and payroll structure in sync when basic pay changes.
             syncBasicSalary(savedEmployee);
 
+            auditLogService.log(
+                    AuditAction.UPDATE,
+                    AuditModule.EMPLOYEE,
+                    savedEmployee.getId().toString(),
+                    "Updated employee " + savedEmployee.getName()
+            );
+
             return savedEmployee;
         }
 
@@ -189,17 +208,36 @@ public class EmployeeService {
         // Photo
         // Role
 
-        return employeeRepository.save(employee);
+        Employee saved = employeeRepository.save(employee);
+
+        auditLogService.log(
+                AuditAction.UPDATE,
+                AuditModule.PROFILE,
+                saved.getId() != null ? saved.getId().toString() : null,
+                "Updated personal profile for " + saved.getName()
+        );
+
+        return saved;
     }
 
     // Delete Employee
     public String deleteEmployee(Long id) {
 
-        if (!employeeRepository.existsById(id)) {
+        Employee employee = employeeRepository.findById(id).orElse(null);
+        if (employee == null) {
             throw new ResourceNotFoundException("Employee not found.");
         }
+        String employeeName = employee.getName();
+
         salaryStructureRepository.deleteByEmployeeId(id);
         employeeRepository.deleteById(id);
+
+        auditLogService.log(
+                AuditAction.DELETE,
+                AuditModule.EMPLOYEE,
+                id.toString(),
+                "Deleted employee " + employeeName + " (ID: " + id + ")"
+        );
 
         return "Employee Deleted Successfully";
     }

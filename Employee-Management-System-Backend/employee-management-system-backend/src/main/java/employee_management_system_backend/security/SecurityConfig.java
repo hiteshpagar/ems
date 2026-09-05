@@ -198,6 +198,11 @@ public class SecurityConfig {
 	                    "/api/dashboard/**"
 	            ).hasRole("ADMIN")
 
+                    // Audit Log APIs (Admin Only)
+                    .requestMatchers(
+                            "/api/audit-logs/**"
+                    ).hasRole("ADMIN")
+
                     // Notification APIs: identity is always taken from the JWT security context.
                     .requestMatchers("/api/notifications/**").authenticated()
 
