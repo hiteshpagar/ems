@@ -4,44 +4,44 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
-
-import { useEffect, useState } from "react";
-
-import { LinearGradient } from "expo-linear-gradient";
-
-import API from "../services/api";
-
-import ScreenWrapper from "../components/ScreenWrapper";
-
+import { useContext, useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 
-import { TouchableOpacity } from "react-native";
-
-import { useContext } from "react";
-import { AuthContext } from "../context/AuthContext";
+import API from "../services/api";
+import ScreenWrapper from "../components/ScreenWrapper";
+import AppHeader from "../components/AppHeader";
+import StatusBadge from "../components/StatusBadge";
+import EmptyState from "../components/EmptyState";
+import CustomButton from "../components/CustomButton";
 import { formatDate } from "../utils/date";
+import { AuthContext } from "../context/AuthContext";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+
+type TabFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
 export default function LeaveListScreen() {
   const [leaves, setLeaves] = useState<any[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabFilter>("ALL");
 
   const { userRole } = useContext(AuthContext);
+  const isAdmin = userRole === "ADMIN";
 
   const fetchLeaves = async () => {
     try {
       const response =
-        userRole === "ADMIN"
+        isAdmin
           ? await API.get("/leaves")
           : await API.get("/leaves/me");
 
-      setLeaves(response.data);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setLeaves(data);
     } catch (error) {
-      console.log(error);
+      console.log("Error loading leaves:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -54,214 +54,273 @@ export default function LeaveListScreen() {
     }
   }, [userRole]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return "#27AE60";
-
-      case "Rejected":
-        return "#EB5757";
-
-      default:
-        return "#F2994A";
-    }
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchLeaves();
   };
+
+  const filteredLeaves = useMemo(() => {
+    if (activeTab === "ALL") return leaves;
+    return leaves.filter((item) => {
+      const status = (item.status || "").toUpperCase();
+      return status === activeTab;
+    });
+  }, [leaves, activeTab]);
 
   if (loading) {
     return (
       <ScreenWrapper>
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#2F80ED" />
+        <AppHeader title="Leave Requests" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Loading leave requests...</Text>
         </View>
       </ScreenWrapper>
     );
   }
 
+  const tabs: { key: TabFilter; label: string }[] = [
+    { key: "ALL", label: "All" },
+    { key: "PENDING", label: "Pending" },
+    { key: "APPROVED", label: "Approved" },
+    { key: "REJECTED", label: "Rejected" },
+  ];
+
   return (
     <ScreenWrapper>
-      <FlatList
-        data={leaves}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              fetchLeaves();
-            }}
-          />
-        }
-        ListHeaderComponent={
-          <>
-            <LinearGradient
-              colors={["#0F2027", "#203A43", "#2C5364"]}
-              style={styles.header}
-            >
-              <Text style={styles.headerTitle}>Leave Management</Text>
-
-              <Text style={styles.headerSubtitle}>
-                {userRole === "ADMIN"
-                  ? "Track all leave requests"
-                  : "Track your leave requests"}
-              </Text>
-            </LinearGradient>
-
-            <Text style={styles.sectionLabel}>
-              {userRole === "ADMIN" ? "ALL LEAVE REQUESTS" : "MY LEAVE HISTORY"}
-            </Text>
-          </>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push(`/leave-details?id=${item.id}`)}
-          >
-            <View style={styles.leaveCard}>
-              <View style={styles.cardTop}>
-                {userRole === "ADMIN" && (
-                  <Text style={styles.employeeName}>{item.employeeName}</Text>
-                )}
-
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: getStatusColor(item.status),
-                    },
-                  ]}
-                >
-                  <Text style={styles.statusText}>{item.status}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.leaveType}>🏖 {item.leaveType}</Text>
-
-              <Text style={styles.dateText}>
-                📅 {formatDate(item.startDate)} → {formatDate(item.endDate)}
-              </Text>
-
-              <Text style={styles.reason}>📝 {item.reason}</Text>
-              <View style={styles.cardFooter}>
-                <Text style={styles.viewDetails}>View Details →</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No leave requests found</Text>
-          </View>
-        }
+      <AppHeader
+        title={isAdmin ? "Leave Management" : "My Leaves"}
+        subtitle={`${filteredLeaves.length} requests shown`}
+        showBack
       />
+
+      <View style={styles.container}>
+        {/* Filter Segment Tabs */}
+        <View style={styles.tabBar}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tabItem, isActive && styles.activeTabItem]}
+                onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[styles.tabText, isActive && styles.activeTabText]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Leave List */}
+        <FlatList
+          data={filteredLeaves}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={AppColors.primary}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon="🏖️"
+              title="No Leave Requests"
+              message={
+                activeTab === "ALL"
+                  ? "No leave requests have been submitted yet."
+                  : `No ${activeTab.toLowerCase()} leave requests found.`
+              }
+              actionTitle="Apply Leave"
+              onAction={() => router.push("/apply-leave")}
+            />
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/leave-details?id=${item.id}`)}
+              activeOpacity={0.75}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.headerLeft}>
+                  {isAdmin && item.employeeName ? (
+                    <Text style={styles.employeeName} numberOfLines={1}>
+                      {item.employeeName}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.leaveType}>
+                    🏖️ {item.leaveType || "Leave Request"}
+                  </Text>
+                </View>
+
+                <StatusBadge status={item.status || "Pending"} showDot />
+              </View>
+
+              <View style={styles.datesRow}>
+                <Text style={styles.dateLabel}>Duration:</Text>
+                <Text style={styles.dateValue}>
+                  {formatDate(item.startDate)} → {formatDate(item.endDate)}
+                </Text>
+              </View>
+
+              {item.reason ? (
+                <Text style={styles.reason} numberOfLines={2}>
+                  {`"${item.reason}"`}
+                </Text>
+              ) : null}
+
+              <View style={styles.cardFooter}>
+                <Text style={styles.viewDetailsLink}>View Details</Text>
+                <Text style={styles.chevron}>›</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+
+        {/* Bottom Apply Leave Action */}
+        <View style={styles.bottomBar}>
+          <CustomButton
+            title="+ Apply Leave"
+            onPress={() => router.push("/apply-leave")}
+          />
+        </View>
+      </View>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
   container: {
-    padding: 20,
-    backgroundColor: "#F4F6FB",
-    flexGrow: 1,
+    flex: 1,
+    backgroundColor: AppColors.background,
   },
-
-  header: {
-    borderRadius: 20,
-    padding: 25,
-    marginBottom: 20,
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "bold",
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: AppColors.textSecondary,
   },
-
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 5,
+  tabBar: {
+    flexDirection: "row",
+    backgroundColor: AppColors.surfaceMuted,
+    borderRadius: AppRadius.md,
+    marginHorizontal: 20,
+    marginBottom: 14,
+    padding: 4,
   },
-
-  sectionLabel: {
-    color: "rgba(0,0,0,0.4)",
-    fontSize: 12,
+  tabItem: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: AppRadius.sm,
+  },
+  activeTabItem: {
+    backgroundColor: AppColors.surface,
+    ...AppShadows.subtle,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: AppColors.textMuted,
+  },
+  activeTabText: {
     fontWeight: "700",
-    marginBottom: 14,
-    letterSpacing: 1.2,
+    color: AppColors.primary,
   },
-
-  leaveCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-    elevation: 3,
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 90,
   },
-
-  cardTop: {
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  employeeName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: AppColors.text,
+    marginBottom: 2,
+  },
+  leaveType: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+  },
+  datesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: AppColors.textMuted,
+    marginRight: 6,
+  },
+  dateValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.text,
+  },
+  reason: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    fontStyle: "italic",
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
+    paddingTop: 8,
+    marginTop: 4,
   },
-
-  employeeName: {
-    fontSize: 18,
-    fontWeight: "700",
-    flex: 1,
-  },
-
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  statusText: {
-    color: "#fff",
+  viewDetailsLink: {
     fontSize: 12,
-    fontWeight: "bold",
-  },
-
-  leaveType: {
-    fontSize: 16,
     fontWeight: "600",
-    marginBottom: 8,
+    color: AppColors.primary,
   },
-
-  dateText: {
-    color: "#555",
-    marginBottom: 8,
+  chevron: {
+    fontSize: 18,
+    color: AppColors.textMuted,
   },
-
-  reason: {
-    color: "#777",
-    lineHeight: 22,
-  },
-
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 50,
-  },
-
-  emptyText: {
-    color: "gray",
-    fontSize: 16,
-  },
-  cardFooter: {
-    marginTop: 12,
-    alignItems: "flex-end",
-  },
-
-  viewDetails: {
-    color: "#2F80ED",
-    fontWeight: "600",
+  bottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: AppColors.surface,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
 });

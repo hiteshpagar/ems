@@ -1,10 +1,21 @@
-import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useCallback, useEffect, useState } from "react";
-import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
+import AppHeader from "../components/AppHeader";
+import EmptyState from "../components/EmptyState";
 import { formatDate } from "../utils/date";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 type NotificationItem = {
   id: number;
@@ -15,7 +26,14 @@ type NotificationItem = {
   createdAt: string;
 };
 
-const typeIcons: Record<string, string> = { LEAVE: "🏖️", PAYROLL: "₹", EMPLOYEE: "👥", PASSWORD: "🔐", SYSTEM: "⚙️", GENERAL: "🔔" };
+const typeIcons: Record<string, { icon: string; bg: string }> = {
+  LEAVE: { icon: "🏖️", bg: AppColors.warningLight },
+  PAYROLL: { icon: "💵", bg: AppColors.infoLight },
+  EMPLOYEE: { icon: "👥", bg: AppColors.primaryLight },
+  PASSWORD: { icon: "🔐", bg: AppColors.purpleLight },
+  SYSTEM: { icon: "⚙️", bg: AppColors.surfaceMuted },
+  GENERAL: { icon: "🔔", bg: AppColors.primaryLight },
+};
 
 export default function NotificationsScreen() {
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -26,7 +44,9 @@ export default function NotificationsScreen() {
   const load = useCallback(async () => {
     try {
       setError("");
-      const response = await API.get("/notifications", { params: { page: 0, size: 50 } });
+      const response = await API.get("/notifications", {
+        params: { page: 0, size: 50 },
+      });
       setItems(response.data.content ?? []);
     } catch {
       setError("Could not load notifications. Pull down to try again.");
@@ -36,54 +56,224 @@ export default function NotificationsScreen() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const markRead = async (item: NotificationItem) => {
     if (item.read) return;
     try {
       await API.patch(`/notifications/${item.id}/read`);
-      setItems((current) => current.map((notification) => notification.id === item.id ? { ...notification, read: true } : notification));
+      setItems((current) =>
+        current.map((n) => (n.id === item.id ? { ...n, read: true } : n))
+      );
     } catch {
-      Alert.alert("Unable to update", "Please try again.");
+      Alert.alert("Error", "Unable to mark notification as read.");
     }
   };
 
   const markAllRead = async () => {
     try {
       await API.patch("/notifications/read-all");
-      setItems((current) => current.map((notification) => ({ ...notification, read: true })));
+      setItems((current) => current.map((n) => ({ ...n, read: true })));
     } catch {
-      Alert.alert("Unable to update", "Please try again.");
+      Alert.alert("Error", "Unable to mark all notifications as read.");
     }
   };
 
-  if (loading) return <ScreenWrapper><View style={styles.loader}><ActivityIndicator size="large" color="#2F80ED" /></View></ScreenWrapper>;
+  const hasUnread = items.some((item) => !item.read);
 
-  return <ScreenWrapper>
-    <FlatList
-      data={items}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
-      ListHeaderComponent={<><LinearGradient colors={["#0F2027", "#203A43", "#2C5364"]} style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
-        <View style={styles.headerRow}><View><Text style={styles.title}>Notifications</Text><Text style={styles.subtitle}>Stay up to date with your account</Text></View>
-          {items.some((item) => !item.read) && <TouchableOpacity onPress={markAllRead}><Text style={styles.markAll}>Mark all read</Text></TouchableOpacity>}</View>
-      </LinearGradient>{error ? <Text style={styles.error}>{error}</Text> : null}</>}
-      renderItem={({ item }) => <TouchableOpacity activeOpacity={0.8} onPress={() => markRead(item)} style={[styles.card, !item.read && styles.unreadCard]}>
-        <View style={styles.icon}><Text>{typeIcons[item.type] ?? "🔔"}</Text></View><View style={styles.copy}><View style={styles.row}><Text style={styles.cardTitle}>{item.title}</Text>{!item.read && <View style={styles.unreadDot} />}</View><Text style={styles.message}>{item.message}</Text><Text style={styles.date}>{formatDate(item.createdAt)}</Text></View>
-      </TouchableOpacity>}
-      ListEmptyComponent={!error ? <View style={styles.empty}><Text style={styles.emptyIcon}>🔔</Text><Text style={styles.emptyTitle}>No notifications yet</Text><Text style={styles.emptyText}>Important updates will appear here.</Text></View> : null}
-    />
-  </ScreenWrapper>;
+  if (loading) {
+    return (
+      <ScreenWrapper>
+        <AppHeader title="Notifications" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Loading notifications...</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
+  return (
+    <ScreenWrapper>
+      <AppHeader
+        title="Notifications"
+        subtitle={`${items.length} total updates`}
+        showBack
+        rightAction={
+          hasUnread ? (
+            <TouchableOpacity
+              onPress={markAllRead}
+              style={styles.markAllBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.markAllText}>Mark all read</Text>
+            </TouchableOpacity>
+          ) : null
+        }
+      />
+
+      <View style={styles.container}>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <FlatList
+          data={items}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load();
+              }}
+              tintColor={AppColors.primary}
+            />
+          }
+          ListEmptyComponent={
+            !error ? (
+              <EmptyState
+                icon="🔔"
+                title="No Notifications"
+                message="You have no notifications at this time. We will notify you when something important happens."
+              />
+            ) : null
+          }
+          renderItem={({ item }) => {
+            const config = typeIcons[item.type] ?? typeIcons.GENERAL;
+
+            return (
+              <TouchableOpacity
+                style={[styles.card, !item.read && styles.unreadCard]}
+                onPress={() => markRead(item)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.iconBox, { backgroundColor: config.bg }]}>
+                  <Text style={styles.icon}>{config.icon}</Text>
+                </View>
+
+                <View style={styles.contentBox}>
+                  <View style={styles.titleRow}>
+                    <Text
+                      style={[styles.title, !item.read && styles.unreadTitle]}
+                      numberOfLines={1}
+                    >
+                      {item.title}
+                    </Text>
+                    {!item.read ? <View style={styles.unreadDot} /> : null}
+                  </View>
+
+                  <Text style={styles.message}>{item.message}</Text>
+                  <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </ScreenWrapper>
+  );
 }
 
 const styles = StyleSheet.create({
-  loader: { flex: 1, alignItems: "center", justifyContent: "center" }, content: { flexGrow: 1, backgroundColor: "#F4F6FB", padding: 20, paddingBottom: 36 },
-  header: { borderRadius: 20, padding: 22, marginBottom: 18 }, back: { color: "rgba(255,255,255,0.8)", marginBottom: 16, fontWeight: "600" }, headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  title: { color: "#fff", fontSize: 29, fontWeight: "700" }, subtitle: { color: "rgba(255,255,255,0.72)", marginTop: 5 }, markAll: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  card: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, elevation: 2 }, unreadCard: { borderLeftWidth: 4, borderLeftColor: "#2F80ED", backgroundColor: "#F8FBFF" },
-  icon: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#E8F1FD", alignItems: "center", justifyContent: "center", marginRight: 12 }, copy: { flex: 1 }, row: { flexDirection: "row", alignItems: "center" },
-  cardTitle: { flex: 1, color: "#1E293B", fontWeight: "700", fontSize: 15 }, unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#2F80ED" }, message: { color: "#475569", lineHeight: 20, marginTop: 5 }, date: { color: "#94A3B8", fontSize: 11, marginTop: 8 },
-  empty: { alignItems: "center", marginTop: 75 }, emptyIcon: { fontSize: 35 }, emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1E293B", marginTop: 12 }, emptyText: { color: "#64748B", marginTop: 6 }, error: { color: "#B91C1C", textAlign: "center", marginBottom: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: AppColors.background,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: AppColors.textSecondary,
+  },
+  markAllBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: AppRadius.sm,
+    backgroundColor: AppColors.primaryLight,
+  },
+  markAllText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primary,
+  },
+  errorText: {
+    color: AppColors.danger,
+    textAlign: "center",
+    marginHorizontal: 20,
+    marginBottom: 12,
+    fontSize: 13,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  unreadCard: {
+    backgroundColor: "#F0F7FF",
+    borderColor: AppColors.primaryLight,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  icon: {
+    fontSize: 18,
+  },
+  contentBox: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: AppColors.text,
+    flex: 1,
+  },
+  unreadTitle: {
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: AppColors.primary,
+    marginLeft: 6,
+  },
+  message: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  date: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+  },
 });

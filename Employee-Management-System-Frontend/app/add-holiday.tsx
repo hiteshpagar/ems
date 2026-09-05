@@ -1,5 +1,4 @@
 import { Picker } from "@react-native-picker/picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -8,7 +7,9 @@ import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
 import DatePickerField from "../components/DatePickerField";
 import ScreenWrapper from "../components/ScreenWrapper";
+import AppHeader from "../components/AppHeader";
 import API from "../services/api";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 const HOLIDAY_TYPES = ["Public", "Optional", "Company"];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -26,6 +27,7 @@ export default function AddHolidayScreen() {
   const [holidayDate, setHolidayDate] = useState("");
   const [type, setType] = useState(HOLIDAY_TYPES[0]);
   const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const handleAddHoliday = async () => {
     const trimmedName = name.trim();
@@ -33,16 +35,17 @@ export default function AddHolidayScreen() {
     const trimmedDescription = description.trim();
 
     if (!trimmedName || !trimmedDate || !type) {
-      Alert.alert("Error", "Please fill all required fields.");
+      Alert.alert("Required Fields", "Please fill in all required fields.");
       return;
     }
 
     if (!DATE_PATTERN.test(trimmedDate)) {
-      Alert.alert("Error", "Please select a valid holiday date.");
+      Alert.alert("Invalid Date", "Please select a valid holiday date.");
       return;
     }
 
     try {
+      setSaving(true);
       await API.post("/holidays", {
         name: trimmedName,
         holidayDate: trimmedDate,
@@ -50,63 +53,86 @@ export default function AddHolidayScreen() {
         description: trimmedDescription,
       });
 
-      Alert.alert("Success", "Holiday added successfully.");
-      router.back();
+      Alert.alert("Success", "Holiday added successfully.", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
     } catch (error) {
-      console.log(error);
+      console.log("Error adding holiday:", error);
       Alert.alert("Error", getErrorMessage(error));
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <ScreenWrapper>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          style={styles.header}
-        >
-          <Text style={styles.headerTitle}>Add Holiday</Text>
-          <Text style={styles.headerSubtitle}>
-            Create holiday master data for attendance and leave
-          </Text>
-        </LinearGradient>
+      <AppHeader
+        title="Add Holiday"
+        subtitle="Create holiday in company calendar"
+        showBack
+      />
 
-        <View style={styles.formCard}>
-          <Text style={styles.label}>Holiday Name</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
           <CustomInput
-            placeholder="Enter Holiday Name"
+            label="Holiday Name"
+            placeholder="e.g. New Year's Day, Independence Day"
             value={name}
             onChangeText={setName}
+            required
           />
 
-          <Text style={styles.label}>Holiday Date</Text>
-            <DatePickerField value={holidayDate} onChange={setHolidayDate} label="Holiday date" />
+          <DatePickerField
+            label="Holiday Date"
+            placeholder="Select holiday date"
+            value={holidayDate}
+            onChange={setHolidayDate}
+            required
+          />
 
-          <Text style={styles.label}>Holiday Type</Text>
-          <View style={styles.pickerBox}>
-            <Picker
-              selectedValue={type}
-              onValueChange={(value) => setType(value)}
-              style={styles.picker}
-            >
-              {HOLIDAY_TYPES.map((holidayType) => (
-                <Picker.Item
-                  key={holidayType}
-                  label={holidayType}
-                  value={holidayType}
-                />
-              ))}
-            </Picker>
+          <View style={styles.pickerField}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Holiday Type</Text>
+              <Text style={styles.requiredStar}> *</Text>
+            </View>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={type}
+                onValueChange={(value) => setType(value)}
+              >
+                {HOLIDAY_TYPES.map((holidayType) => (
+                  <Picker.Item
+                    key={holidayType}
+                    label={`${holidayType} Holiday`}
+                    value={holidayType}
+                  />
+                ))}
+              </Picker>
+            </View>
           </View>
 
-          <Text style={styles.label}>Description</Text>
           <CustomInput
-            placeholder="Enter Description"
+            label="Description"
+            placeholder="Optional notes or details about the holiday"
             value={description}
             onChangeText={setDescription}
+            multiline
+            numberOfLines={3}
           />
 
-          <CustomButton title="Add Holiday" onPress={handleAddHoliday} />
+          <CustomButton
+            title="Save Holiday"
+            onPress={handleAddHoliday}
+            loading={saving}
+            style={styles.submitBtn}
+          />
         </View>
       </ScrollView>
     </ScreenWrapper>
@@ -114,59 +140,44 @@ export default function AddHolidayScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContent: {
     padding: 20,
-    backgroundColor: "#F4F6FB",
+    paddingBottom: 40,
   },
-
-  header: {
-    borderRadius: 20,
-    padding: 25,
-    marginBottom: 20,
-  },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "bold",
-  },
-
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 5,
-  },
-
-  formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginTop: 10,
-    color: "#444",
-  },
-
-  pickerBox: {
-    minHeight: 50,
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 18,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    justifyContent: "center",
-    marginBottom: 15,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
+  },
+  pickerField: {
+    marginBottom: 16,
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+  },
+  requiredStar: {
+    color: AppColors.danger,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: AppColors.borderStrong,
+    borderRadius: AppRadius.md,
+    backgroundColor: AppColors.surface,
     overflow: "hidden",
   },
-
-  picker: {
-    color: "#111827",
+  submitBtn: {
+    marginTop: 8,
   },
 });

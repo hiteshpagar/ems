@@ -1,86 +1,99 @@
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
-  Image,
 } from "react-native";
-
 import { useEffect, useState } from "react";
-import { useLocalSearchParams, router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
 
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
-
-function getInitials(name: string) {
-  const parts = name.trim().split(" ");
-
-  return parts.length >= 2
-    ? (parts[0][0] + parts[1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase();
-}
+import AppHeader from "../components/AppHeader";
+import StatusBadge from "../components/StatusBadge";
+import CustomButton from "../components/CustomButton";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 export default function EmployeeDetailsScreen() {
   const { id } = useLocalSearchParams();
-
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchEmployee = async () => {
     try {
       const response = await API.get(`/employees/${id}`);
-
       setEmployee(response.data);
     } catch (error) {
-      console.log(error);
+      console.log("Error fetching employee:", error);
+      Alert.alert("Error", "Could not load employee details.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     Alert.alert(
       "Delete Employee",
-      "Are you sure you want to delete this employee?",
+      `Are you sure you want to delete ${employee?.name || "this employee"}? This action cannot be undone.`,
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
+              setDeleting(true);
               await API.delete(`/employees/${id}`);
-
-              Alert.alert("Success", "Employee Deleted Successfully");
-
-              router.back();
+              Alert.alert("Success", "Employee deleted successfully.", [
+                {
+                  text: "OK",
+                  onPress: () => router.back(),
+                },
+              ]);
             } catch (error) {
-              console.log(error);
-
-              Alert.alert("Error", "Delete Failed");
+              console.log("Error deleting employee:", error);
+              Alert.alert("Error", "Failed to delete employee.");
+            } finally {
+              setDeleting(false);
             }
           },
         },
-      ],
+      ]
     );
   };
 
   useEffect(() => {
     fetchEmployee();
-  }, []);
+  }, [id]);
 
   if (loading) {
     return (
       <ScreenWrapper>
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#2F80ED" />
+        <AppHeader title="Employee Details" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Loading details...</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
+  if (!employee) {
+    return (
+      <ScreenWrapper>
+        <AppHeader title="Employee Details" showBack />
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Employee not found.</Text>
+          <CustomButton
+            title="Go Back"
+            onPress={() => router.back()}
+            variant="secondary"
+            style={{ marginTop: 16 }}
+          />
         </View>
       </ScreenWrapper>
     );
@@ -88,296 +101,205 @@ export default function EmployeeDetailsScreen() {
 
   return (
     <ScreenWrapper>
+      <AppHeader title="Employee Details" showBack />
+
       <ScrollView
-        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Back</Text>
-        </TouchableOpacity>
-
         {/* Profile Card */}
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          style={styles.profileCard}
-        >
-          <Image
-            source={{
-              uri: employee?.photoUrl
-                ? `http://10.195.172.204:8080${employee.photoUrl}`
-                : "https://i.pravatar.cc/300",
-            }}
-            style={styles.avatar}
+        <View style={styles.profileCard}>
+          {employee.photoUrl ? (
+            <Image
+              source={{ uri: employee.photoUrl }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarText}>
+                {employee.name?.charAt(0)?.toUpperCase() || "E"}
+              </Text>
+            </View>
+          )}
+
+          <Text style={styles.name}>{employee.name}</Text>
+          <Text style={styles.designation}>
+            {employee.designation || employee.department || "Team Member"}
+          </Text>
+
+          <View style={styles.badgeWrapper}>
+            <StatusBadge status={employee.status || "Active"} showDot />
+          </View>
+        </View>
+
+        {/* Personal Information */}
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+
+          <DetailRow label="Full Name" value={employee.name} />
+          <View style={styles.divider} />
+          <DetailRow label="Email Address" value={employee.email} />
+          <View style={styles.divider} />
+          <DetailRow label="Employee ID" value={`EMP-${employee.id}`} />
+        </View>
+
+        {/* Employment Information */}
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>Employment Information</Text>
+
+          <DetailRow label="Department" value={employee.department || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Designation" value={employee.designation || "—"} />
+          <View style={styles.divider} />
+          <DetailRow
+            label="Basic Monthly Salary"
+            value={
+              employee.salary
+                ? `₹ ${Number(employee.salary).toLocaleString("en-IN")}`
+                : "—"
+            }
+          />
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <CustomButton
+            title="Edit Employee"
+            onPress={() => router.push(`/edit-employee?id=${employee.id}`)}
+            style={styles.editButton}
           />
 
-          <Text style={styles.name}>{employee?.name}</Text>
-
-          <Text style={styles.email}>{employee?.email}</Text>
-
-          <View style={styles.departmentBadge}>
-            <Text style={styles.departmentBadgeText}>
-              {employee?.designation || employee?.department}
-            </Text>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>🏢</Text>
-            <Text style={styles.statValue}>{employee?.department}</Text>
-            <Text style={styles.statLabel}>Department</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>💰</Text>
-            <Text style={styles.statValue}>₹ {employee?.salary}</Text>
-            <Text style={styles.statLabel}>Basic Salary</Text>
-          </View>
+          <CustomButton
+            title="Delete Employee"
+            onPress={handleDelete}
+            variant="danger"
+            loading={deleting}
+            style={styles.deleteButton}
+          />
         </View>
-
-        {employee?.designation ? (
-          <View style={styles.infoCard}>
-            <Text style={styles.sectionTitle}>ROLE INFORMATION</Text>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>💼</Text>
-              <View>
-                <Text style={styles.infoLabel}>Designation</Text>
-                <Text style={styles.infoValue}>{employee?.designation}</Text>
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        {/* Details */}
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>EMPLOYEE INFORMATION</Text>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>📧</Text>
-            <View>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{employee?.email}</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoDivider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>🏢</Text>
-            <View>
-              <Text style={styles.infoLabel}>Department</Text>
-              <Text style={styles.infoValue}>{employee?.department}</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoDivider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>💰</Text>
-            <View>
-              <Text style={styles.infoLabel}>Monthly Basic Salary</Text>
-              <Text style={styles.infoValue}>₹ {employee?.salary}</Text>
-            </View>
-          </View>
-
-          {employee?.designation ? (
-            <>
-              <View style={styles.infoDivider} />
-
-              <View style={styles.infoRow}>
-                <Text style={styles.infoIcon}>💼</Text>
-                <View>
-                  <Text style={styles.infoLabel}>Designation</Text>
-                  <Text style={styles.infoValue}>{employee?.designation}</Text>
-                </View>
-              </View>
-            </>
-          ) : null}
-        </View>
-
-        {/* Buttons */}
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => router.push(`/edit-employee?id=${employee.id}`)}
-        >
-          <Text style={styles.buttonText}>✏️ Edit Employee</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.buttonText}>🗑️ Delete Employee</Text>
-        </TouchableOpacity>
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
-const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  );
+}
 
+const styles = StyleSheet.create({
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: AppColors.textSecondary,
+  },
+  errorText: {
+    fontSize: 16,
+    color: AppColors.danger,
+    fontWeight: "600",
+  },
   scrollContent: {
+    padding: 20,
     paddingBottom: 40,
   },
-
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#F4F6FB",
-  },
-
-  back: {
-    fontSize: 18,
-    marginBottom: 15,
-    fontWeight: "600",
-  },
-
   profileCard: {
-    borderRadius: 20,
-    padding: 25,
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 24,
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
   },
-
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.2)",
-    marginBottom: 15,
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 14,
+    backgroundColor: AppColors.surfaceMuted,
   },
-
+  avatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: AppColors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: AppColors.primary,
+  },
   name: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 20,
+    fontWeight: "700",
+    color: AppColors.text,
+    textAlign: "center",
   },
-
-  email: {
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 5,
-  },
-
-  infoCard: {
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 20,
-    elevation: 3,
-  },
-
-  label: {
-    color: "gray",
+  designation: {
     fontSize: 14,
-    marginTop: 10,
-  },
-
-  value: {
-    fontSize: 18,
-    fontWeight: "600",
+    color: AppColors.textMuted,
     marginTop: 4,
+    textAlign: "center",
   },
-
-  editButton: {
-    backgroundColor: "#2F80ED",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  deleteButton: {
-    backgroundColor: "#FF4B2B",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  departmentBadge: {
+  badgeWrapper: {
     marginTop: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
   },
-
-  departmentBadgeText: {
-    color: "#fff",
-    fontWeight: "700",
+  infoCard: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
   },
-
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
-
-  statCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    elevation: 3,
-  },
-
-  statEmoji: {
-    fontSize: 24,
-  },
-
-  statValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginTop: 8,
-  },
-
-  statLabel: {
-    color: "gray",
-    marginTop: 4,
-  },
-
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: "700",
-    color: "gray",
-    letterSpacing: 1,
-    marginBottom: 15,
+    color: AppColors.text,
+    marginBottom: 12,
   },
-
-  infoRow: {
+  detailRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
-
-  infoIcon: {
-    fontSize: 22,
-    marginRight: 15,
+  detailLabel: {
+    fontSize: 13,
+    color: AppColors.textMuted,
+    fontWeight: "500",
   },
-
-  infoLabel: {
-    color: "gray",
-    fontSize: 12,
-  },
-
-  infoValue: {
-    fontSize: 16,
+  detailValue: {
+    fontSize: 14,
+    color: AppColors.text,
     fontWeight: "600",
-    marginTop: 2,
+    maxWidth: "60%",
+    textAlign: "right",
   },
-
-  infoDivider: {
+  divider: {
     height: 1,
-    backgroundColor: "#EEE",
+    backgroundColor: AppColors.border,
+    marginVertical: 4,
   },
+  actionButtons: {
+    marginTop: 8,
+    gap: 10,
+  },
+  editButton: {},
+  deleteButton: {},
 });

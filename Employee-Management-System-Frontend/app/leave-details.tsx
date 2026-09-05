@@ -4,43 +4,41 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
-
-import { useEffect, useState } from "react";
-
+import { useContext, useEffect, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 
-import { LinearGradient } from "expo-linear-gradient";
-
 import API from "../services/api";
-
 import ScreenWrapper from "../components/ScreenWrapper";
+import AppHeader from "../components/AppHeader";
+import StatusBadge from "../components/StatusBadge";
+import CustomButton from "../components/CustomButton";
 import { formatDate } from "../utils/date";
-
-import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 export default function LeaveDetailsScreen() {
   const { id } = useLocalSearchParams();
-
   const [leave, setLeave] = useState<any>(null);
-
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { userRole } = useContext(AuthContext);
+  const isAdmin = userRole === "ADMIN";
 
   const fetchLeave = async () => {
     try {
       const response =
-        userRole === "ADMIN"
+        isAdmin
           ? await API.get(`/leaves/${id}`)
           : await API.get(`/leaves/me/${id}`);
 
       setLeave(response.data);
     } catch (error) {
-      console.log(error);
+      console.log("Error loading leave:", error);
+      Alert.alert("Error", "Could not load leave details.");
     } finally {
       setLoading(false);
     }
@@ -48,75 +46,82 @@ export default function LeaveDetailsScreen() {
 
   const updateStatus = async (status: string) => {
     try {
-      await API.put(`/leaves/${id}/status`, {
-        status,
-      });
+      setUpdating(true);
+      await API.put(`/leaves/${id}/status`, { status });
 
-      Alert.alert("Success", `Leave ${status}`, [
+      Alert.alert("Success", `Leave status updated to ${status}.`, [
         {
           text: "OK",
           onPress: () => router.back(),
         },
       ]);
     } catch (error) {
-      console.log(error);
-
-      Alert.alert("Error", "Failed To Update Status");
+      console.log("Error updating leave status:", error);
+      Alert.alert("Error", "Failed to update leave status.");
+    } finally {
+      setUpdating(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     Alert.alert(
-      "Delete Leave",
+      "Delete Leave Request",
       "Are you sure you want to delete this leave request?",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
+              setDeleting(true);
               await API.delete(`/leaves/${id}`);
-
-              Alert.alert("Success", "Leave Deleted Successfully");
-
-              router.back();
+              Alert.alert("Success", "Leave request deleted successfully.", [
+                {
+                  text: "OK",
+                  onPress: () => router.back(),
+                },
+              ]);
             } catch (error) {
-              console.log(error);
-
-              Alert.alert("Error", "Delete Failed");
+              console.log("Error deleting leave:", error);
+              Alert.alert("Error", "Failed to delete leave request.");
+            } finally {
+              setDeleting(false);
             }
           },
         },
-      ],
+      ]
     );
   };
 
   useEffect(() => {
     fetchLeave();
-  }, []);
-
-  const getStatusColor = () => {
-    switch (leave?.status) {
-      case "Approved":
-        return "#27AE60";
-
-      case "Rejected":
-        return "#EB5757";
-
-      default:
-        return "#F2994A";
-    }
-  };
+  }, [id]);
 
   if (loading) {
     return (
       <ScreenWrapper>
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#2F80ED" />
+        <AppHeader title="Leave Details" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Loading leave details...</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
+  if (!leave) {
+    return (
+      <ScreenWrapper>
+        <AppHeader title="Leave Details" showBack />
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Leave request not found.</Text>
+          <CustomButton
+            title="Go Back"
+            onPress={() => router.back()}
+            variant="secondary"
+            style={{ marginTop: 16 }}
+          />
         </View>
       </ScreenWrapper>
     );
@@ -124,217 +129,180 @@ export default function LeaveDetailsScreen() {
 
   return (
     <ScreenWrapper>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Back</Text>
-        </TouchableOpacity>
+      <AppHeader title="Leave Details" showBack />
 
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          style={styles.header}
-        >
-          <Text style={styles.employeeName}>{leave.employeeName}</Text>
-
-          <Text style={styles.leaveType}>{leave.leaveType}</Text>
-
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor: getStatusColor(),
-              },
-            ]}
-          >
-            <Text style={styles.statusText}>{leave.status}</Text>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>LEAVE INFORMATION</Text>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Employee</Text>
-
-            <Text style={styles.infoValue}>{leave.employeeName}</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Status Card */}
+        <View style={styles.card}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTitles}>
+              {isAdmin && leave.employeeName ? (
+                <Text style={styles.employeeName}>{leave.employeeName}</Text>
+              ) : null}
+              <Text style={styles.leaveType}>
+                🏖️ {leave.leaveType || "Leave Request"}
+              </Text>
+            </View>
+            <StatusBadge status={leave.status || "Pending"} showDot />
           </View>
 
-          <View style={styles.divider} />
+          <View style={styles.durationBox}>
+            <View style={styles.durationCol}>
+              <Text style={styles.durationLabel}>From Date</Text>
+              <Text style={styles.durationDate}>{formatDate(leave.startDate)}</Text>
+            </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Leave Type</Text>
+            <Text style={styles.durationArrow}>→</Text>
 
-            <Text style={styles.infoValue}>{leave.leaveType}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Start Date</Text>
-
-            <Text style={styles.infoValue}>{formatDate(leave.startDate)}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>End Date</Text>
-
-            <Text style={styles.infoValue}>{formatDate(leave.endDate)}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Reason</Text>
-
-            <Text style={styles.infoValue}>{leave.reason}</Text>
+            <View style={styles.durationCol}>
+              <Text style={styles.durationLabel}>To Date</Text>
+              <Text style={styles.durationDate}>{formatDate(leave.endDate)}</Text>
+            </View>
           </View>
         </View>
 
-        {userRole === "ADMIN" && (
-          <>
-            {leave.status === "Pending" && (
-              <>
-                <TouchableOpacity
-                  style={styles.approveButton}
-                  onPress={() => updateStatus("Approved")}
-                >
-                  <Text style={styles.buttonText}>✅ Approve Leave</Text>
-                </TouchableOpacity>
+        {/* Reason Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>Reason for Leave</Text>
+          <Text style={styles.reasonText}>
+            {leave.reason || "No reason specified."}
+          </Text>
+        </View>
 
-                <TouchableOpacity
-                  style={styles.rejectButton}
-                  onPress={() => updateStatus("Rejected")}
-                >
-                  <Text style={styles.buttonText}>❌ Reject Leave</Text>
-                </TouchableOpacity>
-              </>
-            )}
+        {/* Admin Action Buttons (Approve / Reject) */}
+        {isAdmin && (leave.status || "").toLowerCase() === "pending" ? (
+          <View style={styles.adminActionRow}>
+            <CustomButton
+              title="Approve"
+              onPress={() => updateStatus("Approved")}
+              variant="success"
+              loading={updating}
+              style={styles.adminBtn}
+            />
+            <CustomButton
+              title="Reject"
+              onPress={() => updateStatus("Rejected")}
+              variant="danger"
+              loading={updating}
+              style={styles.adminBtn}
+            />
+          </View>
+        ) : null}
 
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={handleDelete}
-            >
-              <Text style={styles.buttonText}>🗑 Delete Leave</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        {/* Delete Action */}
+        <CustomButton
+          title="Delete Request"
+          onPress={handleDelete}
+          variant="outline"
+          loading={deleting}
+          style={styles.deleteBtn}
+        />
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  loader: {
+  centerContainer: {
     flex: 1,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
+    padding: 20,
   },
-
-  container: {
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: AppColors.textSecondary,
+  },
+  errorText: {
+    fontSize: 16,
+    color: AppColors.danger,
+    fontWeight: "600",
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  headerTitles: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#F4F6FB",
+    marginRight: 10,
   },
-
-  back: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 15,
-  },
-
-  header: {
-    borderRadius: 20,
-    padding: 25,
-    marginBottom: 20,
-    alignItems: "center",
-  },
-
   employeeName: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-
-  leaveType: {
-    color: "#fff",
-    marginTop: 5,
-  },
-
-  statusBadge: {
-    marginTop: 15,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  statusText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-
-  infoCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    elevation: 3,
-  },
-
-  sectionTitle: {
-    fontSize: 12,
-    color: "gray",
+    fontSize: 18,
     fontWeight: "700",
-    marginBottom: 15,
+    color: AppColors.text,
+    marginBottom: 4,
   },
-
-  infoRow: {
-    paddingVertical: 12,
-  },
-
-  infoLabel: {
-    color: "gray",
-    fontSize: 13,
-  },
-
-  infoValue: {
-    fontSize: 16,
+  leaveType: {
+    fontSize: 15,
     fontWeight: "600",
+    color: AppColors.textSecondary,
+  },
+  durationBox: {
+    flexDirection: "row",
+    backgroundColor: AppColors.surfaceMuted,
+    borderRadius: AppRadius.md,
+    padding: 14,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  durationCol: {
+    flex: 1,
+  },
+  durationLabel: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  durationDate: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  durationArrow: {
+    fontSize: 18,
+    color: AppColors.textMuted,
+    marginHorizontal: 10,
+  },
+  sectionHeading: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.text,
+    marginBottom: 10,
+  },
+  reasonText: {
+    fontSize: 14,
+    color: AppColors.textSecondary,
+    lineHeight: 22,
+  },
+  adminActionRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+  },
+  adminBtn: {
+    flex: 1,
+  },
+  deleteBtn: {
     marginTop: 4,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: "#EEE",
-  },
-
-  approveButton: {
-    backgroundColor: "#27AE60",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  rejectButton: {
-    backgroundColor: "#EB5757",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  deleteButton: {
-    backgroundColor: "#2D3436",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 40,
-  },
-
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
   },
 });

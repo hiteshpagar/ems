@@ -1,26 +1,28 @@
-import { Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-import { useState, useContext, useEffect } from "react";
-
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useContext, useEffect, useState } from "react";
 import { router } from "expo-router";
 
 import API from "../services/api";
-
 import CustomButton from "../components/CustomButton";
 import CustomInput from "../components/CustomInput";
+import PasswordInput from "../components/PasswordInput";
 import ScreenWrapper from "../components/ScreenWrapper";
-
 import { AuthContext } from "../context/AuthContext";
 import { getRememberedSession } from "../utils/storage";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
-
   const [password, setPassword] = useState("");
-
   const [rememberMe, setRememberMe] = useState(false);
-
-  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const { login } = useContext(AuthContext);
 
@@ -34,175 +36,245 @@ export default function LoginScreen() {
   }, []);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill all fields");
-
+    if (!email.trim() || !password) {
+      Alert.alert("Required Fields", "Please enter your email and password.");
       return;
     }
 
     try {
+      setLoading(true);
       const response = await API.post("/auth/login", {
-        email,
+        email: email.trim(),
         password,
       });
 
-      console.log(response.data);
-
       if (response.data) {
-        // Save user in AsyncStorage
         await login(
           response.data.token,
           response.data.role,
           response.data.fullName,
           email.trim(),
-          rememberMe,
+          rememberMe
         );
-
-        console.log(response.data);
-
-        Alert.alert("Success", "Login Successful");
 
         router.replace("/dashboard");
       } else {
-        Alert.alert("Error", "Invalid Credentials");
+        Alert.alert("Login Failed", "Invalid credentials. Please try again.");
       }
-    } catch (error) {
-      console.log(error);
-
-      Alert.alert("Error", "Login Failed");
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Invalid email or password. Please try again.";
+      Alert.alert("Login Failed", message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ScreenWrapper>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.brandMark}><Text style={styles.brandInitial}>E</Text></View>
-        <Text style={styles.eyebrow}>EMPLOYEE MANAGEMENT SYSTEM</Text>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in to manage your workday.</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Brand Header */}
+        <View style={styles.brandSection}>
+          <View style={styles.brandIconContainer}>
+            <Text style={styles.brandIconText}>👥</Text>
+          </View>
+          <Text style={styles.brandName}>EMS</Text>
+          <Text style={styles.brandSubtitle}>EMPLOYEE MANAGEMENT SYSTEM</Text>
+        </View>
 
-        <View style={styles.formCard}>
-        <Text style={styles.label}>Email address</Text>
-        <CustomInput
-          placeholder="name@company.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-        />
+        {/* Card Form */}
+        <View style={styles.card}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Please login to your account</Text>
 
-        <Text style={styles.label}>Password</Text>
-        <View style={styles.passwordRow}>
           <CustomInput
+            label="Email"
+            placeholder="john.doe@example.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
+
+          <PasswordInput
+            label="Password"
             placeholder="Enter your password"
-            secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
             autoComplete="password"
-            style={styles.passwordInput}
           />
-          <TouchableOpacity style={styles.showButton} onPress={() => setShowPassword((current) => !current)} accessibilityRole="button" accessibilityLabel={showPassword ? "Hide password" : "Show password"}>
-            <Text style={styles.showText}>{showPassword ? "Hide" : "Show"}</Text>
+
+          <View style={styles.optionsRow}>
+            <TouchableOpacity
+              style={styles.rememberRow}
+              onPress={() => setRememberMe((prev) => !prev)}
+              activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: rememberMe }}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  rememberMe && styles.checkboxChecked,
+                ]}
+              >
+                {rememberMe ? <Text style={styles.checkmark}>✓</Text> : null}
+              </View>
+              <Text style={styles.rememberText}>Remember Me</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push("/forgot-password")}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          <CustomButton
+            title="Login"
+            onPress={handleLogin}
+            loading={loading}
+            style={styles.loginButton}
+          />
+        </View>
+
+        {/* Footer Navigation */}
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
+          <TouchableOpacity
+            onPress={() => router.push("/register")}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.registerLink}>Register</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.rememberRow}
-          onPress={() => setRememberMe((value) => !value)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: rememberMe }}
-        >
-          <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-            {rememberMe ? <Text style={styles.checkmark}>✓</Text> : null}
-          </View>
-          <View>
-            <Text style={styles.rememberText}>Remember Me</Text>
-          </View>
-        </TouchableOpacity>
-
-        <CustomButton title="Login" onPress={handleLogin} />
-
-        <TouchableOpacity onPress={() => router.push("/forgot-password")}>
-          <Text style={styles.link}>Forgot Password?</Text>
-        </TouchableOpacity>
-        </View>
-        <Text style={styles.footer}>Secure access for your organization</Text>
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
-    padding: 20,
-    paddingVertical: 32,
+    paddingHorizontal: 20,
+    paddingVertical: 36,
   },
-
-  brandMark: { width: 48, height: 48, borderRadius: 12, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center", marginBottom: 24 },
-  brandInitial: { color: "#fff", fontSize: 22, fontWeight: "700" },
-  eyebrow: { color: "#2563EB", fontSize: 11, fontWeight: "700", letterSpacing: 1.2, marginBottom: 8 },
-
-  title: {
+  brandSection: {
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  brandIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: AppRadius.lg,
+    backgroundColor: AppColors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    ...AppShadows.card,
+  },
+  brandIconText: {
     fontSize: 28,
+  },
+  brandName: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: AppColors.text,
+    letterSpacing: 0.5,
+  },
+  brandSubtitle: {
+    fontSize: 11,
     fontWeight: "700",
-    color: "#0F172A",
+    color: AppColors.primary,
+    letterSpacing: 1.2,
+    marginTop: 2,
   },
-  subtitle: { color: "#64748B", fontSize: 15, marginTop: 8, marginBottom: 28 },
-  formCard: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, padding: 16 },
-  label: { color: "#475569", fontSize: 13, fontWeight: "600", marginBottom: 7 },
-  passwordRow: { position: "relative" },
-  passwordInput: { paddingRight: 58 },
-  showButton: { position: "absolute", right: 10, top: 10, padding: 6 },
-  showText: { color: "#2563EB", fontSize: 13, fontWeight: "600" },
-
-  link: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#007AFF",
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  subtitle: {
     fontSize: 14,
-    fontWeight: "600",
+    color: AppColors.textMuted,
+    marginTop: 4,
+    marginBottom: 20,
   },
-
+  optionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    marginTop: 2,
+  },
   rememberRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: -3,
-    marginBottom: 18,
   },
-
   checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: "#2F80ED",
-    borderRadius: 5,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: AppColors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
+    marginRight: 8,
+    backgroundColor: AppColors.surface,
   },
-
   checkboxChecked: {
-    backgroundColor: "#2F80ED",
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
   },
-
   checkmark: {
-    color: "#fff",
+    color: "#FFFFFF",
+    fontSize: 11,
     fontWeight: "bold",
+    marginTop: -1,
   },
-
   rememberText: {
-    fontSize: 14,
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    fontWeight: "500",
+  },
+  forgotText: {
+    fontSize: 13,
+    color: AppColors.primary,
     fontWeight: "600",
   },
-
-  rememberHint: {
-    color: "#64748B",
-    fontSize: 11,
-    marginTop: 2,
+  loginButton: {
+    marginTop: 4,
   },
-  footer: { textAlign: "center", color: "#94A3B8", fontSize: 12, marginTop: 24 },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 14,
+    color: AppColors.textMuted,
+  },
+  registerLink: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.primary,
+  },
 });

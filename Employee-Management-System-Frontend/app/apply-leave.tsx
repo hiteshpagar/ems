@@ -1,63 +1,72 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-
-import { useEffect, useState } from "react";
-
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useContext, useEffect, useState } from "react";
 import { router } from "expo-router";
-
-import { LinearGradient } from "expo-linear-gradient";
-
 import { Picker } from "@react-native-picker/picker";
 
 import API from "../services/api";
-
-import CustomButton from "../components/CustomButton";
-import CustomInput from "../components/CustomInput";
-import DatePickerField from "../components/DatePickerField";
 import ScreenWrapper from "../components/ScreenWrapper";
-import { useContext } from "react";
+import AppHeader from "../components/AppHeader";
+import CustomInput from "../components/CustomInput";
+import CustomButton from "../components/CustomButton";
+import DatePickerField from "../components/DatePickerField";
 import { AuthContext } from "../context/AuthContext";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+
+const LEAVE_TYPES = [
+  "Casual Leave",
+  "Sick Leave",
+  "Annual Leave",
+  "Paid Leave",
+  "Unpaid Leave",
+  "Maternity Leave",
+  "Paternity Leave",
+];
 
 export default function ApplyLeaveScreen() {
   const [employees, setEmployees] = useState<any[]>([]);
-
   const [employeeId, setEmployeeId] = useState<number | null>(null);
-
   const [employeeName, setEmployeeName] = useState("");
-
-  const [leaveType, setLeaveType] = useState("");
-
+  const [leaveType, setLeaveType] = useState(LEAVE_TYPES[0]);
   const [startDate, setStartDate] = useState("");
-
   const [endDate, setEndDate] = useState("");
-
   const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const { userRole } = useContext(AuthContext);
+  const isAdmin = userRole === "ADMIN";
 
   const fetchEmployees = async () => {
     try {
       const response = await API.get("/employees");
-
-      setEmployees(response.data);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setEmployees(data);
+      if (data.length > 0) {
+        setEmployeeId(data[0].id);
+        setEmployeeName(data[0].name);
+      }
     } catch (error) {
-      console.log(error);
+      console.log("Error loading employees:", error);
     }
   };
 
   const fetchLoggedInEmployee = async () => {
     try {
       const response = await API.get("/employees/me");
-
       setEmployeeId(response.data.id);
-
       setEmployeeName(response.data.name);
     } catch (error) {
-      console.log(error);
+      console.log("Error loading employee info:", error);
     }
   };
 
-  const { userRole, userName } = useContext(AuthContext);
-
   useEffect(() => {
-    if (userRole === "ADMIN") {
+    if (isAdmin) {
       fetchEmployees();
     } else {
       fetchLoggedInEmployee();
@@ -65,126 +74,139 @@ export default function ApplyLeaveScreen() {
   }, [userRole]);
 
   const handleApplyLeave = async () => {
-    if (userRole === "ADMIN" && !employeeId) {
-      Alert.alert("Error", "Please select employee");
+    if (isAdmin && !employeeId) {
+      Alert.alert("Required Field", "Please select an employee.");
       return;
     }
 
-    if (!leaveType || !startDate || !endDate || !reason) {
-      Alert.alert("Error", "Please fill all fields");
+    if (!leaveType || !startDate || !endDate || !reason.trim()) {
+      Alert.alert("Required Fields", "Please fill in all required fields.");
       return;
     }
 
     try {
+      setSubmitting(true);
       await API.post("/leaves", {
         employeeId,
         employeeName,
         leaveType,
         startDate,
         endDate,
-        reason,
+        reason: reason.trim(),
       });
 
-      Alert.alert("Success", "Leave Applied Successfully");
-
-      router.back();
-    } catch (error) {
-      console.log(error);
-
-      Alert.alert("Error", "Failed To Apply Leave");
+      Alert.alert("Success", "Leave request submitted successfully.", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (error: any) {
+      console.log("Error applying leave:", error);
+      const msg =
+        error?.response?.data?.message || "Failed to submit leave request.";
+      Alert.alert("Error", msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <ScreenWrapper>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          style={styles.header}
-        >
-          <Text style={styles.headerTitle}>Apply Leave</Text>
+      <AppHeader
+        title="Apply Leave"
+        subtitle="Submit a new time-off request"
+        showBack
+      />
 
-          <Text style={styles.headerSubtitle}>
-            Submit leave request and track status
-          </Text>
-        </LinearGradient>
-
-        <View style={styles.formCard}>
-          {userRole === "ADMIN" ? (
-            <>
-              <Text style={styles.label}>👤 Employee</Text>
-
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
+          {/* Admin Employee Selector */}
+          {isAdmin ? (
+            <View style={styles.pickerField}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Employee</Text>
+                <Text style={styles.requiredStar}> *</Text>
+              </View>
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={employeeId}
                   onValueChange={(value) => {
                     setEmployeeId(value);
-
-                    const employee = employees.find((emp) => emp.id === value);
-
-                    if (employee) {
-                      setEmployeeName(employee.name);
-                    }
+                    const emp = employees.find((e) => e.id === value);
+                    if (emp) setEmployeeName(emp.name);
                   }}
                 >
-                  <Picker.Item label="Select Employee" value={null} />
-
-                  {employees.map((employee) => (
+                  {employees.map((emp) => (
                     <Picker.Item
-                      key={employee.id}
-                      label={employee.name}
-                      value={employee.id}
+                      key={emp.id}
+                      label={`${emp.name} (${emp.department || "No Dept"})`}
+                      value={emp.id}
                     />
                   ))}
                 </Picker>
               </View>
-            </>
-          ) : (
-            <>
-              <Text style={styles.label}>👤 Employee</Text>
+            </View>
+          ) : null}
 
-              <View style={styles.readOnlyBox}>
-                <Text style={styles.readOnlyText}>{userName}</Text>
-              </View>
-            </>
-          )}
-
-          <Text style={styles.label}>🏖 Leave Type</Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={leaveType}
-              onValueChange={(value) => setLeaveType(value)}
-            >
-              <Picker.Item label="Select Leave Type" value="" />
-
-              <Picker.Item label="Casual Leave" value="Casual Leave" />
-
-              <Picker.Item label="Sick Leave" value="Sick Leave" />
-
-              <Picker.Item label="Annual Leave" value="Annual Leave" />
-
-              <Picker.Item label="Work From Home" value="Work From Home" />
-            </Picker>
+          {/* Leave Type */}
+          <View style={styles.pickerField}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Leave Type</Text>
+              <Text style={styles.requiredStar}> *</Text>
+            </View>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={leaveType}
+                onValueChange={(value) => setLeaveType(value)}
+              >
+                {LEAVE_TYPES.map((type) => (
+                  <Picker.Item key={type} label={type} value={type} />
+                ))}
+              </Picker>
+            </View>
           </View>
 
-          <Text style={styles.label}>📅 Start Date</Text>
-
-          <DatePickerField value={startDate} onChange={setStartDate} label="Leave start date" minimumDate={new Date()} />
-
-          <Text style={styles.label}>📅 End Date</Text>
-
-          <DatePickerField value={endDate} onChange={setEndDate} label="Leave end date" minimumDate={startDate ? new Date(`${startDate}T00:00:00`) : new Date()} />
-
-          <Text style={styles.label}>📝 Reason</Text>
-
-          <CustomInput
-            placeholder="Enter Reason"
-            value={reason}
-            onChangeText={setReason}
+          {/* From Date */}
+          <DatePickerField
+            label="From Date"
+            placeholder="Select start date"
+            value={startDate}
+            onChange={setStartDate}
+            required
           />
 
-          <CustomButton title="Submit Leave" onPress={handleApplyLeave} />
+          {/* To Date */}
+          <DatePickerField
+            label="To Date"
+            placeholder="Select end date"
+            value={endDate}
+            onChange={setEndDate}
+            minimumDate={startDate ? new Date(startDate) : undefined}
+            required
+          />
+
+          {/* Reason */}
+          <CustomInput
+            label="Reason for Leave"
+            placeholder="Please specify why you need leave..."
+            value={reason}
+            onChangeText={setReason}
+            multiline
+            numberOfLines={3}
+            required
+          />
+
+          <CustomButton
+            title="Submit Leave"
+            onPress={handleApplyLeave}
+            loading={submitting}
+            style={styles.submitBtn}
+          />
         </View>
       </ScrollView>
     </ScreenWrapper>
@@ -192,65 +214,44 @@ export default function ApplyLeaveScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContent: {
     padding: 20,
-    backgroundColor: "#F4F6FB",
+    paddingBottom: 40,
   },
-
-  header: {
-    borderRadius: 20,
-    padding: 25,
-    marginBottom: 20,
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
   },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "bold",
+  pickerField: {
+    marginBottom: 16,
   },
-
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 5,
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
   },
-
-  formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
-    elevation: 3,
-    marginBottom: 30,
-  },
-
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    marginBottom: 8,
-    marginTop: 10,
-    color: "#444",
+    color: AppColors.textSecondary,
   },
-
+  requiredStar: {
+    color: AppColors.danger,
+    fontSize: 13,
+    fontWeight: "600",
+  },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    marginBottom: 10,
+    borderColor: AppColors.borderStrong,
+    borderRadius: AppRadius.md,
+    backgroundColor: AppColors.surface,
     overflow: "hidden",
-    backgroundColor: "#fff",
   },
-  readOnlyBox: {
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    backgroundColor: "#F9FAFB",
-  },
-
-  readOnlyText: {
-    fontSize: 16,
-    color: "#111827",
-    fontWeight: "500",
+  submitBtn: {
+    marginTop: 8,
   },
 });

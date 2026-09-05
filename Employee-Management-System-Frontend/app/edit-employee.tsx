@@ -1,17 +1,24 @@
-import { Picker } from "@react-native-picker/picker";
-import { Alert, ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
-
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import { router, useLocalSearchParams } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import { Picker } from "@react-native-picker/picker";
 
 import API from "../services/api";
-
-import CustomButton from "../components/CustomButton";
-import CustomInput from "../components/CustomInput";
 import ScreenWrapper from "../components/ScreenWrapper";
-
-import { LinearGradient } from "expo-linear-gradient";
+import AppHeader from "../components/AppHeader";
+import CustomInput from "../components/CustomInput";
+import CustomButton from "../components/CustomButton";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 interface Department {
   id: number;
@@ -29,40 +36,33 @@ export default function EditEmployeeScreen() {
   const { id } = useLocalSearchParams();
 
   const [name, setName] = useState("");
-
   const [email, setEmail] = useState("");
-
   const [departmentId, setDepartmentId] = useState<number | null>(null);
-
   const [designationId, setDesignationId] = useState<number | null>(null);
-
   const [salary, setSalary] = useState("");
-
   const [photoUrl, setPhotoUrl] = useState("");
-
+  const [newImageUri, setNewImageUri] = useState("");
   const [departments, setDepartments] = useState<Department[]>([]);
-
   const [designations, setDesignations] = useState<Designation[]>([]);
-
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const filteredDesignations = useMemo(
     () =>
       designations.filter(
-        (designation) => designation.departmentId === departmentId,
+        (designation) => designation.departmentId === departmentId
       ),
-    [departmentId, designations],
+    [departmentId, designations]
   );
 
   const selectedDepartment = departments.find(
-    (department) => department.id === departmentId,
+    (department) => department.id === departmentId
   );
 
   const selectedDesignation = designations.find(
-    (designation) => designation.id === designationId,
+    (designation) => designation.id === designationId
   );
 
-  // Fetch Employee By ID and master data
   const fetchEmployeeData = useCallback(async () => {
     try {
       const [employeeResponse, departmentResponse, designationResponse] =
@@ -79,25 +79,26 @@ export default function EditEmployeeScreen() {
       const designationData = Array.isArray(designationResponse.data)
         ? designationResponse.data
         : [];
+
       const matchedDepartment = departmentData.find(
-        (department) => department.name === employee.department,
+        (department) => department.name === employee.department
       );
       const matchedDesignation = designationData.find(
         (designation) =>
           designation.name === employee.designation &&
-          designation.departmentId === matchedDepartment?.id,
+          designation.departmentId === matchedDepartment?.id
       );
 
       setDepartments(departmentData);
       setDesignations(designationData);
-      setName(employee.name);
-      setEmail(employee.email);
+      setName(employee.name || "");
+      setEmail(employee.email || "");
       setDepartmentId(matchedDepartment?.id ?? departmentData[0]?.id ?? null);
       setDesignationId(matchedDesignation?.id ?? null);
-      setSalary(employee.salary.toString());
+      setSalary(employee.salary ? employee.salary.toString() : "");
       setPhotoUrl(employee.photoUrl || "");
     } catch (error) {
-      console.log(error);
+      console.log("Error loading employee data:", error);
       Alert.alert("Error", "Failed to load employee data");
     } finally {
       setLoading(false);
@@ -105,9 +106,13 @@ export default function EditEmployeeScreen() {
   }, [id]);
 
   useEffect(() => {
+    fetchEmployeeData();
+  }, [fetchEmployeeData]);
+
+  useEffect(() => {
     setDesignationId((currentDesignationId) => {
       const currentStillValid = filteredDesignations.some(
-        (designation) => designation.id === currentDesignationId,
+        (designation) => designation.id === currentDesignationId
       );
 
       if (currentStillValid) {
@@ -118,49 +123,94 @@ export default function EditEmployeeScreen() {
     });
   }, [filteredDesignations]);
 
-  // Update Employee
-  const handleUpdateEmployee = async () => {
-    if (!name || !email || !salary) {
-      Alert.alert("Error", "Please fill all fields");
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
 
+    if (!result.canceled && result.assets[0]) {
+      setNewImageUri(result.assets[0].uri);
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!newImageUri) return photoUrl;
+
+    const formData = new FormData();
+    formData.append("file", {
+      uri: newImageUri,
+      name: "profile.jpg",
+      type: "image/jpeg",
+    } as any);
+
+    try {
+      const response = await API.post("/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      return response.data.photoUrl || photoUrl;
+    } catch (error) {
+      console.log("Image upload failed:", error);
+      return photoUrl;
+    }
+  };
+
+  const handleUpdateEmployee = async () => {
+    if (!name.trim() || !email.trim() || !salary) {
+      Alert.alert("Required Fields", "Please fill in all required fields.");
       return;
     }
 
     if (!selectedDepartment || !selectedDesignation) {
-      Alert.alert("Error", "Please select department and designation");
-
+      Alert.alert(
+        "Validation",
+        "Please select a department and designation for this employee."
+      );
       return;
     }
 
     try {
+      setSaving(true);
+      const updatedPhotoUrl = await uploadImage();
+
       await API.put(`/employees/${id}`, {
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
         department: selectedDepartment.name,
         designation: selectedDesignation.name,
         salary: Number(salary),
-        photoUrl,
+        photoUrl: updatedPhotoUrl,
       });
 
-      Alert.alert("Success", "Employee Updated");
-
-      router.back();
-    } catch (error) {
-      console.log(error);
-
-      Alert.alert("Error", "Update Failed");
+      Alert.alert("Success", "Employee updated successfully.", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update employee.";
+      Alert.alert("Error", message);
+    } finally {
+      setSaving(false);
     }
   };
-
-  useEffect(() => {
-    fetchEmployeeData();
-  }, [fetchEmployeeData]);
 
   if (loading) {
     return (
       <ScreenWrapper>
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#2F80ED" />
+        <AppHeader title="Edit Employee" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Loading employee data...</Text>
         </View>
       </ScreenWrapper>
     );
@@ -168,171 +218,249 @@ export default function EditEmployeeScreen() {
 
   return (
     <ScreenWrapper>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          style={styles.header}
-        >
-          <Text style={styles.headerTitle}>Edit Employee</Text>
+      <AppHeader
+        title="Edit Employee"
+        subtitle={`Update ${name}'s information`}
+        showBack
+      />
 
-          <Text style={styles.headerSubtitle}>Update employee information</Text>
-        </LinearGradient>
-        <View style={styles.formCard}>
-          <Text style={styles.label}>👤 Full Name</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Personal Information */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>Personal Information</Text>
+
           <CustomInput
-            placeholder="Enter Name"
+            label="Full Name"
+            placeholder="John Doe"
             value={name}
             onChangeText={setName}
+            autoCapitalize="words"
+            required
           />
 
-          <Text style={styles.label}>📧 Email Address</Text>
           <CustomInput
-            placeholder="Enter Email"
+            label="Email Address"
+            placeholder="john.doe@example.com"
             value={email}
             onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            required
           />
+        </View>
 
-          <Text style={styles.label}>🏢 Department</Text>
-          <View style={styles.pickerBox}>
-            <Picker
-              selectedValue={departmentId}
-              onValueChange={(value) => setDepartmentId(value)}
-              enabled={departments.length > 0}
-              style={styles.picker}
-            >
-              {departments.length === 0 ? (
-                <Picker.Item label="Create a department first" value={null} />
-              ) : (
-                departments.map((department) => (
+        {/* Employment Information */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeading}>Employment Information</Text>
+
+          <View style={styles.pickerField}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Department</Text>
+              <Text style={styles.requiredStar}> *</Text>
+            </View>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={departmentId}
+                onValueChange={(value) => setDepartmentId(value)}
+                enabled={departments.length > 0}
+                style={styles.picker}
+              >
+                {departments.map((dept) => (
                   <Picker.Item
-                    key={department.id}
-                    label={department.name}
-                    value={department.id}
+                    key={dept.id}
+                    label={dept.name}
+                    value={dept.id}
                   />
-                ))
-              )}
-            </Picker>
+                ))}
+              </Picker>
+            </View>
           </View>
 
-          <Text style={styles.label}>Designation</Text>
-          <View style={styles.pickerBox}>
-            <Picker
-              selectedValue={designationId}
-              onValueChange={(value) => setDesignationId(value)}
-              enabled={filteredDesignations.length > 0}
-              style={styles.picker}
-            >
-              {filteredDesignations.length === 0 ? (
-                <Picker.Item
-                  label="Create a designation for this department first"
-                  value={null}
-                />
-              ) : (
-                filteredDesignations.map((designation) => (
+          <View style={styles.pickerField}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Designation</Text>
+              <Text style={styles.requiredStar}> *</Text>
+            </View>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={designationId}
+                onValueChange={(value) => setDesignationId(value)}
+                enabled={filteredDesignations.length > 0}
+                style={styles.picker}
+              >
+                {filteredDesignations.length === 0 ? (
                   <Picker.Item
-                    key={designation.id}
-                    label={designation.name}
-                    value={designation.id}
+                    label="Select department to view designations"
+                    value={null}
                   />
-                ))
-              )}
-            </Picker>
+                ) : (
+                  filteredDesignations.map((desig) => (
+                    <Picker.Item
+                      key={desig.id}
+                      label={desig.name}
+                      value={desig.id}
+                    />
+                  ))
+                )}
+              </Picker>
+            </View>
           </View>
 
-          <Text style={styles.label}>💰 Monthly Basic Salary</Text>
           <CustomInput
-            placeholder="Enter monthly basic salary"
+            label="Monthly Basic Salary (₹)"
+            placeholder="50000"
             value={salary}
             onChangeText={setSalary}
             keyboardType="numeric"
+            required
           />
 
-          <Text style={styles.label}>🖼 Profile Photo URL</Text>
-
-          <CustomInput
-            placeholder="https://example.com/photo.jpg"
-            value={photoUrl}
-            onChangeText={setPhotoUrl}
-          />
-
-          <CustomButton
-            title="Update Employee"
-            onPress={handleUpdateEmployee}
-          />
+          {/* Photo Picker */}
+          <View style={styles.photoSection}>
+            <Text style={styles.label}>Profile Photo</Text>
+            <View style={styles.photoRow}>
+              {newImageUri || photoUrl ? (
+                <Image
+                  source={{ uri: newImageUri || photoUrl }}
+                  style={styles.previewImage}
+                />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Text style={styles.photoIcon}>📷</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.pickButton}
+                onPress={pickImage}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.pickButtonText}>Change Photo</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
+
+        {/* Submit */}
+        <CustomButton
+          title="Update Employee"
+          onPress={handleUpdateEmployee}
+          loading={saving}
+          style={styles.submitButton}
+        />
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  centerContainer: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#F4F6FB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: AppColors.textSecondary,
   },
   scrollContent: {
+    padding: 20,
     paddingBottom: 40,
   },
-
-  header: {
-    borderRadius: 20,
-    padding: 25,
-    marginBottom: 20,
-  },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "bold",
-  },
-
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 5,
-  },
-
-  formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginTop: 10,
-    color: "#444",
-  },
-
-  loader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  pickerBox: {
-    minHeight: 50,
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 18,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    justifyContent: "center",
-    marginBottom: 15,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: AppColors.text,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+    paddingBottom: 8,
+  },
+  pickerField: {
+    marginBottom: 16,
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+  },
+  requiredStar: {
+    color: AppColors.danger,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: AppColors.borderStrong,
+    borderRadius: AppRadius.md,
+    backgroundColor: AppColors.surface,
     overflow: "hidden",
   },
-
   picker: {
-    color: "#111827",
+    height: 46,
+  },
+  photoSection: {
+    marginTop: 4,
+  },
+  photoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  previewImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 16,
+    backgroundColor: AppColors.surfaceMuted,
+  },
+  photoPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: AppColors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  photoIcon: {
+    fontSize: 22,
+  },
+  pickButton: {
+    backgroundColor: AppColors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: AppRadius.md,
+  },
+  pickButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.text,
+  },
+  submitButton: {
+    marginTop: 8,
   },
 });

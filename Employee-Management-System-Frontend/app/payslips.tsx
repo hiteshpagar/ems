@@ -1,15 +1,266 @@
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useEffect, useState } from "react";
-import { LinearGradient } from "expo-linear-gradient";
+
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
-const money = (amount?: number) => `₹ ${Number(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+import AppHeader from "../components/AppHeader";
+import EmptyState from "../components/EmptyState";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+
+const money = (amount?: number) =>
+  `₹ ${Number(amount || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+  })}`;
+
 export default function PayslipsScreen() {
-  const [payslips, setPayslips] = useState<any[]>([]); const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false);
-  const load = async () => { try { const response = await API.get("/payroll/payslips/me"); setPayslips(response.data); } finally { setLoading(false); setRefreshing(false); } };
-  useEffect(() => { load(); }, []);
-  if (loading) return <ScreenWrapper><View style={styles.loader}><ActivityIndicator size="large" color="#2F80ED" /></View></ScreenWrapper>;
-  return <ScreenWrapper><ScrollView style={styles.page} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}><LinearGradient colors={["#0F2027", "#203A43", "#2C5364"]} style={styles.header}><Text style={styles.title}>My Payslips</Text><Text style={styles.subtitle}>Your monthly salary statements</Text></LinearGradient>{payslips.length === 0 ? <Text style={styles.empty}>No payslips have been published yet.</Text> : payslips.map((slip) => <View style={styles.card} key={slip.id}><View style={styles.row}><Text style={styles.month}>{slip.payrollMonth}</Text><Text style={styles.net}>{money(slip.netSalary)}</Text></View><Text style={styles.caption}>Net salary</Text><View style={styles.divider} /><Line label="Basic salary" value={slip.basicSalary} /><Line label="Allowances" value={slip.totalAllowances} /><Line label="Gross salary" value={slip.grossSalary} /><Line label="PF" value={slip.providentFund} negative /><Line label="Professional tax" value={slip.professionalTax} negative /><Line label="Income tax" value={slip.incomeTax} negative /><Line label="Other deductions" value={slip.otherDeductions} negative /><Line label={`Absence deduction (${slip.unpaidDays} day(s))`} value={slip.absenceDeduction} negative /><Line label="Total deductions" value={slip.totalDeductions} negative bold /></View>)}</ScrollView></ScreenWrapper>;
+  const [payslips, setPayslips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    try {
+      const response = await API.get("/payroll/payslips/me");
+      setPayslips(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.log("Error loading payslips:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    load();
+  };
+
+  if (loading) {
+    return (
+      <ScreenWrapper>
+        <AppHeader title="My Payslips" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Loading payslip records...</Text>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
+  return (
+    <ScreenWrapper>
+      <AppHeader
+        title="My Payslips"
+        subtitle={`${payslips.length} monthly statements`}
+        showBack
+      />
+
+      <View style={styles.container}>
+        <FlatList
+          data={payslips}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={AppColors.primary}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon="💵"
+              title="No Payslips Yet"
+              message="No monthly salary statements have been generated for your account yet."
+            />
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={styles.monthText}>
+                    📅 {item.payrollMonth}
+                  </Text>
+                  <Text style={styles.captionText}>Net Take Home</Text>
+                </View>
+                <Text style={styles.netAmount}>{money(item.netSalary)}</Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <Text style={styles.sectionHeader}>Earnings</Text>
+              <BreakdownLine label="Basic Salary" value={item.basicSalary} />
+              <BreakdownLine label="Allowances" value={item.totalAllowances} />
+              <BreakdownLine label="Gross Salary" value={item.grossSalary} bold />
+
+              <View style={styles.divider} />
+
+              <Text style={styles.sectionHeader}>Deductions</Text>
+              <BreakdownLine
+                label="Provident Fund (PF)"
+                value={item.providentFund}
+                negative
+              />
+              <BreakdownLine
+                label="Professional Tax"
+                value={item.professionalTax}
+                negative
+              />
+              <BreakdownLine
+                label="Income Tax (TDS)"
+                value={item.incomeTax}
+                negative
+              />
+              {item.otherDeductions ? (
+                <BreakdownLine
+                  label="Other Deductions"
+                  value={item.otherDeductions}
+                  negative
+                />
+              ) : null}
+              {item.unpaidDays ? (
+                <BreakdownLine
+                  label={`Absence Deduction (${item.unpaidDays} day${
+                    item.unpaidDays > 1 ? "s" : ""
+                  })`}
+                  value={item.absenceDeduction}
+                  negative
+                />
+              ) : null}
+              <BreakdownLine
+                label="Total Deductions"
+                value={item.totalDeductions}
+                negative
+                bold
+              />
+            </View>
+          )}
+        />
+      </View>
+    </ScreenWrapper>
+  );
 }
-function Line({ label, value, negative, bold }: { label: string; value: number; negative?: boolean; bold?: boolean }) { return <View style={styles.line}><Text style={bold ? styles.bold : styles.caption}>{label}</Text><Text style={[bold ? styles.bold : styles.value, negative && styles.negative]}>{negative ? "− " : ""}{money(value)}</Text></View>; }
-const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: "#F4F6FB" }, content: { padding: 20, paddingBottom: 40 }, loader: { flex: 1, alignItems: "center", justifyContent: "center" }, header: { padding: 24, borderRadius: 20, marginBottom: 20 }, title: { color: "#fff", fontWeight: "bold", fontSize: 30 }, subtitle: { color: "rgba(255,255,255,0.72)", marginTop: 6 }, card: { backgroundColor: "#fff", borderRadius: 18, padding: 18, marginBottom: 14, elevation: 2 }, row: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }, month: { fontSize: 19, fontWeight: "700" }, net: { color: "#16A085", fontSize: 20, fontWeight: "bold" }, caption: { color: "#64748B", fontSize: 13, marginTop: 4 }, divider: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 13 }, line: { flexDirection: "row", justifyContent: "space-between", marginBottom: 9 }, value: { fontSize: 13, color: "#1E293B" }, negative: { color: "#DC2626" }, bold: { fontSize: 13, fontWeight: "700", color: "#1E293B" }, empty: { textAlign: "center", color: "#64748B", marginTop: 50 } });
+
+function BreakdownLine({
+  label,
+  value,
+  negative = false,
+  bold = false,
+}: {
+  label: string;
+  value: number;
+  negative?: boolean;
+  bold?: boolean;
+}) {
+  return (
+    <View style={styles.line}>
+      <Text style={[styles.lineLabel, bold && styles.boldText]}>{label}</Text>
+      <Text
+        style={[
+          styles.lineValue,
+          negative && styles.negativeValue,
+          bold && styles.boldText,
+        ]}
+      >
+        {negative ? "− " : ""}
+        {money(value)}
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: AppColors.background,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: AppColors.textSecondary,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  card: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  monthText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  captionText: {
+    fontSize: 12,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  netAmount: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: AppColors.success,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: AppColors.border,
+    marginVertical: 12,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primary,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  line: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  lineLabel: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+  },
+  lineValue: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: AppColors.text,
+  },
+  negativeValue: {
+    color: AppColors.danger,
+  },
+  boldText: {
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+});

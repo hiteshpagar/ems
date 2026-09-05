@@ -5,17 +5,19 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-
-import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 
-import ScreenWrapper from "../components/ScreenWrapper";
 import API from "../services/api";
+import ScreenWrapper from "../components/ScreenWrapper";
+import AppHeader from "../components/AppHeader";
+import SearchBar from "../components/SearchBar";
+import CustomInput from "../components/CustomInput";
+import CustomButton from "../components/CustomButton";
+import EmptyState from "../components/EmptyState";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 interface Department {
   id: number;
@@ -48,23 +50,16 @@ export default function DepartmentListScreen() {
   const [description, setDescription] = useState("");
   const [editingDepartment, setEditingDepartment] =
     useState<Department | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const filteredDepartments = useMemo(() => {
     const query = search.trim().toLowerCase();
-
-    if (!query) {
-      return departments;
-    }
+    if (!query) return departments;
 
     return departments.filter((department) => {
-      const departmentName = department.name?.toLowerCase() ?? "";
-      const departmentDescription =
-        department.description?.toLowerCase() ?? "";
-
-      return (
-        departmentName.includes(query) ||
-        departmentDescription.includes(query)
-      );
+      const deptName = department.name?.toLowerCase() ?? "";
+      const deptDesc = department.description?.toLowerCase() ?? "";
+      return deptName.includes(query) || deptDesc.includes(query);
     });
   }, [departments, search]);
 
@@ -73,7 +68,7 @@ export default function DepartmentListScreen() {
       const response = await API.get<Department[]>("/departments");
       setDepartments(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.log(error);
+      console.log("Error fetching departments:", error);
       Alert.alert("Error", getErrorMessage(error));
     } finally {
       setLoading(false);
@@ -89,6 +84,14 @@ export default function DepartmentListScreen() {
     setName("");
     setDescription("");
     setEditingDepartment(null);
+    setShowForm(false);
+  };
+
+  const handleStartEdit = (dept: Department) => {
+    setEditingDepartment(dept);
+    setName(dept.name);
+    setDescription(dept.description || "");
+    setShowForm(true);
   };
 
   const buildPayload = (): DepartmentPayload | null => {
@@ -118,10 +121,7 @@ export default function DepartmentListScreen() {
 
   const handleSubmit = async () => {
     const payload = buildPayload();
-
-    if (!payload) {
-      return;
-    }
+    if (!payload) return;
 
     try {
       setSaving(true);
@@ -129,37 +129,29 @@ export default function DepartmentListScreen() {
       if (editingDepartment) {
         const response = await API.put<Department>(
           `/departments/${editingDepartment.id}`,
-          payload,
+          payload
         );
 
-        setDepartments((currentDepartments) =>
-          currentDepartments.map((department) =>
-            department.id === editingDepartment.id
-              ? response.data
-              : department,
-          ),
+        setDepartments((current) =>
+          current.map((dept) =>
+            dept.id === editingDepartment.id ? response.data : dept
+          )
         );
 
         Alert.alert("Success", "Department updated successfully.");
       } else {
         const response = await API.post<Department>("/departments", payload);
-        setDepartments((currentDepartments) => [response.data, ...currentDepartments]);
-        Alert.alert("Success", "Department created successfully.");
+        setDepartments((current) => [response.data, ...current]);
+        Alert.alert("Success", "Department added successfully.");
       }
 
       resetForm();
     } catch (error) {
-      console.log(error);
+      console.log("Error saving department:", error);
       Alert.alert("Error", getErrorMessage(error));
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleEdit = (department: Department) => {
-    setEditingDepartment(department);
-    setName(department.name);
-    setDescription(department.description ?? "");
   };
 
   const handleDelete = (department: Department) => {
@@ -174,22 +166,17 @@ export default function DepartmentListScreen() {
           onPress: async () => {
             try {
               await API.delete(`/departments/${department.id}`);
-              setDepartments((currentDepartments) =>
-                currentDepartments.filter((item) => item.id !== department.id),
+              setDepartments((current) =>
+                current.filter((item) => item.id !== department.id)
               );
-
-              if (editingDepartment?.id === department.id) {
-                resetForm();
-              }
-
               Alert.alert("Success", "Department deleted successfully.");
             } catch (error) {
-              console.log(error);
+              console.log("Error deleting department:", error);
               Alert.alert("Error", getErrorMessage(error));
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -201,153 +188,154 @@ export default function DepartmentListScreen() {
   if (loading) {
     return (
       <ScreenWrapper>
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          style={styles.loader}
-        >
-          <ActivityIndicator size="large" color="#56CCF2" />
-          <Text style={styles.loaderTitle}>Loading Departments</Text>
-        </LinearGradient>
+        <AppHeader title="Departments" showBack />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+          <Text style={styles.loadingText}>Loading departments...</Text>
+        </View>
       </ScreenWrapper>
     );
   }
 
   return (
     <ScreenWrapper>
-      <View style={styles.root}>
-        <LinearGradient
-          colors={["#0F2027", "#203A43", "#2C5364"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
+      <AppHeader
+        title="Departments"
+        subtitle={`${filteredDepartments.length} registered departments`}
+        showBack
+      />
 
-          <View style={styles.headerTextGroup}>
-            <Text style={styles.headerTitle}>Departments</Text>
-            <Text style={styles.headerSub}>
-              {departments.length} total department
-              {departments.length === 1 ? "" : "s"}
-            </Text>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>
-            {editingDepartment ? "Edit Department" : "Add Department"}
-          </Text>
-
-          <TextInput
-            placeholder="Department name"
-            placeholderTextColor="rgba(0,0,0,0.35)"
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-          />
-
-          <TextInput
-            placeholder="Description"
-            placeholderTextColor="rgba(0,0,0,0.35)"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            maxLength={255}
-            style={[styles.input, styles.textArea]}
-          />
-
-          <View style={styles.formActions}>
-            {editingDepartment && (
-              <TouchableOpacity
-                style={[styles.button, styles.secondaryButton]}
-                onPress={resetForm}
-                disabled={saving}
-              >
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={[styles.button, styles.primaryButton]}
-              onPress={handleSubmit}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryButtonText}>
-                  {editingDepartment ? "Update" : "Create"}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.searchBox}>
-          <TextInput
-            placeholder="Search departments"
-            placeholderTextColor="rgba(0,0,0,0.35)"
+      <View style={styles.container}>
+        {/* Search & Toggle Add Form */}
+        <View style={styles.topSection}>
+          <SearchBar
             value={search}
             onChangeText={setSearch}
-            style={styles.searchInput}
+            placeholder="Search departments..."
+            style={styles.searchBar}
           />
 
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
-              <Text style={styles.clearText}>Clear</Text>
-            </TouchableOpacity>
-          )}
+          {!showForm ? (
+            <CustomButton
+              title="+ Add Department"
+              onPress={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+              size="sm"
+              style={styles.addToggleBtn}
+            />
+          ) : null}
         </View>
 
+        {/* Add / Edit Form Card */}
+        {showForm ? (
+          <View style={styles.formCard}>
+            <Text style={styles.formHeading}>
+              {editingDepartment ? "Edit Department" : "New Department"}
+            </Text>
+
+            <CustomInput
+              label="Department Name"
+              placeholder="e.g. Engineering, Marketing"
+              value={name}
+              onChangeText={setName}
+              required
+            />
+
+            <CustomInput
+              label="Description"
+              placeholder="Optional department description"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={2}
+            />
+
+            <View style={styles.formButtonsRow}>
+              <CustomButton
+                title={editingDepartment ? "Update" : "Save Department"}
+                onPress={handleSubmit}
+                loading={saving}
+                style={styles.saveBtn}
+                size="sm"
+              />
+              <CustomButton
+                title="Cancel"
+                onPress={resetForm}
+                variant="secondary"
+                style={styles.cancelBtn}
+                size="sm"
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {/* List of Departments */}
         <FlatList
           data={filteredDepartments}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={AppColors.primary}
+            />
           }
           ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyTitle}>No Departments Found</Text>
-              <Text style={styles.emptySub}>
-                {search
-                  ? "Try a different search term."
-                  : "Create your first department above."}
-              </Text>
-            </View>
+            <EmptyState
+              icon="🏢"
+              title="No Departments Found"
+              message={
+                search
+                  ? `No departments match "${search}".`
+                  : "Create your first company department."
+              }
+              actionTitle={search ? "Clear Search" : "+ Add Department"}
+              onAction={() => {
+                if (search) setSearch("");
+                else setShowForm(true);
+              }}
+            />
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardTop}>
-                <View style={styles.departmentBadge}>
-                  <Text style={styles.departmentInitial}>
-                    {item.name.slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
-
-                <View style={styles.cardInfo}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.description}>
-                    {item.description || "No description added."}
-                  </Text>
-                </View>
+            <View style={styles.deptCard}>
+              <View style={styles.deptIcon}>
+                <Text style={styles.deptIconText}>🏢</Text>
               </View>
 
-              <View style={styles.cardActions}>
+              <View style={styles.deptInfo}>
+                <Text style={styles.deptName}>{item.name}</Text>
+                {item.description ? (
+                  <Text style={styles.deptDesc} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                ) : (
+                  <Text style={styles.deptDescMuted}>No description provided</Text>
+                )}
+              </View>
+
+              <View style={styles.actionsRow}>
                 <TouchableOpacity
-                  style={[styles.smallButton, styles.editButton]}
-                  onPress={() => handleEdit(item)}
+                  style={styles.actionIconBtn}
+                  onPress={() => handleStartEdit(item)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit ${item.name}`}
                 >
-                  <Text style={styles.editButtonText}>Edit</Text>
+                  <Text style={styles.editIcon}>✏️</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.smallButton, styles.deleteButton]}
+                  style={styles.actionIconBtn}
                   onPress={() => handleDelete(item)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${item.name}`}
                 >
-                  <Text style={styles.deleteButtonText}>Delete</Text>
+                  <Text style={styles.deleteIcon}>🗑️</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -359,263 +347,122 @@ export default function DepartmentListScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
+  container: {
     flex: 1,
-    backgroundColor: "#F4F6FB",
-    margin: -20,
+    backgroundColor: AppColors.background,
   },
-
-  loader: {
+  centerContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    margin: -20,
   },
-
-  loaderTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  header: {
-    minHeight: 150,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 24,
-    justifyContent: "flex-end",
-  },
-
-  backBtn: {
-    position: "absolute",
-    top: 18,
-    left: 18,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  backIcon: {
-    color: "#fff",
-    fontSize: 34,
-    lineHeight: 36,
-  },
-
-  headerTextGroup: {
-    gap: 6,
-  },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 34,
-    fontWeight: "800",
-  },
-
-  headerSub: {
-    color: "rgba(255,255,255,0.76)",
-    fontSize: 15,
-  },
-
-  form: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: -18,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-
-  formTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#1F2933",
-    marginBottom: 12,
-  },
-
-  input: {
-    minHeight: 48,
-    backgroundColor: "#F7F9FC",
-    borderWidth: 1,
-    borderColor: "#E4E8F0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    color: "#1F2933",
-    fontSize: 15,
-    marginBottom: 10,
-  },
-
-  textArea: {
-    minHeight: 82,
-    paddingTop: 12,
-    textAlignVertical: "top",
-  },
-
-  formActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 10,
-  },
-
-  button: {
-    minWidth: 104,
-    height: 44,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-  },
-
-  primaryButton: {
-    backgroundColor: "#2F80ED",
-  },
-
-  secondaryButton: {
-    backgroundColor: "#EEF2F7",
-  },
-
-  primaryButtonText: {
-    color: "#fff",
-    fontWeight: "800",
-  },
-
-  secondaryButtonText: {
-    color: "#334155",
-    fontWeight: "800",
-  },
-
-  searchBox: {
-    minHeight: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginTop: 14,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: "#E4E8F0",
-  },
-
-  searchInput: {
-    flex: 1,
-    color: "#1F2933",
-    fontSize: 15,
-  },
-
-  clearText: {
-    color: "#2F80ED",
-    fontWeight: "800",
-    marginLeft: 10,
-  },
-
-  listContent: {
-    padding: 16,
-    paddingBottom: 28,
-  },
-
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E8ECF2",
-  },
-
-  cardTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-
-  departmentBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "rgba(47,128,237,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  departmentInitial: {
-    color: "#2F80ED",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-
-  cardInfo: {
-    flex: 1,
-  },
-
-  name: {
-    color: "#111827",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-
-  description: {
-    color: "#64748B",
+  loadingText: {
+    marginTop: 12,
     fontSize: 14,
-    lineHeight: 20,
+    color: AppColors.textSecondary,
+  },
+  topSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  searchBar: {
+    marginBottom: 8,
+  },
+  addToggleBtn: {
     marginTop: 4,
   },
-
-  cardActions: {
+  formCard: {
+    backgroundColor: AppColors.surface,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: AppRadius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
+  },
+  formHeading: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: AppColors.text,
+    marginBottom: 12,
+  },
+  formButtonsRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     gap: 10,
-    marginTop: 14,
+    marginTop: 4,
   },
-
-  smallButton: {
-    minWidth: 78,
-    height: 38,
-    borderRadius: 8,
+  saveBtn: {
+    flex: 1,
+  },
+  cancelBtn: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  deptCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  deptIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: AppRadius.md,
+    backgroundColor: AppColors.purpleLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  deptIconText: {
+    fontSize: 20,
+  },
+  deptInfo: {
+    flex: 1,
+  },
+  deptName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  deptDesc: {
+    fontSize: 12,
+    color: AppColors.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  deptDescMuted: {
+    fontSize: 12,
+    color: AppColors.textMuted,
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: 8,
+  },
+  actionIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: AppRadius.sm,
+    backgroundColor: AppColors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  editButton: {
-    backgroundColor: "rgba(47,128,237,0.12)",
+  editIcon: {
+    fontSize: 14,
   },
-
-  deleteButton: {
-    backgroundColor: "rgba(235,87,87,0.12)",
-  },
-
-  editButtonText: {
-    color: "#2F80ED",
-    fontWeight: "800",
-  },
-
-  deleteButtonText: {
-    color: "#EB5757",
-    fontWeight: "800",
-  },
-
-  emptyBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 48,
-  },
-
-  emptyTitle: {
-    color: "#111827",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-
-  emptySub: {
-    color: "#64748B",
-    marginTop: 6,
-    textAlign: "center",
+  deleteIcon: {
+    fontSize: 14,
   },
 });
