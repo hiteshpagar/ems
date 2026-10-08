@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -37,6 +38,16 @@ public class AuthController {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @PostMapping("/register")
+    public ResponseEntity<String> registerFirstAdministrator(@RequestBody User user) {
+        userService.registerFirstAdministrator(
+                user.getFullName(),
+                user.getEmail(),
+                user.getPassword());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body("Administrator account created successfully. Please login.");
+    }
 
     @PostMapping("/login")
     public Map<String, String> loginUser(
