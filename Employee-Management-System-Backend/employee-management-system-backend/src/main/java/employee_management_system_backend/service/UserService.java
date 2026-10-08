@@ -3,10 +3,12 @@ package employee_management_system_backend.service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import employee_management_system_backend.dto.ForgotPasswordRequest;
 import employee_management_system_backend.dto.ResetPasswordRequest;
@@ -14,6 +16,7 @@ import employee_management_system_backend.entity.AuditAction;
 import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.User;
 import employee_management_system_backend.exception.ResourceNotFoundException;
+import employee_management_system_backend.exception.ResourceAlreadyExistsException;
 import employee_management_system_backend.repository.UserRepository;
 import employee_management_system_backend.entity.NotificationType;
 
@@ -36,6 +39,27 @@ public class UserService {
     private int otpExpiryMinutes;
 
     private final SecureRandom secureRandom = new SecureRandom();
+
+    /** Creates the first account as administrator and closes public registration afterward. */
+    @Transactional
+    public synchronized User registerFirstAdministrator(String fullName, String email, String password) {
+        String normalizedName = fullName == null ? "" : fullName.trim();
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+
+        if (normalizedName.isEmpty() || normalizedEmail.isEmpty() || password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Full name, email, and password are required.");
+        }
+        if (userRepository.count() > 0) {
+            throw new ResourceAlreadyExistsException("Registration is closed because an account already exists.");
+        }
+
+        User user = new User();
+        user.setFullName(normalizedName);
+        user.setEmail(normalizedEmail);
+        user.setPassword(password);
+        user.setRole("ADMIN");
+        return userRepository.save(user);
+    }
 
     public User login(
             String email,
