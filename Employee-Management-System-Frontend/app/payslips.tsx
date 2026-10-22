@@ -4,6 +4,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useEffect, useState } from "react";
@@ -13,6 +14,7 @@ import ScreenWrapper from "../components/ScreenWrapper";
 import AppHeader from "../components/AppHeader";
 import EmptyState from "../components/EmptyState";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { exportPayslipPdf } from "../utils/payslipPdf";
 
 const money = (amount?: number) =>
   `₹ ${Number(amount || 0).toLocaleString("en-IN", {
@@ -23,6 +25,7 @@ export default function PayslipsScreen() {
   const [payslips, setPayslips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exportingId, setExportingId] = useState<number | null>(null);
 
   const load = async () => {
     try {
@@ -43,6 +46,15 @@ export default function PayslipsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     load();
+  };
+
+  const handleDownloadPdf = async (slip: any) => {
+    try {
+      setExportingId(slip.id);
+      await exportPayslipPdf(slip);
+    } finally {
+      setExportingId(null);
+    }
   };
 
   if (loading) {
@@ -144,6 +156,24 @@ export default function PayslipsScreen() {
                 negative
                 bold
               />
+
+              <View style={styles.cardActionRow}>
+                <TouchableOpacity
+                  style={styles.pdfButton}
+                  onPress={() => handleDownloadPdf(item)}
+                  disabled={exportingId === item.id}
+                  activeOpacity={0.7}
+                >
+                  {exportingId === item.id ? (
+                    <ActivityIndicator size="small" color={AppColors.primary} />
+                  ) : (
+                    <>
+                      <Text style={styles.pdfIcon}>📄</Text>
+                      <Text style={styles.pdfButtonText}>Download / Share PDF</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         />
@@ -262,5 +292,32 @@ const styles = StyleSheet.create({
   boldText: {
     fontWeight: "700",
     color: AppColors.text,
+  },
+  cardActionRow: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  pdfButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: AppRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.primary + "30",
+  },
+  pdfIcon: {
+    fontSize: 15,
+    marginRight: 6,
+  },
+  pdfButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.primary,
   },
 });

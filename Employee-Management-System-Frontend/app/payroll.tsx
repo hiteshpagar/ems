@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
@@ -15,22 +16,13 @@ import AppHeader from "../components/AppHeader";
 import CustomInput from "../components/CustomInput";
 import CustomButton from "../components/CustomButton";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { exportPayslipPdf, PayslipData } from "../utils/payslipPdf";
 
 type Employee = {
   id: number;
   name: string;
   department: string;
   salary: number;
-};
-
-type Payslip = {
-  id: number;
-  employeeName: string;
-  payrollMonth: string;
-  grossSalary: number;
-  totalDeductions: number;
-  netSalary: number;
-  unpaidDays: number;
 };
 
 const money = (amount?: number) =>
@@ -53,7 +45,7 @@ const structureFields = [
 
 export default function PayrollScreen() {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [payslips, setPayslips] = useState<PayslipData[]>([]);
   const [employeeId, setEmployeeId] = useState<number | null>(null);
   const [month, setMonth] = useState(currentMonth);
   const [form, setForm] = useState<Record<string, string>>({
@@ -69,6 +61,7 @@ export default function PayrollScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [exportingId, setExportingId] = useState<number | null>(null);
 
   const selected = useMemo(
     () => employees.find((emp) => emp.id === employeeId),
@@ -78,11 +71,20 @@ export default function PayrollScreen() {
   const update = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const handleExportPdf = async (slip: PayslipData) => {
+    try {
+      setExportingId(slip.id ?? null);
+      await exportPayslipPdf(slip);
+    } finally {
+      setExportingId(null);
+    }
+  };
+
   const load = async () => {
     try {
       const [employeesResponse, payslipsResponse] = await Promise.all([
         API.get<Employee[]>("/employees"),
-        API.get<Payslip[]>("/payroll/payslips"),
+        API.get<PayslipData[]>("/payroll/payslips"),
       ]);
       setEmployees(employeesResponse.data || []);
       setPayslips(payslipsResponse.data || []);
@@ -320,10 +322,27 @@ export default function PayrollScreen() {
                 </View>
 
                 <View style={styles.slipRight}>
-                  <Text style={styles.slipNet}>{money(slip.netSalary)}</Text>
-                  <Text style={styles.slipGross}>
-                    Gross {money(slip.grossSalary)}
-                  </Text>
+                  <View style={styles.slipAmounts}>
+                    <Text style={styles.slipNet}>{money(slip.netSalary)}</Text>
+                    <Text style={styles.slipGross}>
+                      Gross {money(slip.grossSalary)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.slipPdfBtn}
+                    onPress={() => handleExportPdf(slip)}
+                    disabled={exportingId === slip.id}
+                    activeOpacity={0.7}
+                  >
+                    {exportingId === slip.id ? (
+                      <ActivityIndicator size="small" color={AppColors.primary} />
+                    ) : (
+                      <>
+                        <Text style={styles.slipPdfIcon}>📄</Text>
+                        <Text style={styles.slipPdfText}>PDF</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </View>
               </View>
             ))
@@ -480,6 +499,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   slipRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  slipAmounts: {
     alignItems: "flex-end",
   },
   slipNet: {
@@ -491,5 +515,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: AppColors.textMuted,
     marginTop: 2,
+  },
+  slipPdfBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: AppRadius.sm,
+    borderWidth: 1,
+    borderColor: AppColors.primary + "30",
+  },
+  slipPdfIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  slipPdfText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primary,
   },
 });
