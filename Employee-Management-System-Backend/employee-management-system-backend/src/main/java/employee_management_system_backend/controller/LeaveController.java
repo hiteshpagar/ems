@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import employee_management_system_backend.dto.LeaveBalanceDTO;
 import employee_management_system_backend.entity.Leave;
+import employee_management_system_backend.entity.LeaveAllocation;
 import employee_management_system_backend.service.LeaveService;
 
 import org.springframework.security.core.Authentication;
@@ -56,8 +57,38 @@ public class LeaveController {
 
     // Get Employee Leave Balance (Admin)
     @GetMapping("/balance/{employeeId}")
-    public LeaveBalanceDTO getLeaveBalanceByEmployeeId(@PathVariable Long employeeId) {
-        return leaveService.getLeaveBalance(employeeId);
+    public LeaveBalanceDTO getLeaveBalanceByEmployeeId(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) Integer year
+    ) {
+        return leaveService.getLeaveBalance(employeeId, year);
+    }
+
+    // Save Quarterly Leave Allocation (Admin)
+    @PostMapping("/allocations")
+    public LeaveAllocation saveLeaveAllocation(@RequestBody LeaveAllocation allocation) {
+        return leaveService.saveLeaveAllocation(allocation);
+    }
+
+    // Get All Leave Allocations (Admin)
+    @GetMapping("/allocations")
+    public List<LeaveAllocation> getAllocations(@RequestParam(required = false) Integer year) {
+        return leaveService.getAllocations(year);
+    }
+
+    // Get Leave Allocations for Employee
+    @GetMapping("/allocations/{employeeId}")
+    public List<LeaveAllocation> getAllocationsByEmployee(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) Integer year
+    ) {
+        return leaveService.getAllocationsByEmployee(employeeId, year);
+    }
+
+    // Delete Leave Allocation (Admin)
+    @DeleteMapping("/allocations/{id}")
+    public String deleteAllocation(@PathVariable Long id) {
+        return leaveService.deleteAllocation(id);
     }
 
     // Get All Leaves

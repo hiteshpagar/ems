@@ -19,28 +19,27 @@ import { AuthContext } from "../context/AuthContext";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 const LEAVE_TYPES = [
-  "Casual Leave",
-  "Sick Leave",
-  "Annual Leave",
   "Paid Leave",
   "Unpaid Leave",
-  "Maternity Leave",
-  "Paternity Leave",
+  "Work From Home (WFH)",
+  "Sick Leave",
 ];
 
 interface LeaveBalance {
+  year: number;
   totalQuota: number;
   totalUsed: number;
   totalAvailable: number;
-  casualQuota: number;
-  casualUsed: number;
-  casualAvailable: number;
-  sickQuota: number;
-  sickUsed: number;
-  sickAvailable: number;
   paidQuota: number;
   paidUsed: number;
   paidAvailable: number;
+  sickQuota: number;
+  sickUsed: number;
+  sickAvailable: number;
+  wfhQuota: number;
+  wfhUsed: number;
+  wfhAvailable: number;
+  unpaidUsed: number;
   pendingDays: number;
   approvedDays: number;
 }
@@ -128,21 +127,20 @@ export default function ApplyLeaveScreen() {
 
   const quotaWarning = useMemo(() => {
     if (!balance || requestedDays <= 0) return null;
-    if (requestedDays > balance.totalAvailable) {
-      return `Exceeds total annual balance (${balance.totalAvailable} days available)`;
+    if (leaveType === "Unpaid Leave") {
+      return null;
     }
-    const type = leaveType.toLowerCase();
-    if (type.includes("casual") && requestedDays > balance.casualAvailable) {
-      return `Exceeds casual leave quota (${balance.casualAvailable} days available)`;
+    if (leaveType === "Paid Leave" && requestedDays > balance.paidAvailable) {
+      return `Exceeds paid leave quota (${balance.paidAvailable} days available for ${balance.year})`;
     }
-    if (type.includes("sick") && requestedDays > balance.sickAvailable) {
-      return `Exceeds sick leave quota (${balance.sickAvailable} days available)`;
+    if (leaveType === "Sick Leave" && requestedDays > balance.sickAvailable) {
+      return `Exceeds sick leave quota (${balance.sickAvailable} days available for ${balance.year})`;
     }
     if (
-      (type.includes("paid") || type.includes("annual")) &&
-      requestedDays > balance.paidAvailable
+      leaveType === "Work From Home (WFH)" &&
+      requestedDays > balance.wfhAvailable
     ) {
-      return `Exceeds paid/annual leave quota (${balance.paidAvailable} days available)`;
+      return `Exceeds WFH quota (${balance.wfhAvailable} days available for ${balance.year})`;
     }
     return null;
   }, [balance, requestedDays, leaveType]);
@@ -208,9 +206,9 @@ export default function ApplyLeaveScreen() {
           <View style={styles.balanceCard}>
             <View style={styles.balanceHeader}>
               <View>
-                <Text style={styles.balanceTitle}>Annual Leave Balance</Text>
+                <Text style={styles.balanceTitle}>Annual Leave Balances</Text>
                 <Text style={styles.balanceSubtitle}>
-                  Allowance tracking for {new Date().getFullYear()}
+                  Quarterly tracking for {balance.year || new Date().getFullYear()}
                 </Text>
               </View>
               <View style={styles.totalBadge}>
@@ -221,39 +219,46 @@ export default function ApplyLeaveScreen() {
               </View>
             </View>
 
-            <View style={styles.quotaGrid}>
-              <View style={[styles.quotaItem, { backgroundColor: AppColors.primaryLight }]}>
-                <Text style={styles.quotaItemTitle}>Casual</Text>
-                <Text style={[styles.quotaItemValue, { color: AppColors.primaryDark }]}>
-                  {balance.casualAvailable} / {balance.casualQuota}d
+            {balance.totalQuota === 0 ? (
+              <View style={styles.emptyQuotaNotice}>
+                <Text style={styles.emptyQuotaNoticeText}>
+                  ℹ️ No quarterly quota has been allocated for {balance.year || new Date().getFullYear()} yet.
+                  {isAdmin ? " You can allocate quotas from the Leave Allocation screen." : " Please contact your administrator."}
                 </Text>
-                <Text style={styles.quotaItemSub}>Used: {balance.casualUsed}d</Text>
               </View>
+            ) : (
+              <View style={styles.quotaGrid}>
+                <View style={[styles.quotaItem, { backgroundColor: AppColors.primaryLight }]}>
+                  <Text style={styles.quotaItemTitle}>Paid Leave</Text>
+                  <Text style={[styles.quotaItemValue, { color: AppColors.primaryDark }]}>
+                    {balance.paidAvailable} / {balance.paidQuota}d
+                  </Text>
+                  <Text style={styles.quotaItemSub}>Used: {balance.paidUsed}d</Text>
+                </View>
 
-              <View style={[styles.quotaItem, { backgroundColor: AppColors.warningLight }]}>
-                <Text style={styles.quotaItemTitle}>Sick</Text>
-                <Text style={[styles.quotaItemValue, { color: AppColors.warning }]}>
-                  {balance.sickAvailable} / {balance.sickQuota}d
-                </Text>
-                <Text style={styles.quotaItemSub}>Used: {balance.sickUsed}d</Text>
-              </View>
+                <View style={[styles.quotaItem, { backgroundColor: AppColors.warningLight }]}>
+                  <Text style={styles.quotaItemTitle}>Sick Leave</Text>
+                  <Text style={[styles.quotaItemValue, { color: AppColors.warning }]}>
+                    {balance.sickAvailable} / {balance.sickQuota}d
+                  </Text>
+                  <Text style={styles.quotaItemSub}>Used: {balance.sickUsed}d</Text>
+                </View>
 
-              <View style={[styles.quotaItem, { backgroundColor: AppColors.successLight }]}>
-                <Text style={styles.quotaItemTitle}>Paid / Annual</Text>
-                <Text style={[styles.quotaItemValue, { color: AppColors.success }]}>
-                  {balance.paidAvailable} / {balance.paidQuota}d
-                </Text>
-                <Text style={styles.quotaItemSub}>Used: {balance.paidUsed}d</Text>
+                <View style={[styles.quotaItem, { backgroundColor: AppColors.successLight }]}>
+                  <Text style={styles.quotaItemTitle}>WFH</Text>
+                  <Text style={[styles.quotaItemValue, { color: AppColors.success }]}>
+                    {balance.wfhAvailable} / {balance.wfhQuota}d
+                  </Text>
+                  <Text style={styles.quotaItemSub}>Used: {balance.wfhUsed}d</Text>
+                </View>
               </View>
+            )}
+
+            <View style={styles.statusMetaRow}>
+              <Text style={styles.statusMetaText}>
+                ⏳ Pending: {balance.pendingDays}d  •  ✅ Approved: {balance.approvedDays}d  •  🏖️ Unpaid: {balance.unpaidUsed}d
+              </Text>
             </View>
-
-            {balance.pendingDays > 0 || balance.approvedDays > 0 ? (
-              <View style={styles.statusMetaRow}>
-                <Text style={styles.statusMetaText}>
-                  ⏳ Pending: {balance.pendingDays}d  •  ✅ Approved: {balance.approvedDays}d
-                </Text>
-              </View>
-            ) : null}
           </View>
         ) : null}
 
@@ -412,6 +417,18 @@ const styles = StyleSheet.create({
     color: AppColors.primaryDark,
     fontWeight: "600",
     textTransform: "uppercase",
+  },
+  emptyQuotaNotice: {
+    backgroundColor: AppColors.surfaceMuted,
+    borderRadius: AppRadius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  emptyQuotaNoticeText: {
+    fontSize: 12,
+    color: AppColors.textSecondary,
+    lineHeight: 18,
   },
   quotaGrid: {
     flexDirection: "row",

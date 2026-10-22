@@ -25,18 +25,20 @@ import { exportLeavesCsv } from "../utils/csvExport";
 type TabFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
 interface LeaveBalance {
+  year: number;
   totalQuota: number;
   totalUsed: number;
   totalAvailable: number;
-  casualQuota: number;
-  casualUsed: number;
-  casualAvailable: number;
-  sickQuota: number;
-  sickUsed: number;
-  sickAvailable: number;
   paidQuota: number;
   paidUsed: number;
   paidAvailable: number;
+  sickQuota: number;
+  sickUsed: number;
+  sickAvailable: number;
+  wfhQuota: number;
+  wfhUsed: number;
+  wfhAvailable: number;
+  unpaidUsed: number;
   pendingDays: number;
   approvedDays: number;
 }
@@ -138,23 +140,35 @@ export default function LeaveListScreen() {
         subtitle={`${filteredLeaves.length} requests shown`}
         showBack
         rightAction={
-          filteredLeaves.length > 0 ? (
-            <TouchableOpacity
-              style={styles.exportHeaderBtn}
-              onPress={handleExportCsv}
-              disabled={exporting}
-              activeOpacity={0.7}
-            >
-              {exporting ? (
-                <ActivityIndicator size="small" color={AppColors.primary} />
-              ) : (
-                <>
-                  <Text style={styles.exportHeaderIcon}>📥</Text>
-                  <Text style={styles.exportHeaderText}>CSV</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          ) : null
+          <View style={styles.headerRightRow}>
+            {isAdmin ? (
+              <TouchableOpacity
+                style={styles.headerActionBtn}
+                onPress={() => router.push("/leave-allocation")}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.headerActionText}>⚖️ Quotas</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {filteredLeaves.length > 0 ? (
+              <TouchableOpacity
+                style={styles.exportHeaderBtn}
+                onPress={handleExportCsv}
+                disabled={exporting}
+                activeOpacity={0.7}
+              >
+                {exporting ? (
+                  <ActivityIndicator size="small" color={AppColors.primary} />
+                ) : (
+                  <>
+                    <Text style={styles.exportHeaderIcon}>📥</Text>
+                    <Text style={styles.exportHeaderText}>CSV</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </View>
         }
       />
 
@@ -165,7 +179,7 @@ export default function LeaveListScreen() {
             <View style={styles.balanceWidgetHeader}>
               <View>
                 <Text style={styles.balanceWidgetTitle}>
-                  Leave Balances ({new Date().getFullYear()})
+                  Leave Balances ({balance.year || new Date().getFullYear()})
                 </Text>
                 <Text style={styles.balanceWidgetSub}>
                   {balance.totalAvailable} of {balance.totalQuota} days remaining
@@ -186,14 +200,14 @@ export default function LeaveListScreen() {
                   { backgroundColor: AppColors.primaryLight },
                 ]}
               >
-                <Text style={styles.balancePillLabel}>Casual</Text>
+                <Text style={styles.balancePillLabel}>Paid</Text>
                 <Text
                   style={[
                     styles.balancePillValue,
                     { color: AppColors.primaryDark },
                   ]}
                 >
-                  {balance.casualAvailable}/{balance.casualQuota}d
+                  {balance.paidAvailable}/{balance.paidQuota}d
                 </Text>
               </View>
 
@@ -220,14 +234,14 @@ export default function LeaveListScreen() {
                   { backgroundColor: AppColors.successLight },
                 ]}
               >
-                <Text style={styles.balancePillLabel}>Paid</Text>
+                <Text style={styles.balancePillLabel}>WFH</Text>
                 <Text
                   style={[
                     styles.balancePillValue,
                     { color: AppColors.success },
                   ]}
                 >
-                  {balance.paidAvailable}/{balance.paidQuota}d
+                  {balance.wfhAvailable}/{balance.wfhQuota}d
                 </Text>
               </View>
             </View>
@@ -546,5 +560,25 @@ const styles = StyleSheet.create({
   balancePillValue: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  headerRightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: AppRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.primary,
+  },
+  headerActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primaryDark,
   },
 });
