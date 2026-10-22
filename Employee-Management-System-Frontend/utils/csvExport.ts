@@ -73,16 +73,64 @@ export async function exportToCsv(
       }
     }
 
-    const isSharingAvailable = await Sharing.isAvailableAsync();
-    if (isSharingAvailable && targetUri) {
-      await Sharing.shareAsync(targetUri, {
-        mimeType: "text/csv",
-        dialogTitle: `Export ${normalizedName}`,
-        UTI: "public.comma-separated-values-text",
-      });
-    } else {
-      Alert.alert("Success", `CSV exported to: ${targetUri}`);
+    const shareViaApps = async () => {
+      const isSharingAvailable = await Sharing.isAvailableAsync();
+      if (isSharingAvailable && targetUri) {
+        await Sharing.shareAsync(targetUri, {
+          mimeType: "text/csv",
+          dialogTitle: `Export ${normalizedName}`,
+          UTI: "public.comma-separated-values-text",
+        });
+      } else {
+        Alert.alert("Success", `CSV exported to: ${targetUri}`);
+      }
+    };
+
+    if (Platform.OS === "android") {
+      Alert.alert(
+        "Export CSV",
+        `Choose how to save ${normalizedName}:`,
+        [
+          {
+            text: "Save to Device / Downloads",
+            onPress: async () => {
+              try {
+                const pickDir = (FileSystem.Directory as any)?.pickDirectoryAsync;
+                if (typeof pickDir === "function") {
+                  const selectedDir = await pickDir();
+                  if (selectedDir) {
+                    const targetFile = selectedDir.createFile(normalizedName, "text/csv");
+                    targetFile.write(csvContent);
+                    Alert.alert(
+                      "Downloaded",
+                      `${normalizedName} has been saved to your selected folder.`
+                    );
+                    return;
+                  }
+                }
+                // Fallback to share if directory picker isn't available
+                await shareViaApps();
+              } catch (err: any) {
+                if (err?.message?.toLowerCase().includes("cancel")) {
+                  return;
+                }
+                console.log("Error saving to folder:", err);
+                await shareViaApps();
+              }
+            },
+          },
+          {
+            text: "Share via Apps",
+            onPress: shareViaApps,
+          },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+      return;
     }
+
+    // iOS: System share sheet natively contains "Save to Files"
+    await shareViaApps();
   } catch (error: any) {
     console.log("Error exporting CSV:", error);
     Alert.alert("Export Error", error?.message || "Failed to export data to CSV.");
