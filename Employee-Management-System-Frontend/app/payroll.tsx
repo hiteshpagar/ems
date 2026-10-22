@@ -17,6 +17,7 @@ import CustomInput from "../components/CustomInput";
 import CustomButton from "../components/CustomButton";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 import { exportPayslipPdf, PayslipData } from "../utils/payslipPdf";
+import { exportPayrollCsv } from "../utils/csvExport";
 
 type Employee = {
   id: number;
@@ -62,6 +63,7 @@ export default function PayrollScreen() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [exportingId, setExportingId] = useState<number | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   const selected = useMemo(
     () => employees.find((emp) => emp.id === employeeId),
@@ -77,6 +79,19 @@ export default function PayrollScreen() {
       await exportPayslipPdf(slip);
     } finally {
       setExportingId(null);
+    }
+  };
+
+  const handleExportAllCsv = async () => {
+    if (payslips.length === 0) {
+      Alert.alert("No Data", "There are no payslips to export.");
+      return;
+    }
+    try {
+      setExportingCsv(true);
+      await exportPayrollCsv(payslips);
+    } finally {
+      setExportingCsv(false);
     }
   };
 
@@ -304,7 +319,26 @@ export default function PayrollScreen() {
 
         {/* Generated Payslips */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Generated Payslips</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Recent Generated Payslips</Text>
+            {payslips.length > 0 ? (
+              <TouchableOpacity
+                style={styles.exportHeaderBtn}
+                onPress={handleExportAllCsv}
+                disabled={exportingCsv}
+                activeOpacity={0.7}
+              >
+                {exportingCsv ? (
+                  <ActivityIndicator size="small" color={AppColors.primary} />
+                ) : (
+                  <>
+                    <Text style={styles.exportHeaderIcon}>📥</Text>
+                    <Text style={styles.exportHeaderText}>Export CSV</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </View>
           {payslips.length === 0 ? (
             <View style={styles.emptyPayslips}>
               <Text style={styles.emptyPayslipsText}>
@@ -531,6 +565,32 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   slipPdfText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primary,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  exportHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.surface,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: AppRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  exportHeaderIcon: {
+    fontSize: 13,
+    marginRight: 4,
+  },
+  exportHeaderText: {
     fontSize: 12,
     fontWeight: "700",
     color: AppColors.primary,

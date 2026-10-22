@@ -1,9 +1,11 @@
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useContext, useEffect, useState, useCallback } from "react";
@@ -16,11 +18,13 @@ import EmptyState from "../components/EmptyState";
 import { formatDate } from "../utils/date";
 import { AuthContext } from "../context/AuthContext";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { exportAttendanceCsv } from "../utils/csvExport";
 
 export default function AttendanceHistoryScreen() {
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
@@ -53,6 +57,19 @@ export default function AttendanceHistoryScreen() {
     fetchAttendance();
   };
 
+  const handleExportCsv = async () => {
+    if (attendance.length === 0) {
+      Alert.alert("No Data", "There are no attendance records to export.");
+      return;
+    }
+    try {
+      setExporting(true);
+      await exportAttendanceCsv(attendance);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const formatTime = (time: string | null) => {
     if (!time) return "Not recorded";
     const parts = time.split(":");
@@ -83,6 +100,25 @@ export default function AttendanceHistoryScreen() {
         title="Attendance History"
         subtitle={`${attendance.length} total logs recorded`}
         showBack
+        rightAction={
+          attendance.length > 0 ? (
+            <TouchableOpacity
+              style={styles.exportHeaderBtn}
+              onPress={handleExportCsv}
+              disabled={exporting}
+              activeOpacity={0.7}
+            >
+              {exporting ? (
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              ) : (
+                <>
+                  <Text style={styles.exportHeaderIcon}>📥</Text>
+                  <Text style={styles.exportHeaderText}>CSV</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : null
+        }
       />
 
       <View style={styles.container}>
@@ -219,5 +255,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: AppColors.text,
+  },
+  exportHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.surface,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: AppRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  exportHeaderIcon: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  exportHeaderText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primary,
   },
 });

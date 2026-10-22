@@ -1,5 +1,6 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 import { Alert, Platform } from "react-native";
 
 export interface PayslipData {
@@ -398,16 +399,67 @@ export async function exportPayslipPdf(slip: PayslipData): Promise<void> {
       base64: false,
     });
 
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (isAvailable) {
-      await Sharing.shareAsync(uri, {
-        UTI: ".pdf",
-        mimeType: "application/pdf",
-        dialogTitle: `Payslip_${slip.employeeName.replace(/\\s+/g, "_")}_${slip.payrollMonth}`,
-      });
-    } else {
-      Alert.alert("Success", "Payslip generated successfully at: " + uri);
+    const filename = `Payslip_${slip.employeeName.replace(/\s+/g, "_")}_${slip.payrollMonth}.pdf`;
+
+    const shareViaApps = async () => {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          UTI: ".pdf",
+          mimeType: "application/pdf",
+          dialogTitle: filename,
+        });
+      } else {
+        Alert.alert("Success", "Payslip generated successfully at: " + uri);
+      }
+    };
+
+    if (Platform.OS === "android") {
+      Alert.alert(
+        "Export Payslip",
+        `Choose how to save ${filename}:`,
+        [
+          {
+            text: "Save to Device / Downloads",
+            onPress: async () => {
+              try {
+                const pickDir = (FileSystem.Directory as any)?.pickDirectoryAsync;
+                if (typeof pickDir === "function") {
+                  const selectedDir = await pickDir();
+                  if (selectedDir) {
+                    const sourceFile = new FileSystem.File(uri);
+                    const bytes = await sourceFile.bytes();
+                    const targetFile = selectedDir.createFile(filename, "application/pdf");
+                    targetFile.write(bytes);
+                    Alert.alert(
+                      "Downloaded",
+                      `${filename} has been saved to your selected folder.`
+                    );
+                    return;
+                  }
+                }
+                await shareViaApps();
+              } catch (err: any) {
+                if (err?.message?.toLowerCase().includes("cancel")) {
+                  return;
+                }
+                console.log("Error saving PDF to folder:", err);
+                await shareViaApps();
+              }
+            },
+          },
+          {
+            text: "Share via Apps",
+            onPress: shareViaApps,
+          },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+      return;
     }
+
+    // iOS: System share sheet natively contains "Save to Files"
+    await shareViaApps();
   } catch (error: any) {
     console.log("Error generating payslip PDF:", error);
     Alert.alert(
