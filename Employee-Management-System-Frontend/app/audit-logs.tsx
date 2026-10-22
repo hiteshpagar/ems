@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   RefreshControl,
@@ -22,6 +23,7 @@ import DatePickerField from "../components/DatePickerField";
 import CustomButton from "../components/CustomButton";
 import { AuthContext } from "../context/AuthContext";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { exportAuditLogsCsv } from "../utils/csvExport";
 
 const MODULES = [
   "ALL",
@@ -85,6 +87,20 @@ export default function AuditLogsScreen() {
 
   // Selected Log for Details Modal
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportCsv = async () => {
+    if (logs.length === 0) {
+      Alert.alert("No Data", "There are no audit logs to export.");
+      return;
+    }
+    try {
+      setExporting(true);
+      await exportAuditLogsCsv(logs);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchAuditLogs = useCallback(
     async (pageNumber = 0, isRefresh = false) => {
@@ -232,7 +248,30 @@ export default function AuditLogsScreen() {
 
   return (
     <ScreenWrapper>
-      <AppHeader title="Audit Logs" showBack />
+      <AppHeader
+        title="Audit Logs"
+        subtitle={`${totalElements} entries recorded`}
+        showBack
+        rightAction={
+          logs.length > 0 ? (
+            <TouchableOpacity
+              style={styles.exportHeaderBtn}
+              onPress={handleExportCsv}
+              disabled={exporting}
+              activeOpacity={0.7}
+            >
+              {exporting ? (
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              ) : (
+                <>
+                  <Text style={styles.exportHeaderIcon}>📥</Text>
+                  <Text style={styles.exportHeaderText}>CSV</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : null
+        }
+      />
 
       <View style={styles.container}>
         {/* Search & Date Filter Bar */}
@@ -995,5 +1034,25 @@ const styles = StyleSheet.create({
   modalDivider: {
     height: 1,
     backgroundColor: AppColors.border,
+  },
+  exportHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.surface,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: AppRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  exportHeaderIcon: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  exportHeaderText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primary,
   },
 });

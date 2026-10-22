@@ -1,5 +1,6 @@
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -19,6 +20,7 @@ import CustomButton from "../components/CustomButton";
 import { formatDate } from "../utils/date";
 import { AuthContext } from "../context/AuthContext";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { exportLeavesCsv } from "../utils/csvExport";
 
 type TabFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
@@ -27,6 +29,7 @@ export default function LeaveListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabFilter>("ALL");
+  const [exporting, setExporting] = useState(false);
 
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
@@ -67,6 +70,19 @@ export default function LeaveListScreen() {
     });
   }, [leaves, activeTab]);
 
+  const handleExportCsv = async () => {
+    if (filteredLeaves.length === 0) {
+      Alert.alert("No Data", "There are no leave requests to export.");
+      return;
+    }
+    try {
+      setExporting(true);
+      await exportLeavesCsv(filteredLeaves);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <ScreenWrapper>
@@ -92,6 +108,25 @@ export default function LeaveListScreen() {
         title={isAdmin ? "Leave Management" : "My Leaves"}
         subtitle={`${filteredLeaves.length} requests shown`}
         showBack
+        rightAction={
+          filteredLeaves.length > 0 ? (
+            <TouchableOpacity
+              style={styles.exportHeaderBtn}
+              onPress={handleExportCsv}
+              disabled={exporting}
+              activeOpacity={0.7}
+            >
+              {exporting ? (
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              ) : (
+                <>
+                  <Text style={styles.exportHeaderIcon}>📥</Text>
+                  <Text style={styles.exportHeaderText}>CSV</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : null
+        }
       />
 
       <View style={styles.container}>
@@ -322,5 +357,25 @@ const styles = StyleSheet.create({
     borderTopColor: AppColors.border,
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  exportHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.surface,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: AppRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  exportHeaderIcon: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  exportHeaderText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primary,
   },
 });
