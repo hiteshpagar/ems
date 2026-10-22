@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import employee_management_system_backend.dto.LeaveBalanceDTO;
 import employee_management_system_backend.entity.AuditAction;
 import employee_management_system_backend.entity.AuditModule;
 import employee_management_system_backend.entity.Leave;
@@ -19,7 +20,10 @@ import employee_management_system_backend.entity.NotificationType;
 @Service
 public class LeaveService {
 
-    private static final long ANNUAL_LEAVE_BALANCE_DAYS = 24;
+    public static final long ANNUAL_LEAVE_BALANCE_DAYS = 24;
+    public static final long CASUAL_LEAVE_QUOTA = 12;
+    public static final long SICK_LEAVE_QUOTA = 8;
+    public static final long PAID_LEAVE_QUOTA = 4;
 
     @Autowired
     private LeaveRepository leaveRepository;
@@ -35,6 +39,68 @@ public class LeaveService {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    // Get Leave Balance & Quotas
+    public LeaveBalanceDTO getLeaveBalance(Long employeeId) {
+        if (employeeId == null) {
+            throw new IllegalArgumentException("Employee ID is required.");
+        }
+
+        int currentYear = LocalDate.now().getYear();
+        List<Leave> activeLeaves = leaveRepository.findByEmployeeIdAndStatusNotIgnoreCase(employeeId, "Rejected");
+
+        long casualUsed = 0;
+        long sickUsed = 0;
+        long paidUsed = 0;
+        long totalUsed = 0;
+        long pendingDays = 0;
+        long approvedDays = 0;
+
+        for (Leave leave : activeLeaves) {
+            if (leave.getStartDate() == null || leave.getEndDate() == null) continue;
+            if (leave.getStartDate().getYear() == currentYear) {
+                long days = ChronoUnit.DAYS.between(leave.getStartDate(), leave.getEndDate()) + 1;
+                totalUsed += days;
+
+                String type = leave.getLeaveType() != null ? leave.getLeaveType().trim().toLowerCase() : "";
+                if (type.contains("casual")) {
+                    casualUsed += days;
+                } else if (type.contains("sick")) {
+                    sickUsed += days;
+                } else if (type.contains("paid") || type.contains("annual")) {
+                    paidUsed += days;
+                }
+
+                if ("Pending".equalsIgnoreCase(leave.getStatus())) {
+                    pendingDays += days;
+                } else if ("Approved".equalsIgnoreCase(leave.getStatus())) {
+                    approvedDays += days;
+                }
+            }
+        }
+
+        long totalAvailable = Math.max(0, ANNUAL_LEAVE_BALANCE_DAYS - totalUsed);
+        long casualAvailable = Math.max(0, CASUAL_LEAVE_QUOTA - casualUsed);
+        long sickAvailable = Math.max(0, SICK_LEAVE_QUOTA - sickUsed);
+        long paidAvailable = Math.max(0, PAID_LEAVE_QUOTA - paidUsed);
+
+        return new LeaveBalanceDTO(
+                ANNUAL_LEAVE_BALANCE_DAYS,
+                totalUsed,
+                totalAvailable,
+                CASUAL_LEAVE_QUOTA,
+                casualUsed,
+                casualAvailable,
+                SICK_LEAVE_QUOTA,
+                sickUsed,
+                sickAvailable,
+                PAID_LEAVE_QUOTA,
+                paidUsed,
+                paidAvailable,
+                pendingDays,
+                approvedDays
+        );
+    }
 
     // Apply Leave
     public Leave applyLeave(Leave leave) {
@@ -52,12 +118,19 @@ public class LeaveService {
         }
 
         long requestedDays = ChronoUnit.DAYS.between(leave.getStartDate(), leave.getEndDate()) + 1;
-        long usedDays = leaveRepository.findByEmployeeIdAndStatusNotIgnoreCase(leave.getEmployeeId(), "Rejected")
-                .stream().filter(existing -> existing.getStartDate() != null && existing.getEndDate() != null
-                        && existing.getStartDate().getYear() == leave.getStartDate().getYear())
-                .mapToLong(existing -> ChronoUnit.DAYS.between(existing.getStartDate(), existing.getEndDate()) + 1).sum();
-        if (usedDays + requestedDays > ANNUAL_LEAVE_BALANCE_DAYS) {
-            throw new IllegalArgumentException("Leave balance exceeded. Annual allowance is " + ANNUAL_LEAVE_BALANCE_DAYS + " days.");
+        LeaveBalanceDTO balance = getLeaveBalance(leave.getEmployeeId());
+
+        if (requestedDays > balance.getTotalAvailable()) {
+            throw new IllegalArgumentException("Leave balance exceeded. Available total allowance is " + balance.getTotalAvailable() + " day(s).");
+        }
+
+        String type = leave.getLeaveType() != null ? leave.getLeaveType().trim().toLowerCase() : "";
+        if (type.contains("casual") && requestedDays > balance.getCasualAvailable()) {
+            throw new IllegalArgumentException("Casual leave quota exceeded. Available: " + balance.getCasualAvailable() + " day(s), requested: " + requestedDays + " day(s).");
+        } else if (type.contains("sick") && requestedDays > balance.getSickAvailable()) {
+            throw new IllegalArgumentException("Sick leave quota exceeded. Available: " + balance.getSickAvailable() + " day(s), requested: " + requestedDays + " day(s).");
+        } else if ((type.contains("paid") || type.contains("annual")) && requestedDays > balance.getPaidAvailable()) {
+            throw new IllegalArgumentException("Paid/Annual leave quota exceeded. Available: " + balance.getPaidAvailable() + " day(s), requested: " + requestedDays + " day(s).");
         }
 
         leave.setEmployeeName(employee.getName());

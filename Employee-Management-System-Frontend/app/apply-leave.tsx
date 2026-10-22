@@ -5,7 +5,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
 
@@ -28,6 +28,23 @@ const LEAVE_TYPES = [
   "Paternity Leave",
 ];
 
+interface LeaveBalance {
+  totalQuota: number;
+  totalUsed: number;
+  totalAvailable: number;
+  casualQuota: number;
+  casualUsed: number;
+  casualAvailable: number;
+  sickQuota: number;
+  sickUsed: number;
+  sickAvailable: number;
+  paidQuota: number;
+  paidUsed: number;
+  paidAvailable: number;
+  pendingDays: number;
+  approvedDays: number;
+}
+
 export default function ApplyLeaveScreen() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [employeeId, setEmployeeId] = useState<number | null>(null);
@@ -37,6 +54,7 @@ export default function ApplyLeaveScreen() {
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [balance, setBalance] = useState<LeaveBalance | null>(null);
 
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
@@ -65,6 +83,22 @@ export default function ApplyLeaveScreen() {
     }
   };
 
+  const fetchBalance = useCallback(
+    async (targetEmployeeId: number | null) => {
+      try {
+        const url =
+          isAdmin && targetEmployeeId
+            ? `/leaves/balance/${targetEmployeeId}`
+            : "/leaves/me/balance";
+        const response = await API.get(url);
+        setBalance(response.data);
+      } catch (error) {
+        console.log("Error fetching leave balance:", error);
+      }
+    },
+    [isAdmin]
+  );
+
   useEffect(() => {
     if (isAdmin) {
       fetchEmployees();
@@ -72,6 +106,46 @@ export default function ApplyLeaveScreen() {
       fetchLoggedInEmployee();
     }
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (employeeId) {
+      fetchBalance(employeeId);
+    } else if (!isAdmin) {
+      fetchBalance(null);
+    }
+  }, [employeeId, isAdmin, fetchBalance]);
+
+  const requestedDays = useMemo(() => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+      return 0;
+    }
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }, [startDate, endDate]);
+
+  const quotaWarning = useMemo(() => {
+    if (!balance || requestedDays <= 0) return null;
+    if (requestedDays > balance.totalAvailable) {
+      return `Exceeds total annual balance (${balance.totalAvailable} days available)`;
+    }
+    const type = leaveType.toLowerCase();
+    if (type.includes("casual") && requestedDays > balance.casualAvailable) {
+      return `Exceeds casual leave quota (${balance.casualAvailable} days available)`;
+    }
+    if (type.includes("sick") && requestedDays > balance.sickAvailable) {
+      return `Exceeds sick leave quota (${balance.sickAvailable} days available)`;
+    }
+    if (
+      (type.includes("paid") || type.includes("annual")) &&
+      requestedDays > balance.paidAvailable
+    ) {
+      return `Exceeds paid/annual leave quota (${balance.paidAvailable} days available)`;
+    }
+    return null;
+  }, [balance, requestedDays, leaveType]);
 
   const handleApplyLeave = async () => {
     if (isAdmin && !employeeId) {
@@ -81,6 +155,11 @@ export default function ApplyLeaveScreen() {
 
     if (!leaveType || !startDate || !endDate || !reason.trim()) {
       Alert.alert("Required Fields", "Please fill in all required fields.");
+      return;
+    }
+
+    if (quotaWarning) {
+      Alert.alert("Quota Exceeded", quotaWarning);
       return;
     }
 
@@ -124,6 +203,60 @@ export default function ApplyLeaveScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Leave Balance Overview Card */}
+        {balance ? (
+          <View style={styles.balanceCard}>
+            <View style={styles.balanceHeader}>
+              <View>
+                <Text style={styles.balanceTitle}>Annual Leave Balance</Text>
+                <Text style={styles.balanceSubtitle}>
+                  Allowance tracking for {new Date().getFullYear()}
+                </Text>
+              </View>
+              <View style={styles.totalBadge}>
+                <Text style={styles.totalBadgeValue}>
+                  {balance.totalAvailable} / {balance.totalQuota}
+                </Text>
+                <Text style={styles.totalBadgeLabel}>Days Left</Text>
+              </View>
+            </View>
+
+            <View style={styles.quotaGrid}>
+              <View style={[styles.quotaItem, { backgroundColor: AppColors.primaryLight }]}>
+                <Text style={styles.quotaItemTitle}>Casual</Text>
+                <Text style={[styles.quotaItemValue, { color: AppColors.primaryDark }]}>
+                  {balance.casualAvailable} / {balance.casualQuota}d
+                </Text>
+                <Text style={styles.quotaItemSub}>Used: {balance.casualUsed}d</Text>
+              </View>
+
+              <View style={[styles.quotaItem, { backgroundColor: AppColors.warningLight }]}>
+                <Text style={styles.quotaItemTitle}>Sick</Text>
+                <Text style={[styles.quotaItemValue, { color: AppColors.warning }]}>
+                  {balance.sickAvailable} / {balance.sickQuota}d
+                </Text>
+                <Text style={styles.quotaItemSub}>Used: {balance.sickUsed}d</Text>
+              </View>
+
+              <View style={[styles.quotaItem, { backgroundColor: AppColors.successLight }]}>
+                <Text style={styles.quotaItemTitle}>Paid / Annual</Text>
+                <Text style={[styles.quotaItemValue, { color: AppColors.success }]}>
+                  {balance.paidAvailable} / {balance.paidQuota}d
+                </Text>
+                <Text style={styles.quotaItemSub}>Used: {balance.paidUsed}d</Text>
+              </View>
+            </View>
+
+            {balance.pendingDays > 0 || balance.approvedDays > 0 ? (
+              <View style={styles.statusMetaRow}>
+                <Text style={styles.statusMetaText}>
+                  ⏳ Pending: {balance.pendingDays}d  •  ✅ Approved: {balance.approvedDays}d
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.card}>
           {/* Admin Employee Selector */}
           {isAdmin ? (
@@ -190,6 +323,25 @@ export default function ApplyLeaveScreen() {
             required
           />
 
+          {/* Real-time Duration and Quota Banner */}
+          {requestedDays > 0 ? (
+            <View
+              style={[
+                styles.durationBanner,
+                quotaWarning ? styles.durationWarningBanner : styles.durationSuccessBanner,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.durationText,
+                  quotaWarning ? styles.durationWarningText : styles.durationSuccessText,
+                ]}
+              >
+                {quotaWarning ? `⚠️ ${quotaWarning}` : `🗓️ Duration: ${requestedDays} day${requestedDays > 1 ? "s" : ""}`}
+              </Text>
+            </View>
+          ) : null}
+
           {/* Reason */}
           <CustomInput
             label="Reason for Leave"
@@ -217,6 +369,111 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
+  },
+  balanceCard: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    marginBottom: 16,
+    ...AppShadows.card,
+  },
+  balanceHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  balanceTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  balanceSubtitle: {
+    fontSize: 12,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  totalBadge: {
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+  },
+  totalBadgeValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.primaryDark,
+  },
+  totalBadgeLabel: {
+    fontSize: 10,
+    color: AppColors.primaryDark,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  quotaGrid: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  quotaItem: {
+    flex: 1,
+    padding: 10,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+  },
+  quotaItemTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+    marginBottom: 4,
+  },
+  quotaItemValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  quotaItemSub: {
+    fontSize: 10,
+    color: AppColors.textMuted,
+  },
+  statusMetaRow: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
+    alignItems: "center",
+  },
+  statusMetaText: {
+    fontSize: 12,
+    color: AppColors.textSecondary,
+    fontWeight: "500",
+  },
+  durationBanner: {
+    padding: 12,
+    borderRadius: AppRadius.md,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  durationSuccessBanner: {
+    backgroundColor: AppColors.primaryLight,
+    borderColor: AppColors.primary,
+  },
+  durationWarningBanner: {
+    backgroundColor: AppColors.dangerLight,
+    borderColor: AppColors.danger,
+  },
+  durationText: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  durationSuccessText: {
+    color: AppColors.primaryDark,
+  },
+  durationWarningText: {
+    color: AppColors.danger,
   },
   card: {
     backgroundColor: AppColors.surface,

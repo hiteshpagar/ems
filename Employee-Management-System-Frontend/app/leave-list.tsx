@@ -24,8 +24,26 @@ import { exportLeavesCsv } from "../utils/csvExport";
 
 type TabFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
+interface LeaveBalance {
+  totalQuota: number;
+  totalUsed: number;
+  totalAvailable: number;
+  casualQuota: number;
+  casualUsed: number;
+  casualAvailable: number;
+  sickQuota: number;
+  sickUsed: number;
+  sickAvailable: number;
+  paidQuota: number;
+  paidUsed: number;
+  paidAvailable: number;
+  pendingDays: number;
+  approvedDays: number;
+}
+
 export default function LeaveListScreen() {
   const [leaves, setLeaves] = useState<any[]>([]);
+  const [balance, setBalance] = useState<LeaveBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabFilter>("ALL");
@@ -33,6 +51,15 @@ export default function LeaveListScreen() {
 
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
+
+  const fetchBalance = useCallback(async () => {
+    try {
+      const response = await API.get("/leaves/me/balance");
+      setBalance(response.data);
+    } catch {
+      // Ignored if user profile is unavailable
+    }
+  }, []);
 
   const fetchLeaves = useCallback(async () => {
     try {
@@ -54,12 +81,14 @@ export default function LeaveListScreen() {
   useEffect(() => {
     if (userRole) {
       fetchLeaves();
+      fetchBalance();
     }
-  }, [userRole, fetchLeaves]);
+  }, [userRole, fetchLeaves, fetchBalance]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchLeaves();
+    fetchBalance();
   };
 
   const filteredLeaves = useMemo(() => {
@@ -130,6 +159,81 @@ export default function LeaveListScreen() {
       />
 
       <View style={styles.container}>
+        {/* Leave Balance Overview Banner */}
+        {balance ? (
+          <View style={styles.balanceWidget}>
+            <View style={styles.balanceWidgetHeader}>
+              <View>
+                <Text style={styles.balanceWidgetTitle}>
+                  Leave Balances ({new Date().getFullYear()})
+                </Text>
+                <Text style={styles.balanceWidgetSub}>
+                  {balance.totalAvailable} of {balance.totalQuota} days remaining
+                </Text>
+              </View>
+              <View style={styles.totalBadge}>
+                <Text style={styles.totalBadgeValue}>
+                  {balance.totalAvailable}d
+                </Text>
+                <Text style={styles.totalBadgeLabel}>Available</Text>
+              </View>
+            </View>
+
+            <View style={styles.balancePillsRow}>
+              <View
+                style={[
+                  styles.balancePill,
+                  { backgroundColor: AppColors.primaryLight },
+                ]}
+              >
+                <Text style={styles.balancePillLabel}>Casual</Text>
+                <Text
+                  style={[
+                    styles.balancePillValue,
+                    { color: AppColors.primaryDark },
+                  ]}
+                >
+                  {balance.casualAvailable}/{balance.casualQuota}d
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.balancePill,
+                  { backgroundColor: AppColors.warningLight },
+                ]}
+              >
+                <Text style={styles.balancePillLabel}>Sick</Text>
+                <Text
+                  style={[
+                    styles.balancePillValue,
+                    { color: AppColors.warning },
+                  ]}
+                >
+                  {balance.sickAvailable}/{balance.sickQuota}d
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.balancePill,
+                  { backgroundColor: AppColors.successLight },
+                ]}
+              >
+                <Text style={styles.balancePillLabel}>Paid</Text>
+                <Text
+                  style={[
+                    styles.balancePillValue,
+                    { color: AppColors.success },
+                  ]}
+                >
+                  {balance.paidAvailable}/{balance.paidQuota}d
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
         {/* Filter Segment Tabs */}
         <View style={styles.tabBar}>
           {tabs.map((tab) => {
@@ -377,5 +481,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: AppColors.primary,
+  },
+  balanceWidget: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  balanceWidgetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  balanceWidgetTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  balanceWidgetSub: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  totalBadge: {
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+  },
+  totalBadgeValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: AppColors.primaryDark,
+  },
+  totalBadgeLabel: {
+    fontSize: 9,
+    color: AppColors.primaryDark,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  balancePillsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  balancePill: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+  },
+  balancePillLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+    marginBottom: 2,
+  },
+  balancePillValue: {
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

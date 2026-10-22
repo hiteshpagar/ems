@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import employee_management_system_backend.dto.LeaveBalanceDTO;
 import employee_management_system_backend.entity.Leave;
 import employee_management_system_backend.service.LeaveService;
 
@@ -41,6 +42,22 @@ public class LeaveController {
         }
 
         return leaveService.applyLeave(leave);
+    }
+
+    // Get Logged In Employee Leave Balance
+    @GetMapping("/me/balance")
+    public LeaveBalanceDTO getMyLeaveBalance(Authentication authentication) {
+        Employee employee = employeeService.getEmployeeByEmail(authentication.getName());
+        if (employee == null) {
+            throw new IllegalArgumentException("No employee profile is linked to this account.");
+        }
+        return leaveService.getLeaveBalance(employee.getId());
+    }
+
+    // Get Employee Leave Balance (Admin)
+    @GetMapping("/balance/{employeeId}")
+    public LeaveBalanceDTO getLeaveBalanceByEmployeeId(@PathVariable Long employeeId) {
+        return leaveService.getLeaveBalance(employeeId);
     }
 
     // Get All Leaves
