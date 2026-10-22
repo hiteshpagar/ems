@@ -24,8 +24,28 @@ import { exportLeavesCsv } from "../utils/csvExport";
 
 type TabFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
+interface LeaveBalance {
+  year: number;
+  totalQuota: number;
+  totalUsed: number;
+  totalAvailable: number;
+  paidQuota: number;
+  paidUsed: number;
+  paidAvailable: number;
+  sickQuota: number;
+  sickUsed: number;
+  sickAvailable: number;
+  wfhQuota: number;
+  wfhUsed: number;
+  wfhAvailable: number;
+  unpaidUsed: number;
+  pendingDays: number;
+  approvedDays: number;
+}
+
 export default function LeaveListScreen() {
   const [leaves, setLeaves] = useState<any[]>([]);
+  const [balance, setBalance] = useState<LeaveBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabFilter>("ALL");
@@ -33,6 +53,15 @@ export default function LeaveListScreen() {
 
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
+
+  const fetchBalance = useCallback(async () => {
+    try {
+      const response = await API.get("/leaves/me/balance");
+      setBalance(response.data);
+    } catch {
+      // Ignored if user profile is unavailable
+    }
+  }, []);
 
   const fetchLeaves = useCallback(async () => {
     try {
@@ -54,12 +83,14 @@ export default function LeaveListScreen() {
   useEffect(() => {
     if (userRole) {
       fetchLeaves();
+      fetchBalance();
     }
-  }, [userRole, fetchLeaves]);
+  }, [userRole, fetchLeaves, fetchBalance]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchLeaves();
+    fetchBalance();
   };
 
   const filteredLeaves = useMemo(() => {
@@ -109,27 +140,114 @@ export default function LeaveListScreen() {
         subtitle={`${filteredLeaves.length} requests shown`}
         showBack
         rightAction={
-          filteredLeaves.length > 0 ? (
-            <TouchableOpacity
-              style={styles.exportHeaderBtn}
-              onPress={handleExportCsv}
-              disabled={exporting}
-              activeOpacity={0.7}
-            >
-              {exporting ? (
-                <ActivityIndicator size="small" color={AppColors.primary} />
-              ) : (
-                <>
-                  <Text style={styles.exportHeaderIcon}>📥</Text>
-                  <Text style={styles.exportHeaderText}>CSV</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          ) : null
+          <View style={styles.headerRightRow}>
+            {isAdmin ? (
+              <TouchableOpacity
+                style={styles.headerActionBtn}
+                onPress={() => router.push("/leave-allocation")}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.headerActionText}>⚖️ Quotas</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {filteredLeaves.length > 0 ? (
+              <TouchableOpacity
+                style={styles.exportHeaderBtn}
+                onPress={handleExportCsv}
+                disabled={exporting}
+                activeOpacity={0.7}
+              >
+                {exporting ? (
+                  <ActivityIndicator size="small" color={AppColors.primary} />
+                ) : (
+                  <>
+                    <Text style={styles.exportHeaderIcon}>📥</Text>
+                    <Text style={styles.exportHeaderText}>CSV</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </View>
         }
       />
 
       <View style={styles.container}>
+        {/* Leave Balance Overview Banner */}
+        {balance ? (
+          <View style={styles.balanceWidget}>
+            <View style={styles.balanceWidgetHeader}>
+              <View>
+                <Text style={styles.balanceWidgetTitle}>
+                  Leave Balances ({balance.year || new Date().getFullYear()})
+                </Text>
+                <Text style={styles.balanceWidgetSub}>
+                  {balance.totalAvailable} of {balance.totalQuota} days remaining
+                </Text>
+              </View>
+              <View style={styles.totalBadge}>
+                <Text style={styles.totalBadgeValue}>
+                  {balance.totalAvailable}d
+                </Text>
+                <Text style={styles.totalBadgeLabel}>Available</Text>
+              </View>
+            </View>
+
+            <View style={styles.balancePillsRow}>
+              <View
+                style={[
+                  styles.balancePill,
+                  { backgroundColor: AppColors.primaryLight },
+                ]}
+              >
+                <Text style={styles.balancePillLabel}>Paid</Text>
+                <Text
+                  style={[
+                    styles.balancePillValue,
+                    { color: AppColors.primaryDark },
+                  ]}
+                >
+                  {balance.paidAvailable}/{balance.paidQuota}d
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.balancePill,
+                  { backgroundColor: AppColors.warningLight },
+                ]}
+              >
+                <Text style={styles.balancePillLabel}>Sick</Text>
+                <Text
+                  style={[
+                    styles.balancePillValue,
+                    { color: AppColors.warning },
+                  ]}
+                >
+                  {balance.sickAvailable}/{balance.sickQuota}d
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.balancePill,
+                  { backgroundColor: AppColors.successLight },
+                ]}
+              >
+                <Text style={styles.balancePillLabel}>WFH</Text>
+                <Text
+                  style={[
+                    styles.balancePillValue,
+                    { color: AppColors.success },
+                  ]}
+                >
+                  {balance.wfhAvailable}/{balance.wfhQuota}d
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
         {/* Filter Segment Tabs */}
         <View style={styles.tabBar}>
           {tabs.map((tab) => {
@@ -377,5 +495,90 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: AppColors.primary,
+  },
+  balanceWidget: {
+    backgroundColor: AppColors.surface,
+    borderRadius: AppRadius.lg,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.subtle,
+  },
+  balanceWidgetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  balanceWidgetTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.text,
+  },
+  balanceWidgetSub: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+    marginTop: 2,
+  },
+  totalBadge: {
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+  },
+  totalBadgeValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: AppColors.primaryDark,
+  },
+  totalBadgeLabel: {
+    fontSize: 9,
+    color: AppColors.primaryDark,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  balancePillsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  balancePill: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: AppRadius.md,
+    alignItems: "center",
+  },
+  balancePillLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+    marginBottom: 2,
+  },
+  balancePillValue: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  headerRightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.primaryLight,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: AppRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.primary,
+  },
+  headerActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: AppColors.primaryDark,
   },
 });

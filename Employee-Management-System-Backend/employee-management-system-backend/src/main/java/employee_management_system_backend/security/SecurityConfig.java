@@ -77,6 +77,12 @@ public class SecurityConfig {
             	            "/api/employees/**"
             	    ).hasRole("ADMIN")
 
+            	    // Leave Allocations (Admin Only)
+            	    .requestMatchers(
+            	            "/api/leaves/allocations",
+            	            "/api/leaves/allocations/**"
+            	    ).hasRole("ADMIN")
+
             	    // Leave APIs
             	 // Apply Leave
             	    .requestMatchers(
