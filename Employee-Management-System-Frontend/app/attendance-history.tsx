@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
@@ -25,7 +25,7 @@ export default function AttendanceHistoryScreen() {
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     try {
       const response =
         isAdmin
@@ -40,13 +40,13 @@ export default function AttendanceHistoryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [isAdmin]);
 
   useEffect(() => {
     if (userRole) {
       fetchAttendance();
     }
-  }, [userRole]);
+  }, [userRole, fetchAttendance]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -5,7 +5,7 @@ import { clearRememberedSession } from "../utils/storage";
 import { getToken } from "../utils/storage";
 
 const API = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  baseURL: process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080/api",
 });
 
 // Add JWT Token Automatically

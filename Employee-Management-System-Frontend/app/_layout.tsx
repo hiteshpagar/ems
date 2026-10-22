@@ -23,7 +23,7 @@ function MainLayout() {
     if (userToken && inAuthScreen) {
       router.replace("/");
     }
-  }, [userToken, loading]);
+  }, [userToken, loading, segments]);
 
   return (
     <Stack

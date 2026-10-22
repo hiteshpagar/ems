@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 
 import API from "../services/api";
@@ -28,7 +28,7 @@ export default function LeaveDetailsScreen() {
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
 
-  const fetchLeave = async () => {
+  const fetchLeave = useCallback(async () => {
     try {
       const response =
         isAdmin
@@ -42,7 +42,7 @@ export default function LeaveDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, isAdmin]);
 
   const updateStatus = async (status: string) => {
     try {
@@ -96,7 +96,7 @@ export default function LeaveDetailsScreen() {
 
   useEffect(() => {
     fetchLeave();
-  }, [id]);
+  }, [fetchLeave]);
 
   if (loading) {
     return (
