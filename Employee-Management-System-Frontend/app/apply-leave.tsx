@@ -71,7 +71,7 @@ export default function ApplyLeaveScreen() {
     } else {
       fetchLoggedInEmployee();
     }
-  }, [userRole]);
+  }, [isAdmin]);
 
   const handleApplyLeave = async () => {
     if (isAdmin && !employeeId) {

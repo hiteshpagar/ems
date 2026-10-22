@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { router } from "expo-router";
 
 import API from "../services/api";
@@ -94,7 +94,7 @@ export default function DashboardScreen() {
     }
   };
 
-  const loadAllData = () => {
+  const loadAllData = useCallback(() => {
     fetchDashboardData();
     fetchDashboardStats();
     fetchAttendanceStats();
@@ -102,11 +102,11 @@ export default function DashboardScreen() {
     if (userRole !== "ADMIN") {
       fetchTodayAttendance();
     }
-  };
+  }, [userRole]);
 
   useEffect(() => {
     loadAllData();
-  }, [userRole]);
+  }, [loadAllData]);
 
   const onRefresh = () => {
     setRefreshing(true);

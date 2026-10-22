@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 
 import API from "../services/api";
@@ -23,7 +23,7 @@ export default function EmployeeDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchEmployee = async () => {
+  const fetchEmployee = useCallback(async () => {
     try {
       const response = await API.get(`/employees/${id}`);
       setEmployee(response.data);
@@ -33,7 +33,7 @@ export default function EmployeeDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const handleDelete = () => {
     Alert.alert(
@@ -68,7 +68,7 @@ export default function EmployeeDetailsScreen() {
 
   useEffect(() => {
     fetchEmployee();
-  }, [id]);
+  }, [fetchEmployee]);
 
   if (loading) {
     return (

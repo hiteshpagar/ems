@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { router } from "expo-router";
 
 import API from "../services/api";
@@ -31,7 +31,7 @@ export default function LeaveListScreen() {
   const { userRole } = useContext(AuthContext);
   const isAdmin = userRole === "ADMIN";
 
-  const fetchLeaves = async () => {
+  const fetchLeaves = useCallback(async () => {
     try {
       const response =
         isAdmin
@@ -46,13 +46,13 @@ export default function LeaveListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [isAdmin]);
 
   useEffect(() => {
     if (userRole) {
       fetchLeaves();
     }
-  }, [userRole]);
+  }, [userRole, fetchLeaves]);
 
   const onRefresh = () => {
     setRefreshing(true);

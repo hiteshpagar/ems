@@ -68,7 +68,7 @@ export default function AttendanceScreen() {
       fetchLoggedInEmployee();
       fetchTodayAttendance();
     }
-  }, [userRole]);
+  }, [isAdmin]);
 
   const handleCheckIn = async () => {
     if (!employeeId) {

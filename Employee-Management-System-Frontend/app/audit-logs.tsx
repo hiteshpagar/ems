@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,7 +21,7 @@ import EmptyState from "../components/EmptyState";
 import DatePickerField from "../components/DatePickerField";
 import CustomButton from "../components/CustomButton";
 import { AuthContext } from "../context/AuthContext";
-import { AppColors, AppRadius, AppShadows, AppTypography } from "../constants/theme";
+import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 const MODULES = [
   "ALL",
