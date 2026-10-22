@@ -56,14 +56,25 @@ export async function exportToCsv(
 
     // Native Mobile (iOS / Android)
     const normalizedName = filename.endsWith(".csv") ? filename : `${filename}.csv`;
-    const targetUri = `${FileSystem.cacheDirectory}${normalizedName}`;
+    let targetUri = "";
 
-    await FileSystem.writeAsStringAsync(targetUri, csvContent, {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
+    try {
+      // Modern Expo SDK 54+ File & Paths API
+      const file = new FileSystem.File(FileSystem.Paths.cache, normalizedName);
+      file.create({ overwrite: true });
+      file.write(csvContent);
+      targetUri = file.uri;
+    } catch {
+      // Fallback for environments with legacy API
+      const cacheDir = (FileSystem as any).cacheDirectory ?? "";
+      targetUri = `${cacheDir}${normalizedName}`;
+      if (typeof (FileSystem as any).writeAsStringAsync === "function") {
+        await (FileSystem as any).writeAsStringAsync(targetUri, csvContent);
+      }
+    }
 
     const isSharingAvailable = await Sharing.isAvailableAsync();
-    if (isSharingAvailable) {
+    if (isSharingAvailable && targetUri) {
       await Sharing.shareAsync(targetUri, {
         mimeType: "text/csv",
         dialogTitle: `Export ${normalizedName}`,
