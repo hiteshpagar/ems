@@ -1,25 +1,25 @@
 import { ActivityIndicator, View } from "react-native";
-
-import { useEffect } from "react";
-
+import { useContext, useEffect } from "react";
 import { router } from "expo-router";
 
-import { getToken } from "../utils/storage";
+import { AuthContext } from "../context/AuthContext";
 
 export default function Index() {
+  const { userToken, userRole, loading } = useContext(AuthContext);
+
   useEffect(() => {
-    checkLogin();
-  }, []);
+    if (loading) return;
 
-  const checkLogin = async () => {
-    const token = await getToken();
-
-    if (token) {
-      router.replace("/dashboard");
+    if (userToken) {
+      if (userRole === "SUPER_ADMIN") {
+        router.replace("/super-admin-dashboard");
+      } else {
+        router.replace("/dashboard");
+      }
     } else {
       router.replace("/login");
     }
-  };
+  }, [userToken, userRole, loading]);
 
   return (
     <View

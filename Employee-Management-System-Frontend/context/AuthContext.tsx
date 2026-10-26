@@ -56,12 +56,8 @@ export const AuthProvider = ({ children }: any) => {
     email: string,
     rememberMe: boolean,
   ) => {
-    if (rememberMe) {
-      await saveRememberedSession(token, role, fullName, email);
-    } else {
-      await clearRememberedSession();
-      setSessionToken(token);
-    }
+    // Always persist active session so the user is authenticated
+    await saveRememberedSession(token, role, fullName, email);
 
     setUserToken(token);
 
@@ -84,6 +80,9 @@ export const AuthProvider = ({ children }: any) => {
     setUserEmail(null);
   };
 
+  const isSuperAdmin = userRole === "SUPER_ADMIN";
+  const isAdmin = userRole === "ADMIN" || isSuperAdmin;
+
   return (
     <AuthContext.Provider
       value={{
@@ -91,6 +90,8 @@ export const AuthProvider = ({ children }: any) => {
         userRole,
         userName,
         userEmail,
+        isSuperAdmin,
+        isAdmin,
         login,
         logout,
         loading,

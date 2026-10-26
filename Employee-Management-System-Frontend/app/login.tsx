@@ -57,7 +57,11 @@ export default function LoginScreen() {
           rememberMe
         );
 
-        router.replace("/dashboard");
+        if (response.data.role === "SUPER_ADMIN") {
+          router.replace("/super-admin-dashboard");
+        } else {
+          router.replace("/dashboard");
+        }
       } else {
         Alert.alert("Login Failed", "Invalid credentials. Please try again.");
       }

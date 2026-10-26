@@ -19,14 +19,34 @@ public class ProfileController {
     @Autowired
     private EmployeeService employeeService;
 
+    @Autowired
+    private employee_management_system_backend.repository.UserRepository userRepository;
+
     @GetMapping
     public Employee getProfile(
             Authentication authentication
     ) {
 
-        return employeeService.getEmployeeByEmail(
+        Employee emp = employeeService.getEmployeeByEmail(
                 authentication.getName()
         );
+
+        if (emp != null) {
+            return emp;
+        }
+
+        // Fallback for Super Admin or Admin accounts that exist in users table
+        employee_management_system_backend.entity.User user = userRepository.findByEmail(authentication.getName());
+        if (user != null) {
+            Employee dummy = new Employee();
+            dummy.setName(user.getFullName());
+            dummy.setEmail(user.getEmail());
+            dummy.setDepartment("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Executive Board" : "Management");
+            dummy.setDesignation("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Super Administrator" : "Administrator");
+            return dummy;
+        }
+
+        return null;
     }
     
     @PutMapping

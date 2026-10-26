@@ -8,21 +8,27 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { router } from "expo-router";
+import {
+  ArrowLeft,
+  Calendar,
+  Download,
+  FileText,
+  Search,
+  X,
+  XCircle,
+} from "lucide-react-native";
 
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
-import AppHeader from "../components/AppHeader";
-import SearchBar from "../components/SearchBar";
-import StatusBadge from "../components/StatusBadge";
-import EmptyState from "../components/EmptyState";
+import BottomNav from "../components/BottomNav";
 import DatePickerField from "../components/DatePickerField";
 import CustomButton from "../components/CustomButton";
 import { AuthContext } from "../context/AuthContext";
-import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 import { exportAuditLogsCsv } from "../utils/csvExport";
 
 const MODULES = [
@@ -35,18 +41,18 @@ const MODULES = [
   "LEAVE",
   "HOLIDAY",
   "PAYROLL",
+  "NOTIFICATION",
   "PROFILE",
 ];
 
 const ACTIONS = [
   "ALL",
+  "LOGIN",
   "CREATE",
   "UPDATE",
   "DELETE",
   "APPROVE",
   "REJECT",
-  "LOGIN",
-  "LOGOUT",
   "PASSWORD_RESET",
 ];
 
@@ -104,7 +110,7 @@ export default function AuditLogsScreen() {
 
   const fetchAuditLogs = useCallback(
     async (pageNumber = 0, isRefresh = false) => {
-      if (userRole !== "ADMIN") {
+      if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
         setLoading(false);
         return;
       }
@@ -201,858 +207,638 @@ export default function AuditLogsScreen() {
       if (diffSecs < 60) return "Just now";
       if (diffMins < 60) return `${diffMins}m ago`;
       if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays === 1) return "Yesterday";
       if (diffDays < 7) return `${diffDays}d ago`;
-      return "";
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     } catch {
       return "";
     }
   };
 
-  const clearAllFilters = () => {
-    setSearch("");
-    setSelectedModule("ALL");
-    setSelectedAction("ALL");
-    setStartDate("");
-    setEndDate("");
-    setShowDateFilters(false);
+  const getActionColors = (action: string) => {
+    switch (action?.toUpperCase()) {
+      case "LOGIN":
+      case "LOGOUT":
+        return { bg: "#EFF6FF", text: "#2563EB" };
+      case "CREATE":
+      case "APPROVE":
+        return { bg: "#DCFCE7", text: "#16A34A" };
+      case "UPDATE":
+        return { bg: "#FEF3C7", text: "#D97706" };
+      case "DELETE":
+      case "REJECT":
+        return { bg: "#FEE2E2", text: "#DC2626" };
+      case "PASSWORD_RESET":
+        return { bg: "#F3E8FF", text: "#7C3AED" };
+      default:
+        return { bg: "#F1F5F9", text: "#475569" };
+    }
   };
 
-  const hasActiveFilters =
-    search.trim() !== "" ||
-    selectedModule !== "ALL" ||
-    selectedAction !== "ALL" ||
-    startDate !== "" ||
-    endDate !== "";
+  // Render Item matching Screen 4
+  const renderAuditCard = ({ item }: { item: AuditLogItem }) => {
+    const actorName = item.performedBy || "System";
+    const initial = actorName.charAt(0).toUpperCase();
+    const actionColor = getActionColors(item.action);
 
-  // Render for non-admins
-  if (userRole && userRole !== "ADMIN") {
     return (
-      <ScreenWrapper>
-        <AppHeader title="Audit Logs" showBack />
-        <View style={styles.accessDeniedContainer}>
-          <Text style={styles.lockEmoji}>🔒</Text>
-          <Text style={styles.accessDeniedTitle}>Access Denied</Text>
-          <Text style={styles.accessDeniedSubtitle}>
-            Audit logs are only accessible to administrators for security compliance and tracking.
-          </Text>
-          <CustomButton
-            title="Return to Dashboard"
-            onPress={() => router.replace("/dashboard")}
-            style={{ marginTop: 24, minWidth: 200 }}
-          />
-        </View>
-      </ScreenWrapper>
-    );
-  }
-
-  return (
-    <ScreenWrapper>
-      <AppHeader
-        title="Audit Logs"
-        subtitle={`${totalElements} entries recorded`}
-        showBack
-        rightAction={
-          logs.length > 0 ? (
-            <TouchableOpacity
-              style={styles.exportHeaderBtn}
-              onPress={handleExportCsv}
-              disabled={exporting}
-              activeOpacity={0.7}
-            >
-              {exporting ? (
-                <ActivityIndicator size="small" color={AppColors.primary} />
-              ) : (
-                <>
-                  <Text style={styles.exportHeaderIcon}>📥</Text>
-                  <Text style={styles.exportHeaderText}>CSV</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          ) : null
-        }
-      />
-
-      <View style={styles.container}>
-        {/* Search & Date Filter Bar */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchRow}>
-            <View style={{ flex: 1 }}>
-              <SearchBar
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search by description, name, email..."
-                onClear={() => setSearch("")}
-              />
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.filterToggleBtn,
-                (startDate || endDate || showDateFilters) && styles.filterToggleBtnActive,
-              ]}
-              onPress={() => setShowDateFilters((prev) => !prev)}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Toggle date filter"
-            >
-              <Text style={styles.filterIcon}>📅</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Date Picker Expandable */}
-          {showDateFilters && (
-            <View style={styles.dateFilterContainer}>
-              <View style={styles.dateRow}>
-                <View style={styles.dateFieldCol}>
-                  <DatePickerField
-                    label="From Date"
-                    value={startDate}
-                    onChange={setStartDate}
-                    placeholder="Start date"
-                    containerStyle={{ marginBottom: 0 }}
-                  />
-                </View>
-                <View style={styles.dateFieldCol}>
-                  <DatePickerField
-                    label="To Date"
-                    value={endDate}
-                    onChange={setEndDate}
-                    placeholder="End date"
-                    containerStyle={{ marginBottom: 0 }}
-                  />
-                </View>
-              </View>
-              {(startDate || endDate) && (
-                <TouchableOpacity
-                  style={styles.clearDateBtn}
-                  onPress={() => {
-                    setStartDate("");
-                    setEndDate("");
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.clearDateText}>Clear Dates</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          {/* Module Filter Chips */}
-          <View style={styles.chipsContainer}>
-            <Text style={styles.chipsLabel}>Module:</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsScroll}
-            >
-              {MODULES.map((mod) => {
-                const isActive = selectedModule === mod;
-                return (
-                  <TouchableOpacity
-                    key={mod}
-                    style={[styles.chip, isActive && styles.chipActive]}
-                    onPress={() => setSelectedModule(mod)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                      {mod === "ALL" ? "All Modules" : mod}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Action Filter Chips */}
-          <View style={[styles.chipsContainer, { marginTop: 8 }]}>
-            <Text style={styles.chipsLabel}>Action:</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsScroll}
-            >
-              {ACTIONS.map((act) => {
-                const isActive = selectedAction === act;
-                return (
-                  <TouchableOpacity
-                    key={act}
-                    style={[styles.chip, isActive && styles.chipActive]}
-                    onPress={() => setSelectedAction(act)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                      {act === "ALL" ? "All Actions" : act}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Filter Status Summary */}
-          {hasActiveFilters && (
-            <View style={styles.activeFiltersRow}>
-              <Text style={styles.activeFiltersText}>
-                Showing filtered activity ({totalElements} {totalElements === 1 ? "record" : "records"})
-              </Text>
-              <TouchableOpacity onPress={clearAllFilters} activeOpacity={0.7}>
-                <Text style={styles.resetFiltersText}>Reset</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Content List */}
-        {loading && !refreshing ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={AppColors.primary} />
-            <Text style={styles.loadingText}>Loading audit logs...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.centerContainer}>
-            <Text style={styles.errorIcon}>⚠️</Text>
-            <Text style={styles.errorTitle}>Unable to load audit logs</Text>
-            <Text style={styles.errorMessage}>{error}</Text>
-            <CustomButton
-              title="Retry"
-              onPress={() => fetchAuditLogs(0)}
-              style={{ marginTop: 16, minWidth: 140 }}
-            />
-          </View>
-        ) : (
-          <FlatList
-            data={logs}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <AuditLogCard
-                log={item}
-                formatTimestamp={formatTimestamp}
-                formatTimeAgo={formatTimeAgo}
-                onPress={() => setSelectedLog(item)}
-              />
-            )}
-            contentContainerStyle={[
-              styles.listContent,
-              logs.length === 0 && { flexGrow: 1, justifyContent: "center" },
-            ]}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                tintColor={AppColors.primary}
-              />
-            }
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.4}
-            ListEmptyComponent={
-              <EmptyState
-                icon="📜"
-                title="No activity found"
-                message={
-                  hasActiveFilters
-                    ? "No logs match your filter criteria. Try changing or resetting filters."
-                    : "No system activity has been recorded yet."
-                }
-              />
-            }
-            ListFooterComponent={
-              loadingMore ? (
-                <View style={styles.footerLoader}>
-                  <ActivityIndicator size="small" color={AppColors.primary} />
-                  <Text style={styles.footerText}>Loading more activity...</Text>
-                </View>
-              ) : null
-            }
-          />
-        )}
-      </View>
-
-      {/* Audit Log Detail Modal */}
-      <Modal
-        visible={Boolean(selectedLog)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedLog(null)}
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => setSelectedLog(item)}
+        activeOpacity={0.7}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Audit Event Details</Text>
-                <Text style={styles.modalSubtitle}>
-                  Log ID: #{selectedLog?.id}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setSelectedLog(null)}
-                style={styles.modalCloseBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              style={styles.modalBody}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Badges */}
-              <View style={styles.modalBadgeRow}>
-                <StatusBadge status={selectedLog?.action || "neutral"} />
-                <StatusBadge status={selectedLog?.module || "info"} />
-              </View>
-
-              {/* Description */}
-              <View style={styles.modalDescBox}>
-                <Text style={styles.modalDescLabel}>Description</Text>
-                <Text style={styles.modalDescText}>{selectedLog?.description}</Text>
-              </View>
-
-              {/* Detail fields */}
-              <View style={styles.modalDetailGroup}>
-                <ModalDetailRow
-                  label="Performed By"
-                  value={selectedLog?.performedBy || "SYSTEM"}
-                />
-                <View style={styles.modalDivider} />
-                <ModalDetailRow
-                  label="User Email"
-                  value={selectedLog?.performedByEmail || "—"}
-                />
-                <View style={styles.modalDivider} />
-                <ModalDetailRow
-                  label="Role"
-                  value={selectedLog?.performedByRole || "—"}
-                />
-                <View style={styles.modalDivider} />
-                <ModalDetailRow
-                  label="Timestamp"
-                  value={selectedLog?.createdAt ? formatTimestamp(selectedLog.createdAt) : "—"}
-                />
-                {selectedLog?.entityId ? (
-                  <>
-                    <View style={styles.modalDivider} />
-                    <ModalDetailRow
-                      label="Entity ID"
-                      value={selectedLog.entityId}
-                    />
-                  </>
-                ) : null}
-                {selectedLog?.ipAddress ? (
-                  <>
-                    <View style={styles.modalDivider} />
-                    <ModalDetailRow
-                      label="IP Address"
-                      value={selectedLog.ipAddress}
-                    />
-                  </>
-                ) : null}
-              </View>
-            </ScrollView>
-
-            <CustomButton
-              title="Close"
-              variant="secondary"
-              onPress={() => setSelectedLog(null)}
-              style={{ marginTop: 16 }}
-            />
-          </View>
-        </View>
-      </Modal>
-    </ScreenWrapper>
-  );
-}
-
-function AuditLogCard({
-  log,
-  formatTimestamp,
-  formatTimeAgo,
-  onPress,
-}: {
-  log: AuditLogItem;
-  formatTimestamp: (d: string) => string;
-  formatTimeAgo: (d: string) => string;
-  onPress: () => void;
-}) {
-  const timeAgo = formatTimeAgo(log.createdAt);
-  const initial = (log.performedBy || log.performedByEmail || "S").charAt(0).toUpperCase();
-
-  return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.75}
-      accessibilityRole="button"
-      accessibilityLabel={`Audit log ${log.description}`}
-    >
-      {/* Top Header */}
-      <View style={styles.cardHeader}>
-        <View style={styles.userRow}>
+        {/* Top Line: Avatar + Actor Name + Role Badge + Time Ago & Timestamp */}
+        <View style={styles.cardTopRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
-          <View style={styles.userInfo}>
-            <View style={styles.userNameRow}>
-              <Text style={styles.userName} numberOfLines={1}>
-                {log.performedBy || "System Event"}
-              </Text>
-              {log.performedByRole ? (
-                <View style={styles.roleTag}>
-                  <Text style={styles.roleTagText}>{log.performedByRole}</Text>
+          <View style={styles.actorMeta}>
+            <View style={styles.actorNameRow}>
+              <Text style={styles.actorName} numberOfLines={1}>{actorName}</Text>
+              {item.performedByRole ? (
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleBadgeText}>{item.performedByRole}</Text>
                 </View>
               ) : null}
             </View>
-            <Text style={styles.userEmail} numberOfLines={1}>
-              {log.performedByEmail || "Internal Operation"}
-            </Text>
+          </View>
+          <View style={styles.timeMeta}>
+            <Text style={styles.timeAgoText}>{formatTimeAgo(item.createdAt)}</Text>
+            <Text style={styles.timestampText}>{formatTimestamp(item.createdAt)}</Text>
           </View>
         </View>
 
-        <View style={styles.timeCol}>
-          {timeAgo ? <Text style={styles.timeAgoText}>{timeAgo}</Text> : null}
-          <Text style={styles.timeExactText}>{formatTimestamp(log.createdAt)}</Text>
-        </View>
-      </View>
+        {/* Middle Line: Description */}
+        <Text style={styles.descriptionText}>{item.description}</Text>
 
-      {/* Description */}
-      <Text style={styles.cardDescription}>{log.description}</Text>
-
-      {/* Footer Badges */}
-      <View style={styles.cardFooter}>
-        <View style={styles.badgeGroup}>
-          <StatusBadge status={log.action} size="sm" />
-          <StatusBadge status={log.module} size="sm" />
-        </View>
-
-        {log.entityId ? (
-          <View style={styles.entityTag}>
-            <Text style={styles.entityTagText}>ID #{log.entityId}</Text>
+        {/* Bottom Line: Semantic Chips (Action, Module) & Event ID */}
+        <View style={styles.cardBottomRow}>
+          <View style={styles.tagGroup}>
+            <View style={[styles.actionTag, { backgroundColor: actionColor.bg }]}>
+              <Text style={[styles.actionTagText, { color: actionColor.text }]}>
+                {item.action}
+              </Text>
+            </View>
+            <View style={styles.moduleTag}>
+              <Text style={styles.moduleTagText}>{item.module}</Text>
+            </View>
           </View>
-        ) : null}
-      </View>
-    </TouchableOpacity>
-  );
-}
+          <Text style={styles.idText}>ID #{item.id}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
-function ModalDetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.modalDetailRow}>
-      <Text style={styles.modalDetailLabel}>{label}</Text>
-      <Text style={styles.modalDetailValue}>{value}</Text>
-    </View>
+    <ScreenWrapper>
+      <View style={styles.container}>
+        {/* Header matching Screen 4 */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            accessibilityLabel="Back"
+          >
+            <ArrowLeft size={20} color="#0F172A" strokeWidth={2.2} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Audit Logs</Text>
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={handleExportCsv}
+            disabled={exporting}
+            activeOpacity={0.7}
+          >
+            <Download size={14} color="#2563EB" strokeWidth={2.2} style={{ marginRight: 4 }} />
+            <Text style={styles.exportButtonText}>Export CSV</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Bar + Calendar Filter Toggle */}
+        <View style={styles.searchStrip}>
+          <View style={styles.searchBox}>
+            <Search size={16} color="#94A3B8" strokeWidth={2.2} style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by description, name, or email..."
+              placeholderTextColor="#94A3B8"
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+            />
+            {search ? (
+              <TouchableOpacity onPress={() => setSearch("")} style={{ paddingHorizontal: 4 }}>
+                <XCircle size={16} color="#94A3B8" strokeWidth={2} />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={[styles.calBtn, (startDate || endDate) && styles.calBtnActive]}
+              onPress={() => setShowDateFilters((prev) => !prev)}
+              activeOpacity={0.7}
+            >
+              <Calendar
+                size={18}
+                color={startDate || endDate ? "#2563EB" : "#64748B"}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Date Filters Expandable */}
+        {showDateFilters && (
+          <View style={styles.dateFilterContainer}>
+            <View style={styles.dateInputsRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <DatePickerField
+                  label="From Date"
+                  value={startDate}
+                  onChange={setStartDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <DatePickerField
+                  label="To Date"
+                  value={endDate}
+                  onChange={setEndDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              </View>
+            </View>
+            {(startDate || endDate) && (
+              <TouchableOpacity
+                style={styles.clearDatesBtn}
+                onPress={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+              >
+                <Text style={styles.clearDatesText}>Clear Date Range</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Module Filter Chips Row */}
+        <View style={styles.chipRowContainer}>
+          <Text style={styles.chipRowLabel}>Module:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
+            {MODULES.map((mod) => {
+              const isSelected = selectedModule === mod;
+              return (
+                <TouchableOpacity
+                  key={mod}
+                  style={[styles.filterChip, isSelected && styles.filterChipActive]}
+                  onPress={() => setSelectedModule(mod)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
+                    {mod}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Action Filter Chips Row */}
+        <View style={[styles.chipRowContainer, { borderBottomWidth: 1, borderBottomColor: "#E2E8F0", paddingBottom: 10 }]}>
+          <Text style={styles.chipRowLabel}>Action:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
+            {ACTIONS.map((act) => {
+              const isSelected = selectedAction === act;
+              return (
+                <TouchableOpacity
+                  key={act}
+                  style={[styles.filterChip, isSelected && styles.filterChipActive]}
+                  onPress={() => setSelectedAction(act)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
+                    {act}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Main Audit List */}
+        <FlatList
+          data={logs}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderAuditCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={["#173B7A"]}
+              tintColor="#173B7A"
+            />
+          }
+          ListEmptyComponent={
+            loading ? (
+              <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color="#173B7A" />
+                <Text style={styles.loadingText}>Loading audit logs...</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <FileText size={36} color="#94A3B8" strokeWidth={1.5} />
+                <Text style={styles.emptyTitle}>No Audit Records Found</Text>
+                <Text style={styles.emptySubtitle}>
+                  Try clearing your filters or searching with different keywords.
+                </Text>
+              </View>
+            )
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 16 }}>
+                <ActivityIndicator size="small" color="#173B7A" />
+              </View>
+            ) : null
+          }
+        />
+
+        {/* Modal: Audit Log Details */}
+        <Modal
+          visible={!!selectedLog}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedLog(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Event Details</Text>
+                <TouchableOpacity onPress={() => setSelectedLog(null)} style={styles.modalCloseBtn}>
+                  <X size={20} color="#64748B" strokeWidth={2.2} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Action:</Text>
+                  <Text style={styles.modalFieldValue}>{selectedLog?.action}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Module:</Text>
+                  <Text style={styles.modalFieldValue}>{selectedLog?.module}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Actor:</Text>
+                  <Text style={styles.modalFieldValue}>{selectedLog?.performedBy || "System"}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Email:</Text>
+                  <Text style={styles.modalFieldValue}>{selectedLog?.performedByEmail || "—"}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Role:</Text>
+                  <Text style={styles.modalFieldValue}>{selectedLog?.performedByRole || "—"}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Date & Time:</Text>
+                  <Text style={styles.modalFieldValue}>
+                    {selectedLog?.createdAt ? formatTimestamp(selectedLog.createdAt) : "—"}
+                  </Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Entity ID:</Text>
+                  <Text style={styles.modalFieldValue}>{selectedLog?.entityId || "—"}</Text>
+                </View>
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalFieldLabel}>Description:</Text>
+                  <Text style={[styles.modalFieldValue, { flex: 1, textAlign: "right" }]}>
+                    {selectedLog?.description}
+                  </Text>
+                </View>
+
+                <CustomButton
+                  title="Close"
+                  onPress={() => setSelectedLog(null)}
+                  style={{ marginTop: 20 }}
+                />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        <BottomNav role={userRole} />
+      </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: "#F8FAFC",
   },
-  searchSection: {
-    backgroundColor: AppColors.surface,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  searchRow: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
   },
-  filterToggleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: AppRadius.md,
-    backgroundColor: AppColors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: AppColors.borderStrong,
+  backButton: {
+    padding: 6,
+    marginLeft: -6,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  exportButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2563EB",
+    backgroundColor: "#FFFFFF",
   },
-  filterToggleBtnActive: {
-    backgroundColor: AppColors.primaryLight,
-    borderColor: AppColors.primary,
+  exportButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#2563EB",
   },
-  filterIcon: {
-    fontSize: 18,
+  searchStrip: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: "#FFFFFF",
+  },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#0F172A",
+    padding: 0,
+  },
+  calBtn: {
+    paddingLeft: 8,
+  },
+  calBtnActive: {
+    opacity: 0.8,
   },
   dateFilterContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: AppColors.surfaceMuted,
-    borderRadius: AppRadius.md,
-    borderWidth: 1,
-    borderColor: AppColors.border,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
   },
-  dateRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  dateFieldCol: {
-    flex: 1,
-  },
-  clearDateBtn: {
-    alignSelf: "flex-end",
-    paddingTop: 8,
-    paddingHorizontal: 4,
-  },
-  clearDateText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: AppColors.danger,
-  },
-  chipsContainer: {
+  dateInputsRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
   },
-  chipsLabel: {
+  clearDatesBtn: {
+    marginTop: 6,
+    alignSelf: "flex-end",
+  },
+  clearDatesText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#DC2626",
+  },
+  chipRowContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+  },
+  chipRowLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: "#64748B",
     marginRight: 8,
     minWidth: 50,
   },
-  chipsScroll: {
-    paddingRight: 16,
+  chipScroll: {
     gap: 6,
+    paddingRight: 20,
   },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: AppRadius.pill,
-    backgroundColor: AppColors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: AppColors.border,
+  filterChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#F1F5F9",
   },
-  chipActive: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
+  filterChipActive: {
+    backgroundColor: "#173B7A",
   },
-  chipText: {
-    fontSize: 12,
+  filterChipText: {
+    fontSize: 11,
     fontWeight: "600",
-    color: AppColors.textSecondary,
-    textTransform: "capitalize",
+    color: "#64748B",
   },
-  chipTextActive: {
+  filterChipTextActive: {
     color: "#FFFFFF",
   },
-  activeFiltersRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.border,
-  },
-  activeFiltersText: {
-    fontSize: 12,
-    color: AppColors.textSecondary,
-    fontWeight: "500",
-  },
-  resetFiltersText: {
-    fontSize: 12,
-    color: AppColors.primary,
-    fontWeight: "700",
-  },
   listContent: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 24,
   },
   card: {
-    backgroundColor: AppColors.surface,
-    borderRadius: AppRadius.lg,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    ...AppShadows.subtle,
   },
-  cardHeader: {
+  cardTopRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 10,
   },
-  userRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: 8,
-  },
   avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: AppColors.primaryLight,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#EFF6FF",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
   avatarText: {
-    fontSize: 16,
+    color: "#2563EB",
+    fontSize: 15,
     fontWeight: "700",
-    color: AppColors.primary,
   },
-  userInfo: {
+  actorMeta: {
     flex: 1,
   },
-  userNameRow: {
+  actorNameRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 6,
   },
-  userName: {
+  actorName: {
     fontSize: 14,
     fontWeight: "700",
-    color: AppColors.text,
-    flexShrink: 1,
+    color: "#0F172A",
   },
-  roleTag: {
-    backgroundColor: AppColors.surfaceMuted,
-    paddingHorizontal: 6,
+  roleBadge: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: AppRadius.sm,
+    borderRadius: 4,
   },
-  roleTagText: {
+  roleBadgeText: {
     fontSize: 9,
     fontWeight: "700",
-    color: AppColors.textMuted,
+    color: "#64748B",
   },
-  userEmail: {
-    fontSize: 11,
-    color: AppColors.textMuted,
-    marginTop: 1,
-  },
-  timeCol: {
+  timeMeta: {
     alignItems: "flex-end",
   },
   timeAgoText: {
     fontSize: 11,
-    fontWeight: "600",
-    color: AppColors.primary,
+    fontWeight: "700",
+    color: "#2563EB",
+    marginBottom: 2,
   },
-  timeExactText: {
+  timestampText: {
     fontSize: 10,
-    color: AppColors.textMuted,
-    marginTop: 2,
+    color: "#94A3B8",
   },
-  cardDescription: {
-    fontSize: 14,
-    color: AppColors.text,
-    lineHeight: 20,
-    fontWeight: "500",
+  descriptionText: {
+    fontSize: 13,
+    color: "#0F172A",
+    lineHeight: 18,
     marginBottom: 12,
   },
-  cardFooter: {
+  cardBottomRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.border,
   },
-  badgeGroup: {
+  tagGroup: {
     flexDirection: "row",
     gap: 6,
   },
-  entityTag: {
-    backgroundColor: AppColors.surfaceMuted,
+  actionTag: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: AppRadius.sm,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  entityTagText: {
+  actionTagText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  moduleTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: "#EFF6FF",
+  },
+  moduleTagText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#4F46E5",
+  },
+  idText: {
     fontSize: 11,
-    fontWeight: "600",
-    color: AppColors.textMuted,
+    fontWeight: "500",
+    color: "#94A3B8",
   },
   centerContainer: {
-    flex: 1,
-    justifyContent: "center",
+    padding: 40,
     alignItems: "center",
-    padding: 24,
+    justifyContent: "center",
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: AppColors.textSecondary,
-    fontWeight: "500",
-  },
-  errorIcon: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
-  errorTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: AppColors.text,
-    marginBottom: 6,
-  },
-  errorMessage: {
+    marginTop: 10,
     fontSize: 13,
-    color: AppColors.textSecondary,
-    textAlign: "center",
-    lineHeight: 18,
+    color: "#64748B",
   },
-  footerLoader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    gap: 8,
-  },
-  footerText: {
-    fontSize: 12,
-    color: AppColors.textMuted,
-    fontWeight: "500",
-  },
-  accessDeniedContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+  emptyContainer: {
+    backgroundColor: "#FFFFFF",
     padding: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginTop: 20,
   },
-  lockEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  accessDeniedTitle: {
-    fontSize: 20,
+  emptyTitle: {
+    fontSize: 15,
     fontWeight: "700",
-    color: AppColors.text,
-    marginBottom: 8,
+    color: "#0F172A",
+    marginTop: 10,
+    marginBottom: 4,
   },
-  accessDeniedSubtitle: {
-    fontSize: 14,
-    color: AppColors.textSecondary,
+  emptySubtitle: {
+    fontSize: 12,
+    color: "#64748B",
     textAlign: "center",
-    lineHeight: 20,
   },
-  modalOverlay: {
+  modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",
     justifyContent: "center",
-    alignItems: "center",
     padding: 20,
   },
   modalCard: {
-    width: "100%",
-    maxWidth: 440,
-    maxHeight: "85%",
-    backgroundColor: AppColors.surface,
-    borderRadius: AppRadius.xl,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     padding: 20,
-    ...AppShadows.elevated,
+    maxHeight: "85%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
-    color: AppColors.text,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: AppColors.textMuted,
-    marginTop: 2,
+    color: "#0F172A",
   },
   modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: AppColors.surfaceMuted,
-    alignItems: "center",
-    justifyContent: "center",
+    padding: 4,
   },
-  modalCloseText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: AppColors.textSecondary,
-  },
-  modalBody: {
-    maxHeight: 380,
-  },
-  modalBadgeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 16,
-  },
-  modalDescBox: {
-    backgroundColor: AppColors.surfaceMuted,
-    borderRadius: AppRadius.md,
-    padding: 14,
-    marginBottom: 16,
-  },
-  modalDescLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: AppColors.textMuted,
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  modalDescText: {
-    fontSize: 14,
-    color: AppColors.text,
-    lineHeight: 20,
-    fontWeight: "500",
-  },
-  modalDetailGroup: {
-    backgroundColor: AppColors.surface,
-    borderRadius: AppRadius.md,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  modalDetailRow: {
+  modalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
-  modalDetailLabel: {
+  modalFieldLabel: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: "#64748B",
   },
-  modalDetailValue: {
+  modalFieldValue: {
     fontSize: 13,
     fontWeight: "600",
-    color: AppColors.text,
-    maxWidth: "60%",
-    textAlign: "right",
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: AppColors.border,
-  },
-  exportHeaderBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: AppColors.surface,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: AppRadius.md,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    ...AppShadows.subtle,
-  },
-  exportHeaderIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  exportHeaderText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: AppColors.primary,
+    color: "#0F172A",
   },
 });

@@ -26,6 +26,9 @@ public class User {
     @Column(nullable = false)
     private String role;
 
+    @Column(nullable = false)
+    private Boolean active = true;
+
     public String getRole() {
 		return role;
 	}
@@ -33,6 +36,21 @@ public class User {
 	public void setRole(String role) {
 		this.role = role;
 	}
+
+    public Boolean getActive() {
+        if ("SUPER_ADMIN".equalsIgnoreCase(this.role)) {
+            return true;
+        }
+        return active != null ? active : true;
+    }
+
+    public void setActive(Boolean active) {
+        if ("SUPER_ADMIN".equalsIgnoreCase(this.role)) {
+            this.active = true;
+            return;
+        }
+        this.active = active != null ? active : true;
+    }
 
 	// Getter and Setter for id
     public Long getId() {
