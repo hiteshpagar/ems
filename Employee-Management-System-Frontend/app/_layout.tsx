@@ -5,7 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthContext, AuthProvider } from "../context/AuthContext";
 
 function MainLayout() {
-  const { userToken, loading } = useContext(AuthContext);
+  const { userToken, userRole, loading } = useContext(AuthContext);
 
   const segments = useSegments();
 
@@ -21,9 +21,13 @@ function MainLayout() {
 
     // User Logged In
     if (userToken && inAuthScreen) {
-      router.replace("/");
+      if (userRole === "SUPER_ADMIN") {
+        router.replace("/super-admin-dashboard");
+      } else {
+        router.replace("/dashboard");
+      }
     }
-  }, [userToken, loading, segments]);
+  }, [userToken, userRole, loading, segments]);
 
   return (
     <Stack

@@ -19,6 +19,8 @@ import employee_management_system_backend.exception.ResourceNotFoundException;
 import employee_management_system_backend.exception.ResourceAlreadyExistsException;
 import employee_management_system_backend.repository.UserRepository;
 import employee_management_system_backend.entity.NotificationType;
+import jakarta.annotation.PostConstruct;
+import java.util.List;
 
 @Service
 public class UserService {
@@ -40,7 +42,20 @@ public class UserService {
 
     private final SecureRandom secureRandom = new SecureRandom();
 
-    /** Creates the first account as administrator and closes public registration afterward. */
+    @PostConstruct
+    public void ensureSuperAdminsActive() {
+        try {
+            for (User u : userRepository.findAll()) {
+                if ("SUPER_ADMIN".equalsIgnoreCase(u.getRole()) && !Boolean.TRUE.equals(u.getActive())) {
+                    u.setActive(true);
+                    userRepository.save(u);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Creates the first account as super administrator and closes public registration afterward. */
     @Transactional
     public synchronized User registerFirstAdministrator(String fullName, String email, String password) {
         String normalizedName = fullName == null ? "" : fullName.trim();
@@ -57,7 +72,7 @@ public class UserService {
         user.setFullName(normalizedName);
         user.setEmail(normalizedEmail);
         user.setPassword(password);
-        user.setRole("ADMIN");
+        user.setRole("SUPER_ADMIN");
         return userRepository.save(user);
     }
 
@@ -93,6 +108,22 @@ public class UserService {
             existingUser.getPassword()
                 .equals(user.getPassword())
         ) {
+            // Auto-promote first admin to SUPER_ADMIN if no SUPER_ADMIN exists yet
+            if ("ADMIN".equalsIgnoreCase(existingUser.getRole()) && userRepository.findByRole("SUPER_ADMIN").isEmpty()) {
+                existingUser.setRole("SUPER_ADMIN");
+                existingUser.setActive(true);
+                existingUser = userRepository.save(existingUser);
+            }
+
+            // Super Admin can NEVER be deactivated
+            if ("SUPER_ADMIN".equalsIgnoreCase(existingUser.getRole())) {
+                if (!Boolean.TRUE.equals(existingUser.getActive())) {
+                    existingUser.setActive(true);
+                    existingUser = userRepository.save(existingUser);
+                }
+            } else if (Boolean.FALSE.equals(existingUser.getActive())) {
+                throw new RuntimeException("Account is deactivated. Please contact Super Administrator.");
+            }
 
             return existingUser;
         }

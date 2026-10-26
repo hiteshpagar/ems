@@ -1,39 +1,119 @@
 import { router, usePathname } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Calendar,
+  Clock,
+  CreditCard,
+  FileText,
+  Home,
+  LayoutDashboard,
+  User,
+  Users,
+} from "lucide-react-native";
 import { AppColors } from "../constants/theme";
 
 type Props = {
-  role?: "ADMIN" | "EMPLOYEE" | string | null;
+  role?: "SUPER_ADMIN" | "ADMIN" | "EMPLOYEE" | string | null;
 };
 
 export default function BottomNav({ role = "EMPLOYEE" }: Props) {
   const pathname = usePathname();
+  const isSuperAdmin = role === "SUPER_ADMIN";
   const isAdmin = role === "ADMIN";
 
+  const superAdminTabs = [
+    {
+      label: "Console",
+      icon: Home,
+      route: "/super-admin-dashboard",
+    },
+    {
+      label: "Admins",
+      icon: Users,
+      route: "/manage-admins",
+    },
+    {
+      label: "Audit",
+      icon: FileText,
+      route: "/audit-logs",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      route: "/profile",
+    },
+  ];
+
   const adminTabs = [
-    { label: "Dashboard", icon: "📊", route: "/dashboard" },
-    { label: "Employees", icon: "👥", route: "/employee-list" },
-    { label: "Attendance", icon: "🕒", route: "/attendance" },
-    { label: "Leave", icon: "📋", route: "/leave-list" },
-    { label: "Profile", icon: "👤", route: "/profile" },
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      route: "/dashboard",
+    },
+    {
+      label: "Employees",
+      icon: Users,
+      route: "/employee-list",
+    },
+    {
+      label: "Attendance",
+      icon: Clock,
+      route: "/attendance",
+    },
+    {
+      label: "Leave",
+      icon: Calendar,
+      route: "/leave-list",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      route: "/profile",
+    },
   ];
 
   const employeeTabs = [
-    { label: "Home", icon: "🏠", route: "/dashboard" },
-    { label: "Attendance", icon: "🕒", route: "/attendance" },
-    { label: "Leave", icon: "🏖️", route: "/leave-list" },
-    { label: "Payslips", icon: "💵", route: "/payslips" },
-    { label: "Profile", icon: "👤", route: "/profile" },
+    {
+      label: "Home",
+      icon: Home,
+      route: "/dashboard",
+    },
+    {
+      label: "Attendance",
+      icon: Clock,
+      route: "/attendance",
+    },
+    {
+      label: "Leave",
+      icon: Calendar,
+      route: "/leave-list",
+    },
+    {
+      label: "Payslips",
+      icon: CreditCard,
+      route: "/payslips",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      route: "/profile",
+    },
   ];
 
-  const tabs = isAdmin ? adminTabs : employeeTabs;
+  const tabs = isSuperAdmin ? superAdminTabs : isAdmin ? adminTabs : employeeTabs;
 
   return (
     <View style={styles.container}>
       {tabs.map((tab) => {
         const isActive =
           pathname === tab.route ||
-          (tab.route === "/dashboard" && (pathname === "/" || pathname === "/dashboard"));
+          (tab.route === "/super-admin-dashboard" &&
+            (pathname === "/" || pathname === "/super-admin-dashboard")) ||
+          (tab.route === "/dashboard" &&
+            !isSuperAdmin &&
+            (pathname === "/" || pathname === "/dashboard"));
+
+        const IconComponent = tab.icon;
 
         return (
           <TouchableOpacity
@@ -49,9 +129,11 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={tab.label}
           >
-            <View style={[styles.iconBox, isActive && styles.activeIconBox]}>
-              <Text style={styles.icon}>{tab.icon}</Text>
-            </View>
+            <IconComponent
+              size={22}
+              color={isActive ? AppColors.accent : AppColors.textMuted}
+              strokeWidth={isActive ? 2.4 : 2}
+            />
             <Text style={[styles.label, isActive && styles.activeLabel]}>
               {tab.label}
             </Text>
@@ -65,10 +147,11 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    backgroundColor: AppColors.surface,
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: AppColors.border,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 10,
     paddingHorizontal: 8,
     justifyContent: "space-around",
     alignItems: "center",
@@ -77,29 +160,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
-    paddingVertical: 4,
-  },
-  iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
-  },
-  activeIconBox: {
-    backgroundColor: AppColors.primaryLight,
-  },
-  icon: {
-    fontSize: 16,
+    paddingVertical: 2,
+    minHeight: 44,
   },
   label: {
     fontSize: 11,
     fontWeight: "500",
     color: AppColors.textMuted,
+    marginTop: 3,
   },
   activeLabel: {
-    color: AppColors.primary,
+    color: AppColors.accent,
     fontWeight: "700",
   },
 });

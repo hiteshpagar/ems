@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,12 +11,18 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import {
+  ArrowLeft,
+  ChevronRight,
+  Lock,
+  LogOut,
+  SquarePen,
+} from "lucide-react-native";
 
 import API from "../services/api";
+import BottomNav from "../components/BottomNav";
 import ScreenWrapper from "../components/ScreenWrapper";
-import AppHeader from "../components/AppHeader";
-import StatusBadge from "../components/StatusBadge";
-import CustomButton from "../components/CustomButton";
 import { AuthContext } from "../context/AuthContext";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
@@ -25,7 +31,10 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { logout, userRole } = useContext(AuthContext);
+  const { logout, userRole, userName, userEmail } = useContext(AuthContext);
+
+  const isSuperAdmin = userRole === "SUPER_ADMIN";
+  const isAdmin = userRole === "ADMIN";
 
   const fetchProfile = async () => {
     try {
@@ -39,9 +48,11 @@ export default function ProfileScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -63,21 +74,36 @@ export default function ProfileScreen() {
     ]);
   };
 
-  if (loading) {
-    return (
-      <ScreenWrapper>
-        <AppHeader title="My Profile" showBack />
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
-        </View>
-      </ScreenWrapper>
-    );
-  }
+  const displayName = profile?.name || userName || "Administrator";
+  const displayEmail = profile?.email || userEmail || "admin@example.com";
+  const initial = displayName.charAt(0).toUpperCase();
+
+  const roleLabel = isSuperAdmin
+    ? "Super Administrator"
+    : isAdmin
+    ? "Administrator"
+    : "Employee";
+
+  const departmentLabel =
+    profile?.department || (isSuperAdmin ? "Executive Board" : "—");
+  const designationLabel =
+    profile?.designation || (isSuperAdmin ? "Super Administrator" : "—");
 
   return (
     <ScreenWrapper>
-      <AppHeader title="My Profile" showBack />
+      {/* Top Header */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+          accessibilityLabel="Go back"
+        >
+          <ArrowLeft size={20} color={AppColors.textPrimary} strokeWidth={2.2} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Profile</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -86,52 +112,60 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={AppColors.primary}
+            tintColor={AppColors.accent}
           />
         }
       >
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
+        {/* Profile Avatar & Summary */}
+        <View style={styles.profileSummaryBlock}>
           {profile?.photoUrl ? (
             <Image
               source={{ uri: profile.photoUrl }}
               style={styles.avatarImage}
             />
           ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>
-                {profile?.name?.charAt(0)?.toUpperCase() || "U"}
-              </Text>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{initial}</Text>
             </View>
           )}
 
-          <Text style={styles.name}>{profile?.name}</Text>
-          <Text style={styles.designation}>
-            {profile?.designation || profile?.department || "Team Member"}
-          </Text>
-          <Text style={styles.emailText}>{profile?.email}</Text>
+          <Text style={styles.fullName}>{displayName}</Text>
+          <Text style={styles.roleSubtext}>{roleLabel}</Text>
+          <Text style={styles.emailSubtext}>{displayEmail}</Text>
 
-          <View style={styles.badgeWrapper}>
-            <StatusBadge status="Active" showDot />
+          <View style={styles.statusPill}>
+            <View style={styles.statusDot} />
+            <Text style={styles.statusText}>Active</Text>
           </View>
         </View>
 
-        {/* Personal Information */}
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
+        {/* 1. Personal Information Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>Personal Information</Text>
+            <TouchableOpacity
+              style={styles.editPillButton}
+              onPress={() => router.push("/edit-profile")}
+              activeOpacity={0.7}
+            >
+              <SquarePen
+                size={12}
+                color={AppColors.accent}
+                strokeWidth={2.2}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.editPillText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
 
-          <DetailRow label="Full Name" value={profile?.name || "—"} />
-          <View style={styles.divider} />
-          <DetailRow label="Email Address" value={profile?.email || "—"} />
-          <View style={styles.divider} />
-          <DetailRow label="Department" value={profile?.department || "—"} />
-          {profile?.designation ? (
-            <>
-              <View style={styles.divider} />
-              <DetailRow label="Designation" value={profile.designation} />
-            </>
-          ) : null}
-          <View style={styles.divider} />
+          <DetailRow label="Full Name" value={displayName} />
+          <View style={styles.rowDivider} />
+          <DetailRow label="Email Address" value={displayEmail} />
+          <View style={styles.rowDivider} />
+          <DetailRow label="Department" value={departmentLabel} />
+          <View style={styles.rowDivider} />
+          <DetailRow label="Designation" value={designationLabel} />
+          <View style={styles.rowDivider} />
           <DetailRow
             label="Monthly Salary"
             value={
@@ -142,62 +176,94 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* Account Information */}
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Account Information</Text>
+        {/* 2. Account Information Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Account Information</Text>
 
           <DetailRow
             label="Employee ID"
             value={profile?.id ? `EMP-${profile.id}` : "—"}
           />
-          <View style={styles.divider} />
+          <View style={styles.rowDivider} />
+          <DetailRow label="Role" value={roleLabel} />
+          <View style={styles.rowDivider} />
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Account Status</Text>
+            <View style={styles.statusValueRow}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Active</Text>
+            </View>
+          </View>
+          <View style={styles.rowDivider} />
           <DetailRow
-            label="Role"
-            value={userRole === "ADMIN" ? "Administrator" : "Employee"}
+            label="Last Login"
+            value="Oct 24, 2026, 2:05 PM"
           />
-          <View style={styles.divider} />
-          <DetailRow label="Account Status" value="Active" />
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Account Settings</Text>
+        {/* 3. Account Settings Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Account Settings</Text>
 
+          {/* Edit Profile Details */}
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() => router.push("/edit-profile")}
             activeOpacity={0.7}
           >
             <View style={styles.actionLeft}>
-              <Text style={styles.actionIcon}>✏️</Text>
-              <Text style={styles.actionText}>Edit Profile Details</Text>
+              <View style={styles.actionIconContainer}>
+                <SquarePen size={15} color="#D97706" strokeWidth={2.2} />
+              </View>
+              <Text style={styles.actionLabel}>Edit Profile Details</Text>
             </View>
-            <Text style={styles.actionChevron}>›</Text>
+            <ChevronRight
+              size={18}
+              color={AppColors.textMuted}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
 
-          <View style={styles.divider} />
+          <View style={styles.rowDivider} />
 
+          {/* Reset / Change Password */}
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() => router.push("/forgot-password")}
             activeOpacity={0.7}
           >
             <View style={styles.actionLeft}>
-              <Text style={styles.actionIcon}>🔒</Text>
-              <Text style={styles.actionText}>Reset / Change Password</Text>
+              <View style={styles.actionIconContainer}>
+                <Lock size={15} color="#D97706" strokeWidth={2.2} />
+              </View>
+              <Text style={styles.actionLabel}>Reset / Change Password</Text>
             </View>
-            <Text style={styles.actionChevron}>›</Text>
+            <ChevronRight
+              size={18}
+              color={AppColors.textMuted}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
         </View>
 
-        {/* Logout */}
-        <CustomButton
-          title="Sign Out"
+        {/* Sign Out Button */}
+        <TouchableOpacity
+          style={styles.signOutButton}
           onPress={handleLogout}
-          variant="outline"
-          style={styles.logoutBtn}
-        />
+          activeOpacity={0.7}
+        >
+          <LogOut
+            size={18}
+            color={AppColors.accent}
+            strokeWidth={2.2}
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Persistent Bottom Nav Bar */}
+      <BottomNav role={userRole} />
     </ScreenWrapper>
   );
 }
@@ -206,136 +272,206 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
+      <Text style={styles.detailValue} numberOfLines={1}>
+        {value}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  centerContainer: {
-    flex: 1,
+  topHeader: {
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    backgroundColor: AppColors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: AppRadius.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: AppColors.textSecondary,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: AppColors.textPrimary,
+  },
+  headerSpacer: {
+    width: 36,
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
-  profileCard: {
-    backgroundColor: AppColors.surface,
-    borderRadius: AppRadius.lg,
-    padding: 24,
+  profileSummaryBlock: {
     alignItems: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    ...AppShadows.card,
+    marginBottom: 20,
+    marginTop: 4,
   },
-  avatarImage: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    marginBottom: 12,
-    backgroundColor: AppColors.surfaceMuted,
-  },
-  avatarPlaceholder: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: AppColors.primaryLight,
+  avatarCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: AppColors.accentLight,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 12,
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     marginBottom: 12,
   },
   avatarText: {
     fontSize: 32,
     fontWeight: "700",
-    color: AppColors.primary,
+    color: AppColors.accent,
   },
-  name: {
+  fullName: {
     fontSize: 20,
     fontWeight: "700",
-    color: AppColors.text,
+    color: AppColors.textPrimary,
+    textAlign: "center",
   },
-  designation: {
-    fontSize: 14,
-    color: AppColors.textMuted,
-    marginTop: 2,
-  },
-  emailText: {
+  roleSubtext: {
     fontSize: 13,
-    color: AppColors.textMuted,
-    marginTop: 4,
+    color: AppColors.textSecondary,
+    marginTop: 2,
+    textAlign: "center",
   },
-  badgeWrapper: {
-    marginTop: 12,
+  emailSubtext: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    marginTop: 2,
+    textAlign: "center",
   },
-  infoCard: {
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.successBackground,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: AppRadius.pill,
+    marginTop: 10,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: AppColors.success,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: AppColors.success,
+  },
+  card: {
     backgroundColor: AppColors.surface,
     borderRadius: AppRadius.lg,
-    padding: 18,
+    padding: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: AppColors.border,
     ...AppShadows.subtle,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: AppColors.text,
-    marginBottom: 12,
+  cardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: AppColors.textPrimary,
+    marginBottom: 8,
+  },
+  editPillButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.accentLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: AppRadius.pill,
+  },
+  editPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: AppColors.accent,
   },
   detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   detailLabel: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: AppColors.textSecondary,
+    fontWeight: "400",
   },
   detailValue: {
-    fontSize: 14,
-    color: AppColors.text,
+    fontSize: 13,
+    color: AppColors.textPrimary,
     fontWeight: "600",
-    maxWidth: "60%",
+    maxWidth: "58%",
     textAlign: "right",
   },
-  divider: {
+  statusValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rowDivider: {
     height: 1,
     backgroundColor: AppColors.border,
-    marginVertical: 4,
   },
   actionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   actionLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
-  actionIcon: {
-    fontSize: 16,
-    marginRight: 10,
+  actionIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
-  actionText: {
+  actionLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: AppColors.textPrimary,
+  },
+  signOutButton: {
+    height: 48,
+    borderRadius: AppRadius.md,
+    borderWidth: 1.5,
+    borderColor: AppColors.accent,
+    backgroundColor: AppColors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  signOutButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: AppColors.text,
-  },
-  actionChevron: {
-    fontSize: 20,
-    color: AppColors.textMuted,
-  },
-  logoutBtn: {
-    marginTop: 4,
+    color: AppColors.accent,
   },
 });

@@ -99,8 +99,14 @@ export default function DashboardScreen() {
     fetchDashboardStats();
     fetchAttendanceStats();
     fetchUnreadNotificationCount();
-    if (userRole !== "ADMIN") {
+    if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
       fetchTodayAttendance();
+    }
+  }, [userRole]);
+
+  useEffect(() => {
+    if (userRole === "SUPER_ADMIN") {
+      router.replace("/super-admin-dashboard");
     }
   }, [userRole]);
 
@@ -148,7 +154,8 @@ export default function DashboardScreen() {
     );
   }
 
-  const isAdmin = userRole === "ADMIN";
+  const isSuperAdmin = userRole === "SUPER_ADMIN";
+  const isAdmin = userRole === "ADMIN" || isSuperAdmin;
 
   return (
     <ScreenWrapper>
@@ -200,6 +207,24 @@ export default function DashboardScreen() {
             />
           }
         >
+          {/* SUPER ADMIN NOTICE BANNER */}
+          {isSuperAdmin && (
+            <TouchableOpacity
+              style={styles.superAdminNotice}
+              onPress={() => router.push("/super-admin-dashboard")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.superAdminNoticeIcon}>🛡️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.superAdminNoticeTitle}>Super Administrator Mode</Text>
+                <Text style={styles.superAdminNoticeSubtitle}>
+                  Inspecting company operations. Tap to return to Governance Console.
+                </Text>
+              </View>
+              <Text style={styles.superAdminNoticeChevron}>‹ Console</Text>
+            </TouchableOpacity>
+          )}
+
           {/* STATS OVERVIEW - ADMIN */}
           {isAdmin ? (
             <View style={styles.section}>
@@ -871,5 +896,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: AppColors.danger,
+  },
+  superAdminNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  superAdminNoticeIcon: {
+    fontSize: 16,
+    marginRight: 10,
+  },
+  superAdminNoticeTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  superAdminNoticeSubtitle: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  superAdminNoticeChevron: {
+    fontSize: 12,
+    color: "#1E3A8A",
+    fontWeight: "700",
+    marginLeft: 6,
   },
 });
