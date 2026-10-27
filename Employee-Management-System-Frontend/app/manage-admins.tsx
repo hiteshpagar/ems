@@ -58,6 +58,8 @@ interface AdminItem {
   designation?: string;
   phoneNumber?: string;
   employeeId?: string;
+  createdAt?: string;
+  lastLoginAt?: string;
   createdOn?: string;
   createdBy?: string;
 }
@@ -93,6 +95,24 @@ export default function ManageAdminsScreen() {
 
   // Selected Admin for Screen 3: Details View
   const [selectedAdmin, setSelectedAdmin] = useState<AdminItem | null>(null);
+
+  const formatDateTime = (dateVal?: string | null) => {
+    if (!dateVal) return "Recently";
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return "Recently";
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return "Recently";
+    }
+  };
   const [detailTab, setDetailTab] = useState<"Profile" | "Activity" | "Permissions">("Profile");
 
   // Modal 1: Provision Admin State
@@ -637,7 +657,18 @@ export default function ManageAdminsScreen() {
                   <View style={styles.detailItem}>
                     <Calendar size={16} color="#64748B" strokeWidth={2} style={styles.detailIcon} />
                     <Text style={styles.detailLabel}>Created On</Text>
-                    <Text style={styles.detailValue}>Oct 24, 2026, 12:45 PM</Text>
+                    <Text style={styles.detailValue}>
+                      {formatDateTime(selectedAdmin.createdAt || selectedAdmin.createdOn)}
+                    </Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  <View style={styles.detailItem}>
+                    <Clock size={16} color="#64748B" strokeWidth={2} style={styles.detailIcon} />
+                    <Text style={styles.detailLabel}>Last Login</Text>
+                    <Text style={styles.detailValue}>
+                      {formatDateTime(selectedAdmin.lastLoginAt)}
+                    </Text>
                   </View>
                 </View>
               </>

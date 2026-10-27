@@ -279,7 +279,9 @@ public class SuperAdminService {
                 companyName,
                 user.getDesignation(),
                 user.getPhoneNumber(),
-                user.getEmployeeId()
+                user.getEmployeeId(),
+                user.getCreatedAt(),
+                user.getLastLoginAt()
         );
     }
 }

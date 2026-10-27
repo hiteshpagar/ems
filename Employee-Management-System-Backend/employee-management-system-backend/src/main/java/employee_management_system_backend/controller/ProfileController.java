@@ -49,6 +49,8 @@ public class ProfileController {
             dummy.setCompany(user.getCompany());
             dummy.setPhone(user.getPhoneNumber());
             dummy.setEmployeeId(user.getEmployeeId());
+            dummy.setLastLoginAt(user.getLastLoginAt() != null ? user.getLastLoginAt() : java.time.LocalDateTime.now());
+            dummy.setCreatedAt(user.getCreatedAt());
             return dummy;
         }
 

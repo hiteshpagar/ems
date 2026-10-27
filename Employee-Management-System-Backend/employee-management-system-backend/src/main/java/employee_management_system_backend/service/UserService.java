@@ -135,6 +135,8 @@ public class UserService {
                 throw new RuntimeException("Account is deactivated. Please contact Super Administrator.");
             }
 
+            existingUser.setLastLoginAt(LocalDateTime.now());
+            existingUser = userRepository.save(existingUser);
             return existingUser;
         }
 

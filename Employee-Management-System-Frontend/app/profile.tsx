@@ -89,6 +89,24 @@ export default function ProfileScreen() {
   const designationLabel =
     profile?.designation || (isSuperAdmin ? "Super Administrator" : "—");
 
+  const formatDateTime = (dateVal?: string | null) => {
+    if (!dateVal) return "Active today";
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return "Active today";
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return "Active today";
+    }
+  };
+
   return (
     <ScreenWrapper>
       {/* Top Header */}
@@ -213,7 +231,7 @@ export default function ProfileScreen() {
           <View style={styles.rowDivider} />
           <DetailRow
             label="Last Login"
-            value="Oct 24, 2026, 2:05 PM"
+            value={formatDateTime(profile?.lastLoginAt)}
           />
         </View>
 

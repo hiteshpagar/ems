@@ -11,6 +11,8 @@ public class AdminDTO {
     private String designation;
     private String phoneNumber;
     private String employeeId;
+    private java.time.LocalDateTime createdAt;
+    private java.time.LocalDateTime lastLoginAt;
 
     public AdminDTO() {}
 
@@ -52,6 +54,21 @@ public class AdminDTO {
         this.designation = designation;
         this.phoneNumber = phoneNumber;
         this.employeeId = employeeId;
+    }
+
+    public AdminDTO(Long id, String fullName, String email, String role, Boolean active, Long companyId, String companyName, String designation, String phoneNumber, String employeeId, java.time.LocalDateTime createdAt, java.time.LocalDateTime lastLoginAt) {
+        this.id = id;
+        this.fullName = fullName;
+        this.email = email;
+        this.role = role;
+        this.active = active != null ? active : true;
+        this.companyId = companyId;
+        this.companyName = companyName;
+        this.designation = designation;
+        this.phoneNumber = phoneNumber;
+        this.employeeId = employeeId;
+        this.createdAt = createdAt;
+        this.lastLoginAt = lastLoginAt;
     }
 
     public Long getId() {
@@ -132,5 +149,21 @@ public class AdminDTO {
 
     public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
+    }
+
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public java.time.LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(java.time.LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 }
