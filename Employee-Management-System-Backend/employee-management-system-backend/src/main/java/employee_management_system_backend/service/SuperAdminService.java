@@ -102,7 +102,23 @@ public class SuperAdminService {
             user.setDesignation("HR Administrator");
         }
 
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+            user.setPhoneNumber(request.getPhoneNumber().trim());
+        }
+
+        if (request.getEmployeeId() != null && !request.getEmployeeId().trim().isEmpty()) {
+            user.setEmployeeId(request.getEmployeeId().trim());
+        }
+
         User saved = userRepository.save(user);
+
+        if (saved.getEmployeeId() == null || saved.getEmployeeId().isBlank()) {
+            String prefix = company != null && company.getCode() != null && !company.getCode().isBlank()
+                    ? company.getCode().trim()
+                    : "ADM";
+            saved.setEmployeeId(prefix + "-" + String.format("%04d", saved.getId()));
+            saved = userRepository.save(saved);
+        }
 
         User superAdmin = userRepository.findByEmail(superAdminEmail);
         auditLogService.log(
@@ -111,7 +127,9 @@ public class SuperAdminService {
                 saved.getId().toString(),
                 "Super Admin created new Administrator: " + saved.getFullName() + " (" + saved.getEmail() + ")"
                         + (company != null ? " for Company: " + company.getName() : "")
-                        + (saved.getDesignation() != null ? " with Designation: " + saved.getDesignation() : ""),
+                        + (saved.getDesignation() != null ? " with Designation: " + saved.getDesignation() : "")
+                        + (saved.getEmployeeId() != null ? " [ID: " + saved.getEmployeeId() + "]" : "")
+                        + (saved.getPhoneNumber() != null ? " [Phone: " + saved.getPhoneNumber() + "]" : ""),
                 superAdmin
         );
 
@@ -148,6 +166,14 @@ public class SuperAdminService {
 
         if (request.getDesignation() != null) {
             admin.setDesignation(request.getDesignation().trim());
+        }
+
+        if (request.getPhoneNumber() != null) {
+            admin.setPhoneNumber(request.getPhoneNumber().trim().isEmpty() ? null : request.getPhoneNumber().trim());
+        }
+
+        if (request.getEmployeeId() != null && !request.getEmployeeId().trim().isEmpty()) {
+            admin.setEmployeeId(request.getEmployeeId().trim());
         }
 
         User saved = userRepository.save(admin);
@@ -251,7 +277,9 @@ public class SuperAdminService {
                 user.getActive(),
                 companyId,
                 companyName,
-                user.getDesignation()
+                user.getDesignation(),
+                user.getPhoneNumber(),
+                user.getEmployeeId()
         );
     }
 }

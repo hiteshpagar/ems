@@ -23,6 +23,10 @@ public class CreateAdminRequest {
 
     private String designation;
 
+    private String phoneNumber;
+
+    private String employeeId;
+
     public CreateAdminRequest() {}
 
     public CreateAdminRequest(String fullName, String email, String password) {
@@ -85,5 +89,21 @@ public class CreateAdminRequest {
 
     public void setDesignation(String designation) {
         this.designation = designation;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
     }
 }

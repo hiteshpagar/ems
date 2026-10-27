@@ -9,6 +9,8 @@ public class AdminDTO {
     private Long companyId;
     private String companyName;
     private String designation;
+    private String phoneNumber;
+    private String employeeId;
 
     public AdminDTO() {}
 
@@ -37,6 +39,19 @@ public class AdminDTO {
         this.companyId = companyId;
         this.companyName = companyName;
         this.designation = designation;
+    }
+
+    public AdminDTO(Long id, String fullName, String email, String role, Boolean active, Long companyId, String companyName, String designation, String phoneNumber, String employeeId) {
+        this.id = id;
+        this.fullName = fullName;
+        this.email = email;
+        this.role = role;
+        this.active = active != null ? active : true;
+        this.companyId = companyId;
+        this.companyName = companyName;
+        this.designation = designation;
+        this.phoneNumber = phoneNumber;
+        this.employeeId = employeeId;
     }
 
     public Long getId() {
@@ -101,5 +116,21 @@ public class AdminDTO {
 
     public void setDesignation(String designation) {
         this.designation = designation;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
     }
 }

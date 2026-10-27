@@ -225,13 +225,37 @@ public class EmployeeService {
                 employeeRepository.findByEmail(email);
 
         if (employee == null) {
+            User user = userRepository.findByEmail(email);
+            if (user != null) {
+                if (updatedEmployee.getName() != null && !updatedEmployee.getName().isBlank()) {
+                    user.setFullName(updatedEmployee.getName().trim());
+                }
+                if (updatedEmployee.getPhone() != null) {
+                    user.setPhoneNumber(updatedEmployee.getPhone().trim());
+                }
+                userRepository.save(user);
+
+                Employee dummy = new Employee();
+                dummy.setId(user.getId());
+                dummy.setName(user.getFullName());
+                dummy.setEmail(user.getEmail());
+                dummy.setPhone(user.getPhoneNumber());
+                dummy.setEmployeeId(user.getEmployeeId());
+                dummy.setDepartment("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Executive Board" : (user.getCompany() != null ? user.getCompany().getName() : "Management"));
+                dummy.setDesignation(user.getDesignation() != null ? user.getDesignation() : "Administrator");
+                dummy.setCompany(user.getCompany());
+                return dummy;
+            }
             return null;
         }
 
         // Editable Fields
-        employee.setName(
-                updatedEmployee.getName()
-        );
+        if (updatedEmployee.getName() != null && !updatedEmployee.getName().isBlank()) {
+            employee.setName(updatedEmployee.getName().trim());
+        }
+        if (updatedEmployee.getPhone() != null) {
+            employee.setPhone(updatedEmployee.getPhone().trim());
+        }
 
         // Non-editable fields:
         // Email

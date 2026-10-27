@@ -35,6 +35,12 @@ public class User {
 
     private String designation;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(name = "employee_id")
+    private String employeeId;
+
     public Company getCompany() {
         return company;
     }
@@ -49,6 +55,22 @@ public class User {
 
     public void setDesignation(String designation) {
         this.designation = designation;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
     }
 
     public String getRole() {

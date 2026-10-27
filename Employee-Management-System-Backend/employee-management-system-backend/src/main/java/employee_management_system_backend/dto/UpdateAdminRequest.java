@@ -18,6 +18,10 @@ public class UpdateAdminRequest {
 
     private String designation;
 
+    private String phoneNumber;
+
+    private String employeeId;
+
     public UpdateAdminRequest() {}
 
     public UpdateAdminRequest(String fullName, String email) {
@@ -70,5 +74,21 @@ public class UpdateAdminRequest {
 
     public void setDesignation(String designation) {
         this.designation = designation;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
     }
 }

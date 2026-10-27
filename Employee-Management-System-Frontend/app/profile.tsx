@@ -162,6 +162,8 @@ export default function ProfileScreen() {
           <View style={styles.rowDivider} />
           <DetailRow label="Email Address" value={displayEmail} />
           <View style={styles.rowDivider} />
+          <DetailRow label="Phone Number" value={profile?.phone || "—"} />
+          <View style={styles.rowDivider} />
           {(profile as any)?.company?.name ? (
             <>
               <DetailRow label="Company" value={(profile as any).company.name} />
@@ -188,7 +190,7 @@ export default function ProfileScreen() {
 
           <DetailRow
             label="Employee ID"
-            value={profile?.id ? `EMP-${profile.id}` : "—"}
+            value={profile?.employeeId || (profile?.id ? `EMP-${profile.id}` : "—")}
           />
           <View style={styles.rowDivider} />
           <DetailRow label="Role" value={roleLabel} />

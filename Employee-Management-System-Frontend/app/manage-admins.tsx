@@ -56,6 +56,8 @@ interface AdminItem {
   companyId?: number;
   companyName?: string;
   designation?: string;
+  phoneNumber?: string;
+  employeeId?: string;
   createdOn?: string;
   createdBy?: string;
 }
@@ -103,6 +105,8 @@ export default function ManageAdminsScreen() {
   const [addCompanyName, setAddCompanyName] = useState("");
   const [addIsNewCompany, setAddIsNewCompany] = useState(false);
   const [addDesignation, setAddDesignation] = useState("HR Manager");
+  const [addPhone, setAddPhone] = useState("");
+  const [addEmployeeId, setAddEmployeeId] = useState("");
   const [addLoading, setAddLoading] = useState(false);
 
   // Modal 2: Edit Admin State
@@ -113,6 +117,8 @@ export default function ManageAdminsScreen() {
   const [editCompanyName, setEditCompanyName] = useState("");
   const [editIsNewCompany, setEditIsNewCompany] = useState(false);
   const [editDesignation, setEditDesignation] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmployeeId, setEditEmployeeId] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
   // Modal 3: Reset Password State
@@ -214,12 +220,16 @@ export default function ManageAdminsScreen() {
         companyId: addIsNewCompany ? undefined : (addCompanyId || undefined),
         companyName: addIsNewCompany ? addCompanyName.trim() : undefined,
         designation: addDesignation.trim() || "HR Administrator",
+        phoneNumber: addPhone.trim() || undefined,
+        employeeId: addEmployeeId.trim() || undefined,
       });
 
       Alert.alert("Success", "Administrator provisioned successfully.");
       setShowAddModal(false);
       setAddName("");
       setAddEmail("");
+      setAddPhone("");
+      setAddEmployeeId("");
       setAddPassword("");
       setAddConfirmPassword("");
       setAddCompanyId(null);
@@ -244,6 +254,8 @@ export default function ManageAdminsScreen() {
     setEditCompanyName(admin.companyName || "");
     setEditIsNewCompany(false);
     setEditDesignation(admin.designation || "");
+    setEditPhone(admin.phoneNumber || "");
+    setEditEmployeeId(admin.employeeId || "");
     setShowEditModal(true);
   };
 
@@ -265,6 +277,8 @@ export default function ManageAdminsScreen() {
         companyId: editIsNewCompany ? undefined : (editCompanyId || undefined),
         companyName: editIsNewCompany ? editCompanyName.trim() : undefined,
         designation: editDesignation.trim() || undefined,
+        phoneNumber: editPhone.trim() || undefined,
+        employeeId: editEmployeeId.trim() || undefined,
       });
 
       Alert.alert("Success", "Administrator details updated successfully.");
@@ -579,7 +593,7 @@ export default function ManageAdminsScreen() {
                   <View style={styles.detailItem}>
                     <Phone size={16} color="#64748B" strokeWidth={2} style={styles.detailIcon} />
                     <Text style={styles.detailLabel}>Phone Number</Text>
-                    <Text style={styles.detailValue}>—</Text>
+                    <Text style={styles.detailValue}>{selectedAdmin.phoneNumber || "—"}</Text>
                   </View>
                 </View>
 
@@ -590,7 +604,7 @@ export default function ManageAdminsScreen() {
                   <View style={styles.detailItem}>
                     <CreditCard size={16} color="#64748B" strokeWidth={2} style={styles.detailIcon} />
                     <Text style={styles.detailLabel}>Employee ID</Text>
-                    <Text style={styles.detailValue}>—</Text>
+                    <Text style={styles.detailValue}>{selectedAdmin.employeeId || (selectedAdmin.id ? `ADM-${selectedAdmin.id}` : "—")}</Text>
                   </View>
                   <View style={styles.divider} />
 
@@ -676,6 +690,21 @@ export default function ManageAdminsScreen() {
                   onChangeText={setEditEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                />
+
+                <CustomInput
+                  label="Employee ID"
+                  placeholder="e.g. ADM-001 or EMP-101"
+                  value={editEmployeeId}
+                  onChangeText={setEditEmployeeId}
+                />
+
+                <CustomInput
+                  label="Phone Number"
+                  placeholder="e.g. +91 98765 43210"
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  keyboardType="phone-pad"
                 />
 
                 {/* Company Selection */}
@@ -1078,6 +1107,21 @@ export default function ManageAdminsScreen() {
                   onChangeText={setAddEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                />
+
+                <CustomInput
+                  label="Employee ID (Optional)"
+                  placeholder="e.g. ADM-001 (auto-generated if empty)"
+                  value={addEmployeeId}
+                  onChangeText={setAddEmployeeId}
+                />
+
+                <CustomInput
+                  label="Phone Number"
+                  placeholder="e.g. +91 98765 43210"
+                  value={addPhone}
+                  onChangeText={setAddPhone}
+                  keyboardType="phone-pad"
                 />
 
                 {/* Company Selection */}

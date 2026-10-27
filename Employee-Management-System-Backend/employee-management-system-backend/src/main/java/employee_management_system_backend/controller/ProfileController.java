@@ -39,6 +39,7 @@ public class ProfileController {
         employee_management_system_backend.entity.User user = userRepository.findByEmail(authentication.getName());
         if (user != null) {
             Employee dummy = new Employee();
+            dummy.setId(user.getId());
             dummy.setName(user.getFullName());
             dummy.setEmail(user.getEmail());
             dummy.setDepartment("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Executive Board" : (user.getCompany() != null ? user.getCompany().getName() : "Management"));
@@ -46,6 +47,8 @@ public class ProfileController {
                     ? user.getDesignation()
                     : ("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Super Administrator" : "Administrator"));
             dummy.setCompany(user.getCompany());
+            dummy.setPhone(user.getPhoneNumber());
+            dummy.setEmployeeId(user.getEmployeeId());
             return dummy;
         }
 

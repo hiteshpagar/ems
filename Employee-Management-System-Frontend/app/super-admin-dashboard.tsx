@@ -62,6 +62,8 @@ export default function SuperAdminDashboard() {
   const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
   const [addConfirmPassword, setAddConfirmPassword] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addEmployeeId, setAddEmployeeId] = useState("");
   const [addLoading, setAddLoading] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -126,12 +128,16 @@ export default function SuperAdminDashboard() {
         fullName: trimmedName,
         email: trimmedEmail,
         password: addPassword,
+        phoneNumber: addPhone.trim() || undefined,
+        employeeId: addEmployeeId.trim() || undefined,
       });
 
       Alert.alert("Success", "New Administrator provisioned successfully.");
       setShowAddModal(false);
       setAddName("");
       setAddEmail("");
+      setAddPhone("");
+      setAddEmployeeId("");
       setAddPassword("");
       setAddConfirmPassword("");
       loadData();
@@ -447,6 +453,21 @@ export default function SuperAdminDashboard() {
                   onChangeText={setAddEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                />
+
+                <CustomInput
+                  label="Employee ID (Optional)"
+                  placeholder="e.g. ADM-001 (auto-generated if empty)"
+                  value={addEmployeeId}
+                  onChangeText={setAddEmployeeId}
+                />
+
+                <CustomInput
+                  label="Phone Number"
+                  placeholder="e.g. +91 98765 43210"
+                  value={addPhone}
+                  onChangeText={setAddPhone}
+                  keyboardType="phone-pad"
                 />
 
                 <PasswordInput
