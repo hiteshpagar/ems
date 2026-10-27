@@ -1066,7 +1066,7 @@ export default function ManageAdminsScreen() {
 
                 <CustomInput
                   label="Full Name *"
-                  placeholder="e.g. Rushikesh Wakode"
+                  placeholder="Enter full name"
                   value={addName}
                   onChangeText={setAddName}
                 />
