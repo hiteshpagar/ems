@@ -840,33 +840,48 @@ export default function ManageAdminsScreen() {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.replace("/super-admin-dashboard")}
-            activeOpacity={0.7}
-            accessibilityLabel="Back to dashboard"
-          >
-            <ArrowLeft size={20} color="#0F172A" strokeWidth={2.2} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Administrator Roster</Text>
-          <View style={styles.headerRightActions}>
+          <View style={styles.headerLeftGroup}>
             <TouchableOpacity
-              style={styles.companiesHeaderBtn}
-              onPress={() => setShowCompanyModal(true)}
+              style={styles.backButton}
+              onPress={() => router.replace("/super-admin-dashboard")}
               activeOpacity={0.7}
+              accessibilityLabel="Back to dashboard"
             >
-              <Building2 size={13} color="#173B7A" strokeWidth={2.2} />
-              <Text style={styles.companiesHeaderBtnText}>Companies ({companies.length})</Text>
+              <ArrowLeft size={20} color="#0F172A" strokeWidth={2.2} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.provisionBtn}
-              onPress={() => setShowAddModal(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.provisionBtnText}>+ Provision</Text>
-            </TouchableOpacity>
+            <Text style={styles.headerTitle} numberOfLines={1}>Administrator Roster</Text>
           </View>
+          <TouchableOpacity
+            style={styles.provisionBtn}
+            onPress={() => setShowAddModal(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.provisionBtnText}>+ Provision</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Dedicated Company / Enterprise Quick Banner */}
+        <TouchableOpacity
+          style={styles.companyBanner}
+          onPress={() => setShowCompanyModal(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.companyBannerLeft}>
+            <View style={styles.companyBannerIcon}>
+              <Building2 size={16} color="#1D4ED8" strokeWidth={2.2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.companyBannerTitle} numberOfLines={1}>Companies & Enterprises</Text>
+              <Text style={styles.companyBannerSub} numberOfLines={1}>
+                {companies.length} {companies.length === 1 ? "company" : "companies"} registered • Tap to manage
+              </Text>
+            </View>
+          </View>
+          <View style={styles.companyBannerAction}>
+            <Text style={styles.companyBannerActionText}>Manage</Text>
+            <ChevronRight size={14} color="#1D4ED8" strokeWidth={2.2} />
+          </View>
+        </TouchableOpacity>
 
         {/* Search Bar */}
         <View style={styles.searchBarWrapper}>
@@ -1274,32 +1289,92 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E2E8F0",
+    gap: 8,
+  },
+  headerLeftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 8,
+    marginRight: 6,
   },
   backButton: {
     padding: 6,
-    marginLeft: -6,
+    marginLeft: -4,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: "700",
     color: "#0F172A",
+    flex: 1,
   },
   provisionBtn: {
     backgroundColor: "#173B7A",
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
     paddingVertical: 7,
     borderRadius: 8,
+    flexShrink: 0,
   },
   provisionBtnText: {
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
+  },
+  companyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#EFF6FF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#DBEAFE",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  companyBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+    marginRight: 8,
+  },
+  companyBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "#DBEAFE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  companyBannerTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1E3A8A",
+  },
+  companyBannerSub: {
+    fontSize: 11,
+    color: "#3B82F6",
+    marginTop: 1,
+  },
+  companyBannerAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "#DBEAFE",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  companyBannerActionText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#1D4ED8",
   },
   searchBarWrapper: {
     paddingHorizontal: 20,
