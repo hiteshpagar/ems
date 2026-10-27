@@ -34,6 +34,18 @@ public class Employee {
     
     private String photoUrl;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "company_id")
+    private Company company;
+
+    public Company getCompany() {
+        return company;
+    }
+
+    public void setCompany(Company company) {
+        this.company = company;
+    }
+
     public String getPhotoUrl() {
 		return photoUrl;
 	}

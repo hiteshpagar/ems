@@ -12,11 +12,24 @@ public class UpdateAdminRequest {
     @Email(message = "Valid email is required")
     private String email;
 
+    private Long companyId;
+
+    private String companyName;
+
+    private String designation;
+
     public UpdateAdminRequest() {}
 
     public UpdateAdminRequest(String fullName, String email) {
         this.fullName = fullName;
         this.email = email;
+    }
+
+    public UpdateAdminRequest(String fullName, String email, Long companyId, String designation) {
+        this.fullName = fullName;
+        this.email = email;
+        this.companyId = companyId;
+        this.designation = designation;
     }
 
     public String getFullName() {
@@ -33,5 +46,29 @@ public class UpdateAdminRequest {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+
+    public String getDesignation() {
+        return designation;
+    }
+
+    public void setDesignation(String designation) {
+        this.designation = designation;
     }
 }

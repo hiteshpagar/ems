@@ -38,6 +38,7 @@ interface SuperAdminStats {
   totalEmployees: number;
   totalDepartments: number;
   totalAuditLogs: number;
+  totalCompanies?: number;
 }
 
 interface AdminItem {
@@ -321,6 +322,24 @@ export default function SuperAdminDashboard() {
                 <Text style={styles.kpiValue}>{stats?.totalAuditLogs ?? 6}</Text>
               </View>
               <Text style={styles.kpiSubtext}>Audited system events</Text>
+            </TouchableOpacity>
+
+            {/* KPI 5: Enterprises / Companies */}
+            <TouchableOpacity
+              style={styles.kpiCard}
+              onPress={() => router.push("/manage-admins")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.kpiTopRow}>
+                <View style={[styles.kpiIconCircle, { backgroundColor: "#F0FDF4" }]}>
+                  <Building2 size={16} color="#16A34A" strokeWidth={2.2} />
+                </View>
+                <Text style={styles.kpiLabel} numberOfLines={1}>Enterprises</Text>
+              </View>
+              <View style={styles.kpiValueRow}>
+                <Text style={styles.kpiValue}>{stats?.totalCompanies ?? 0}</Text>
+              </View>
+              <Text style={styles.kpiSubtext}>Registered Companies</Text>
             </TouchableOpacity>
           </View>
 

@@ -41,8 +41,11 @@ public class ProfileController {
             Employee dummy = new Employee();
             dummy.setName(user.getFullName());
             dummy.setEmail(user.getEmail());
-            dummy.setDepartment("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Executive Board" : "Management");
-            dummy.setDesignation("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Super Administrator" : "Administrator");
+            dummy.setDepartment("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Executive Board" : (user.getCompany() != null ? user.getCompany().getName() : "Management"));
+            dummy.setDesignation(user.getDesignation() != null && !user.getDesignation().isBlank()
+                    ? user.getDesignation()
+                    : ("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Super Administrator" : "Administrator"));
+            dummy.setCompany(user.getCompany());
             return dummy;
         }
 

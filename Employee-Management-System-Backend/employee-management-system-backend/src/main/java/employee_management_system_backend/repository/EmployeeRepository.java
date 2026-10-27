@@ -15,4 +15,6 @@ public interface EmployeeRepository
     boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
     long countByDepartmentIgnoreCase(String department);
     long countByDesignationIgnoreCase(String designation);
+    java.util.List<Employee> findByCompanyId(Long companyId);
+    long countByCompanyId(Long companyId);
 }

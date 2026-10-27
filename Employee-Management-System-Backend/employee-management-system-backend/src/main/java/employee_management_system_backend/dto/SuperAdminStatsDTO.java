@@ -5,6 +5,7 @@ public class SuperAdminStatsDTO {
     private long totalEmployees;
     private long totalDepartments;
     private long totalAuditLogs;
+    private long totalCompanies;
 
     public SuperAdminStatsDTO() {}
 
@@ -13,6 +14,15 @@ public class SuperAdminStatsDTO {
         this.totalEmployees = totalEmployees;
         this.totalDepartments = totalDepartments;
         this.totalAuditLogs = totalAuditLogs;
+        this.totalCompanies = 0;
+    }
+
+    public SuperAdminStatsDTO(long totalAdmins, long totalEmployees, long totalDepartments, long totalAuditLogs, long totalCompanies) {
+        this.totalAdmins = totalAdmins;
+        this.totalEmployees = totalEmployees;
+        this.totalDepartments = totalDepartments;
+        this.totalAuditLogs = totalAuditLogs;
+        this.totalCompanies = totalCompanies;
     }
 
     public long getTotalAdmins() {
@@ -45,5 +55,13 @@ public class SuperAdminStatsDTO {
 
     public void setTotalAuditLogs(long totalAuditLogs) {
         this.totalAuditLogs = totalAuditLogs;
+    }
+
+    public long getTotalCompanies() {
+        return totalCompanies;
+    }
+
+    public void setTotalCompanies(long totalCompanies) {
+        this.totalCompanies = totalCompanies;
     }
 }

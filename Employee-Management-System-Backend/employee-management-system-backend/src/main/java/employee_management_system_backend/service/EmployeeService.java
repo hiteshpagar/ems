@@ -40,6 +40,17 @@ public class EmployeeService {
     @Autowired
     private AuditLogService auditLogService;
 
+    // Add Employee with creator user context
+    public Employee addEmployee(Employee employee, String userEmail) {
+        if (employee.getCompany() == null && userEmail != null) {
+            User creator = userRepository.findByEmail(userEmail);
+            if (creator != null && creator.getCompany() != null) {
+                employee.setCompany(creator.getCompany());
+            }
+        }
+        return addEmployee(employee);
+    }
+
     // Add Employee
     public Employee addEmployee(Employee employee) {
 
@@ -84,6 +95,14 @@ public class EmployeeService {
                     "EMPLOYEE"
             );
 
+            user.setCompany(
+                    savedEmployee.getCompany()
+            );
+
+            user.setDesignation(
+                    savedEmployee.getDesignation()
+            );
+
             User savedUser = userRepository.save(user);
 
             notificationService.createForUser(savedUser, "Welcome to Employee Management System",
@@ -100,9 +119,22 @@ public class EmployeeService {
                 AuditModule.EMPLOYEE,
                 savedEmployee.getId() != null ? savedEmployee.getId().toString() : null,
                 "Created employee " + savedEmployee.getName() + " (" + savedEmployee.getEmail() + ")"
+                        + (savedEmployee.getCompany() != null ? " at Company: " + savedEmployee.getCompany().getName() : "")
         );
 
         return savedEmployee;
+    }
+
+    // Get Employees Scoped by Logged-in User's Company
+    public List<Employee> getAllEmployeesForUser(String userEmail) {
+        if (userEmail == null || userEmail.isBlank()) {
+            return employeeRepository.findAll();
+        }
+        User user = userRepository.findByEmail(userEmail);
+        if (user == null || "SUPER_ADMIN".equalsIgnoreCase(user.getRole()) || user.getCompany() == null) {
+            return employeeRepository.findAll();
+        }
+        return employeeRepository.findByCompanyId(user.getCompany().getId());
     }
 
     // Get All Employees

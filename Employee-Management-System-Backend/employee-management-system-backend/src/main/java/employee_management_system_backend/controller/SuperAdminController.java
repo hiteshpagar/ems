@@ -17,10 +17,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import employee_management_system_backend.dto.AdminDTO;
+import employee_management_system_backend.dto.CompanyDTO;
 import employee_management_system_backend.dto.CreateAdminRequest;
+import employee_management_system_backend.dto.CreateCompanyRequest;
 import employee_management_system_backend.dto.ResetAdminPasswordRequest;
 import employee_management_system_backend.dto.SuperAdminStatsDTO;
 import employee_management_system_backend.dto.UpdateAdminRequest;
+import employee_management_system_backend.service.CompanyService;
 import employee_management_system_backend.service.SuperAdminService;
 import jakarta.validation.Valid;
 
@@ -32,10 +35,15 @@ public class SuperAdminController {
     @Autowired
     private SuperAdminService superAdminService;
 
+    @Autowired
+    private CompanyService companyService;
+
     @GetMapping("/stats")
     public ResponseEntity<SuperAdminStatsDTO> getStats() {
         return ResponseEntity.ok(superAdminService.getSuperAdminStats());
     }
+
+    // --- Administrator Management ---
 
     @GetMapping("/admins")
     public ResponseEntity<List<AdminDTO>> getAllAdmins() {
@@ -92,5 +100,48 @@ public class SuperAdminController {
         String superAdminEmail = authentication != null ? authentication.getName() : null;
         AdminDTO updated = superAdminService.toggleAdminStatus(id, superAdminEmail);
         return ResponseEntity.ok(updated);
+    }
+
+    // --- Company Management ---
+
+    @GetMapping("/companies")
+    public ResponseEntity<List<CompanyDTO>> getAllCompanies() {
+        return ResponseEntity.ok(companyService.getAllCompanies());
+    }
+
+    @GetMapping("/companies/{id}")
+    public ResponseEntity<CompanyDTO> getCompanyById(@PathVariable Long id) {
+        return ResponseEntity.ok(companyService.getCompanyById(id));
+    }
+
+    @PostMapping("/companies")
+    public ResponseEntity<CompanyDTO> createCompany(
+            @Valid @RequestBody CreateCompanyRequest request,
+            Authentication authentication
+    ) {
+        String superAdminEmail = authentication != null ? authentication.getName() : null;
+        CompanyDTO created = companyService.createCompany(request, superAdminEmail);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/companies/{id}")
+    public ResponseEntity<CompanyDTO> updateCompany(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateCompanyRequest request,
+            Authentication authentication
+    ) {
+        String superAdminEmail = authentication != null ? authentication.getName() : null;
+        CompanyDTO updated = companyService.updateCompany(id, request, superAdminEmail);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/companies/{id}")
+    public ResponseEntity<Void> deleteCompany(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String superAdminEmail = authentication != null ? authentication.getName() : null;
+        companyService.deleteCompany(id, superAdminEmail);
+        return ResponseEntity.noContent().build();
     }
 }

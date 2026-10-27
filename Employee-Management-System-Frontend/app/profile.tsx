@@ -162,6 +162,12 @@ export default function ProfileScreen() {
           <View style={styles.rowDivider} />
           <DetailRow label="Email Address" value={displayEmail} />
           <View style={styles.rowDivider} />
+          {(profile as any)?.company?.name ? (
+            <>
+              <DetailRow label="Company" value={(profile as any).company.name} />
+              <View style={styles.rowDivider} />
+            </>
+          ) : null}
           <DetailRow label="Department" value={departmentLabel} />
           <View style={styles.rowDivider} />
           <DetailRow label="Designation" value={designationLabel} />

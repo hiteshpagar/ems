@@ -53,18 +53,40 @@ interface AdminItem {
   email: string;
   role: string;
   active?: boolean;
+  companyId?: number;
+  companyName?: string;
+  designation?: string;
   createdOn?: string;
   createdBy?: string;
 }
+
+interface CompanyItem {
+  id: number;
+  name: string;
+  code?: string;
+  totalAdmins?: number;
+  totalEmployees?: number;
+}
+
+const DESIGNATION_PRESETS = [
+  "HR Manager",
+  "Senior HR Executive",
+  "Talent Acquisition",
+  "Payroll Specialist",
+  "HR Operations Lead",
+  "HR Generalist",
+];
 
 export default function ManageAdminsScreen() {
   const { userName, userRole } = useContext(AuthContext);
 
   const [admins, setAdmins] = useState<AdminItem[]>([]);
+  const [companies, setCompanies] = useState<CompanyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [companyFilter, setCompanyFilter] = useState<number | "ALL">("ALL");
   const [sortAsc, setSortAsc] = useState(true);
 
   // Selected Admin for Screen 3: Details View
@@ -77,12 +99,20 @@ export default function ManageAdminsScreen() {
   const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
   const [addConfirmPassword, setAddConfirmPassword] = useState("");
+  const [addCompanyId, setAddCompanyId] = useState<number | null>(null);
+  const [addCompanyName, setAddCompanyName] = useState("");
+  const [addIsNewCompany, setAddIsNewCompany] = useState(false);
+  const [addDesignation, setAddDesignation] = useState("HR Manager");
   const [addLoading, setAddLoading] = useState(false);
 
   // Modal 2: Edit Admin State
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editCompanyId, setEditCompanyId] = useState<number | null>(null);
+  const [editCompanyName, setEditCompanyName] = useState("");
+  const [editIsNewCompany, setEditIsNewCompany] = useState(false);
+  const [editDesignation, setEditDesignation] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
   // Modal 3: Reset Password State
@@ -90,6 +120,21 @@ export default function ManageAdminsScreen() {
   const [resetPassword, setResetPassword] = useState("");
   const [resetConfirmPassword, setResetConfirmPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+
+  // Modal 4: Manage Companies State
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [newCompanyCode, setNewCompanyCode] = useState("");
+  const [companyActionLoading, setCompanyActionLoading] = useState(false);
+
+  const fetchCompanies = useCallback(async () => {
+    try {
+      const res = await API.get("/super-admin/companies");
+      setCompanies(res.data || []);
+    } catch (err: any) {
+      console.log("Error loading companies:", err);
+    }
+  }, []);
 
   const fetchAdmins = useCallback(async () => {
     try {
@@ -107,13 +152,40 @@ export default function ManageAdminsScreen() {
     }
   }, []);
 
+  const loadAllData = useCallback(async () => {
+    await Promise.all([fetchAdmins(), fetchCompanies()]);
+  }, [fetchAdmins, fetchCompanies]);
+
   useEffect(() => {
-    fetchAdmins();
-  }, [fetchAdmins]);
+    loadAllData();
+  }, [loadAllData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchAdmins();
+    loadAllData();
+  };
+
+  const handleCreateCompany = async () => {
+    const trimmed = newCompanyName.trim();
+    if (!trimmed) {
+      Alert.alert("Missing Name", "Please enter a company name.");
+      return;
+    }
+    try {
+      setCompanyActionLoading(true);
+      await API.post("/super-admin/companies", {
+        name: trimmed,
+        code: newCompanyCode.trim() || undefined,
+      });
+      Alert.alert("Success", `Company "${trimmed}" registered successfully.`);
+      setNewCompanyName("");
+      setNewCompanyCode("");
+      await fetchCompanies();
+    } catch (err: any) {
+      Alert.alert("Failed", err?.response?.data?.message || "Could not register company.");
+    } finally {
+      setCompanyActionLoading(false);
+    }
   };
 
   const handleCreateAdmin = async () => {
@@ -139,6 +211,9 @@ export default function ManageAdminsScreen() {
         fullName: trimmedName,
         email: trimmedEmail,
         password: addPassword,
+        companyId: addIsNewCompany ? undefined : (addCompanyId || undefined),
+        companyName: addIsNewCompany ? addCompanyName.trim() : undefined,
+        designation: addDesignation.trim() || "HR Administrator",
       });
 
       Alert.alert("Success", "Administrator provisioned successfully.");
@@ -147,7 +222,11 @@ export default function ManageAdminsScreen() {
       setAddEmail("");
       setAddPassword("");
       setAddConfirmPassword("");
-      fetchAdmins();
+      setAddCompanyId(null);
+      setAddCompanyName("");
+      setAddIsNewCompany(false);
+      setAddDesignation("HR Manager");
+      loadAllData();
     } catch (error: any) {
       Alert.alert(
         "Provisioning Failed",
@@ -161,6 +240,10 @@ export default function ManageAdminsScreen() {
   const openEditModal = (admin: AdminItem) => {
     setEditName(admin.fullName);
     setEditEmail(admin.email);
+    setEditCompanyId(admin.companyId || null);
+    setEditCompanyName(admin.companyName || "");
+    setEditIsNewCompany(false);
+    setEditDesignation(admin.designation || "");
     setShowEditModal(true);
   };
 
@@ -179,12 +262,15 @@ export default function ManageAdminsScreen() {
       const res = await API.put(`/super-admin/admins/${selectedAdmin.id}`, {
         fullName: trimmedName,
         email: trimmedEmail,
+        companyId: editIsNewCompany ? undefined : (editCompanyId || undefined),
+        companyName: editIsNewCompany ? editCompanyName.trim() : undefined,
+        designation: editDesignation.trim() || undefined,
       });
 
       Alert.alert("Success", "Administrator details updated successfully.");
       setShowEditModal(false);
       setSelectedAdmin(res.data);
-      fetchAdmins();
+      loadAllData();
     } catch (error: any) {
       Alert.alert(
         "Update Failed",
@@ -304,8 +390,15 @@ export default function ManageAdminsScreen() {
     .filter((a) => {
       const matchSearch =
         a.fullName.toLowerCase().includes(search.toLowerCase()) ||
-        a.email.toLowerCase().includes(search.toLowerCase());
+        a.email.toLowerCase().includes(search.toLowerCase()) ||
+        (a.companyName && a.companyName.toLowerCase().includes(search.toLowerCase())) ||
+        (a.designation && a.designation.toLowerCase().includes(search.toLowerCase()));
       if (!matchSearch) return false;
+
+      if (activeFilter.startsWith("COMPANY_")) {
+        const compId = Number(activeFilter.replace("COMPANY_", ""));
+        return a.companyId === compId;
+      }
 
       if (activeFilter === "SUPER_ADMIN") return a.role === "SUPER_ADMIN";
       if (activeFilter === "ADMIN") return a.role === "ADMIN" && a.active !== false;
@@ -471,15 +564,15 @@ export default function ManageAdminsScreen() {
 
                   <View style={styles.detailItem}>
                     <Building2 size={16} color="#64748B" strokeWidth={2} style={styles.detailIcon} />
-                    <Text style={styles.detailLabel}>Department</Text>
-                    <Text style={styles.detailValue}>—</Text>
+                    <Text style={styles.detailLabel}>Company</Text>
+                    <Text style={styles.detailValue}>{selectedAdmin.companyName || "Global / Unassigned"}</Text>
                   </View>
                   <View style={styles.divider} />
 
                   <View style={styles.detailItem}>
                     <Briefcase size={16} color="#64748B" strokeWidth={2} style={styles.detailIcon} />
-                    <Text style={styles.detailLabel}>Designation</Text>
-                    <Text style={styles.detailValue}>Administrator</Text>
+                    <Text style={styles.detailLabel}>HR Designation</Text>
+                    <Text style={styles.detailValue}>{selectedAdmin.designation || "HR Administrator"}</Text>
                   </View>
                   <View style={styles.divider} />
 
@@ -585,6 +678,80 @@ export default function ManageAdminsScreen() {
                   autoCapitalize="none"
                 />
 
+                {/* Company Selection */}
+                <View style={styles.formSection}>
+                  <Text style={styles.formLabel}>Assigned Company / Enterprise</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceScroll}>
+                    {companies.map((c) => {
+                      const isSelected = !editIsNewCompany && editCompanyId === c.id;
+                      return (
+                        <TouchableOpacity
+                          key={c.id}
+                          style={[styles.choiceChip, isSelected && styles.choiceChipActive]}
+                          onPress={() => {
+                            setEditCompanyId(c.id);
+                            setEditCompanyName(c.name);
+                            setEditIsNewCompany(false);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Building2 size={12} color={isSelected ? "#FFFFFF" : "#1E40AF"} strokeWidth={2.2} />
+                          <Text style={[styles.choiceChipText, isSelected && styles.choiceChipTextActive]}>
+                            {c.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <TouchableOpacity
+                      style={[styles.choiceChip, editIsNewCompany && styles.choiceChipActive]}
+                      onPress={() => {
+                        setEditIsNewCompany(true);
+                        setEditCompanyId(null);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.choiceChipText, editIsNewCompany && styles.choiceChipTextActive]}>
+                        + New Company
+                      </Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+
+                  {editIsNewCompany && (
+                    <CustomInput
+                      label="New Company Name *"
+                      placeholder="e.g. Acme Innovations"
+                      value={editCompanyName}
+                      onChangeText={setEditCompanyName}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                </View>
+
+                {/* HR Designation */}
+                <View style={styles.formSection}>
+                  <CustomInput
+                    label="HR Designation"
+                    placeholder="e.g. HR Operations Lead"
+                    value={editDesignation}
+                    onChangeText={setEditDesignation}
+                  />
+                  <Text style={styles.presetLabel}>Quick Presets:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceScroll}>
+                    {DESIGNATION_PRESETS.map((d) => (
+                      <TouchableOpacity
+                        key={d}
+                        style={[styles.presetChip, editDesignation === d && styles.presetChipActive]}
+                        onPress={() => setEditDesignation(d)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.presetChipText, editDesignation === d && styles.presetChipTextActive]}>
+                          {d}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
                 <View style={styles.modalBtnRow}>
                   <TouchableOpacity
                     style={styles.modalCancelBtn}
@@ -682,13 +849,23 @@ export default function ManageAdminsScreen() {
             <ArrowLeft size={20} color="#0F172A" strokeWidth={2.2} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Administrator Roster</Text>
-          <TouchableOpacity
-            style={styles.provisionBtn}
-            onPress={() => setShowAddModal(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.provisionBtnText}>+ Provision</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              style={styles.companiesHeaderBtn}
+              onPress={() => setShowCompanyModal(true)}
+              activeOpacity={0.7}
+            >
+              <Building2 size={13} color="#173B7A" strokeWidth={2.2} />
+              <Text style={styles.companiesHeaderBtnText}>Companies ({companies.length})</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.provisionBtn}
+              onPress={() => setShowAddModal(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.provisionBtnText}>+ Provision</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -697,7 +874,7 @@ export default function ManageAdminsScreen() {
             <Search size={16} color="#94A3B8" strokeWidth={2.2} style={{ marginRight: 8 }} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by administrator name or email..."
+              placeholder="Search by name, email, company, or designation..."
               placeholderTextColor="#94A3B8"
               value={search}
               onChangeText={setSearch}
@@ -719,6 +896,10 @@ export default function ManageAdminsScreen() {
               { id: "SUPER_ADMIN", label: "Super Admin" },
               { id: "ADMIN", label: "Admin" },
               { id: "INACTIVE", label: "Inactive" },
+              ...companies.map((c) => ({
+                id: `COMPANY_${c.id}`,
+                label: `🏢 ${c.name}`,
+              })),
             ].map((f) => {
               const isSelected = activeFilter === f.id;
               return (
@@ -814,6 +995,23 @@ export default function ManageAdminsScreen() {
                       </View>
                     </View>
                     <Text style={styles.cardEmail} numberOfLines={1}>{admin.email}</Text>
+
+                    {/* Company & Designation Badges */}
+                    <View style={styles.cardBadgesRow}>
+                      {admin.companyName ? (
+                        <View style={styles.metaCompanyBadge}>
+                          <Building2 size={10} color="#1E40AF" strokeWidth={2} />
+                          <Text style={styles.metaCompanyBadgeText} numberOfLines={1}>{admin.companyName}</Text>
+                        </View>
+                      ) : null}
+                      {admin.designation ? (
+                        <View style={styles.metaDesignationBadge}>
+                          <Briefcase size={10} color="#6D28D9" strokeWidth={2} />
+                          <Text style={styles.metaDesignationBadgeText} numberOfLines={1}>{admin.designation}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+
                     <View style={styles.activeDotRow}>
                       <View style={[styles.activeDot, admin.active === false && styles.inactiveDot]} />
                       <Text style={[styles.activeDotText, admin.active === false && styles.inactiveDotText]}>
@@ -867,6 +1065,80 @@ export default function ManageAdminsScreen() {
                   autoCapitalize="none"
                 />
 
+                {/* Company Selection */}
+                <View style={styles.formSection}>
+                  <Text style={styles.formLabel}>Assigned Company / Enterprise</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceScroll}>
+                    {companies.map((c) => {
+                      const isSelected = !addIsNewCompany && addCompanyId === c.id;
+                      return (
+                        <TouchableOpacity
+                          key={c.id}
+                          style={[styles.choiceChip, isSelected && styles.choiceChipActive]}
+                          onPress={() => {
+                            setAddCompanyId(c.id);
+                            setAddCompanyName(c.name);
+                            setAddIsNewCompany(false);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Building2 size={12} color={isSelected ? "#FFFFFF" : "#1E40AF"} strokeWidth={2.2} />
+                          <Text style={[styles.choiceChipText, isSelected && styles.choiceChipTextActive]}>
+                            {c.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <TouchableOpacity
+                      style={[styles.choiceChip, addIsNewCompany && styles.choiceChipActive]}
+                      onPress={() => {
+                        setAddIsNewCompany(true);
+                        setAddCompanyId(null);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.choiceChipText, addIsNewCompany && styles.choiceChipTextActive]}>
+                        + New Company
+                      </Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+
+                  {addIsNewCompany && (
+                    <CustomInput
+                      label="New Company Name *"
+                      placeholder="e.g. Acme Tech Solutions"
+                      value={addCompanyName}
+                      onChangeText={setAddCompanyName}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                </View>
+
+                {/* HR Designation */}
+                <View style={styles.formSection}>
+                  <CustomInput
+                    label="HR Designation"
+                    placeholder="e.g. HR Manager"
+                    value={addDesignation}
+                    onChangeText={setAddDesignation}
+                  />
+                  <Text style={styles.presetLabel}>Quick Presets:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceScroll}>
+                    {DESIGNATION_PRESETS.map((d) => (
+                      <TouchableOpacity
+                        key={d}
+                        style={[styles.presetChip, addDesignation === d && styles.presetChipActive]}
+                        onPress={() => setAddDesignation(d)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.presetChipText, addDesignation === d && styles.presetChipTextActive]}>
+                          {d}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
                 <PasswordInput
                   label="Temporary Password *"
                   placeholder="Minimum 6 characters"
@@ -897,6 +1169,91 @@ export default function ManageAdminsScreen() {
                     style={{ flex: 1 }}
                   />
                 </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal: Manage Companies */}
+        <Modal
+          visible={showCompanyModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowCompanyModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Building2 size={20} color="#173B7A" strokeWidth={2.2} />
+                  <Text style={styles.modalTitle}>Registered Companies</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowCompanyModal(false)}>
+                  <X size={20} color="#64748B" strokeWidth={2.2} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={styles.modalSubtitle}>
+                  View enterprises and register new companies for your multi-company HR setup.
+                </Text>
+
+                {/* Register New Company Box */}
+                <View style={styles.addCompanyBox}>
+                  <Text style={styles.addCompanyBoxTitle}>+ Register New Company</Text>
+                  <CustomInput
+                    label="Company Name *"
+                    placeholder="e.g. TechCorp Global Ltd"
+                    value={newCompanyName}
+                    onChangeText={setNewCompanyName}
+                  />
+                  <CustomInput
+                    label="Company Code (Optional)"
+                    placeholder="e.g. TCGL"
+                    value={newCompanyCode}
+                    onChangeText={setNewCompanyCode}
+                    autoCapitalize="characters"
+                  />
+                  <CustomButton
+                    title="Add Company"
+                    onPress={handleCreateCompany}
+                    loading={companyActionLoading}
+                    style={{ marginTop: 6 }}
+                  />
+                </View>
+
+                {/* Company List */}
+                <Text style={[styles.sectionTitleSmall, { marginTop: 16, marginBottom: 8 }]}>
+                  Existing Enterprises ({companies.length})
+                </Text>
+
+                {companies.length === 0 ? (
+                  <View style={styles.emptyCompanyCard}>
+                    <Text style={styles.emptyCompanyCardText}>No companies created yet. Add your first company above.</Text>
+                  </View>
+                ) : (
+                  companies.map((c) => (
+                    <View key={c.id} style={styles.companyRowCard}>
+                      <View style={styles.companyIconCircle}>
+                        <Building2 size={16} color="#1D4ED8" strokeWidth={2.2} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.companyRowName}>{c.name}</Text>
+                        <Text style={styles.companyRowMeta}>
+                          {c.code ? `Code: ${c.code} • ` : ""}{c.totalAdmins ?? 0} Admins • {c.totalEmployees ?? 0} Employees
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+
+                <TouchableOpacity
+                  style={[styles.modalCancelBtn, { marginTop: 16, alignItems: "center" }]}
+                  onPress={() => setShowCompanyModal(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalCancelBtnText}>Close</Text>
+                </TouchableOpacity>
               </ScrollView>
             </View>
           </View>
@@ -1422,5 +1779,193 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#64748B",
+  },
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  companiesHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  companiesHeaderBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#173B7A",
+  },
+  cardBadgesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  metaCompanyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#EFF6FF",
+    borderColor: "#BFDBFE",
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  metaCompanyBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#1D4ED8",
+  },
+  metaDesignationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F5F3FF",
+    borderColor: "#DDD6FE",
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  metaDesignationBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "600",
+    color: "#6D28D9",
+  },
+  formSection: {
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  formLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0F172A",
+    marginBottom: 6,
+  },
+  choiceScroll: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  choiceChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    marginRight: 8,
+  },
+  choiceChipActive: {
+    backgroundColor: "#173B7A",
+    borderColor: "#173B7A",
+  },
+  choiceChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  choiceChipTextActive: {
+    color: "#FFFFFF",
+  },
+  presetLabel: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: "#64748B",
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginRight: 6,
+  },
+  presetChipActive: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#6366F1",
+  },
+  presetChipText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#64748B",
+  },
+  presetChipTextActive: {
+    color: "#4338CA",
+    fontWeight: "700",
+  },
+  addCompanyBox: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 6,
+  },
+  addCompanyBoxTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 8,
+  },
+  sectionTitleSmall: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  emptyCompanyCard: {
+    padding: 16,
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  emptyCompanyCardText: {
+    fontSize: 12,
+    color: "#64748B",
+  },
+  companyRowCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 10,
+    marginBottom: 8,
+  },
+  companyIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  companyRowName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  companyRowMeta: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
   },
 });
