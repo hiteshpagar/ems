@@ -99,7 +99,7 @@ public class SuperAdminService {
         if (request.getDesignation() != null && !request.getDesignation().trim().isEmpty()) {
             user.setDesignation(request.getDesignation().trim());
         } else {
-            user.setDesignation("HR Administrator");
+            user.setDesignation("Company Owner");
         }
 
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {

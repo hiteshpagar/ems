@@ -73,12 +73,12 @@ interface CompanyItem {
 }
 
 const DESIGNATION_PRESETS = [
+  "Company Owner",
+  "Company Administrator",
+  "Operations Admin",
+  "HR Director",
   "HR Manager",
-  "Senior HR Executive",
-  "Talent Acquisition",
-  "Payroll Specialist",
-  "HR Operations Lead",
-  "HR Generalist",
+  "IT Administrator",
 ];
 
 export default function ManageAdminsScreen() {
@@ -124,7 +124,7 @@ export default function ManageAdminsScreen() {
   const [addCompanyId, setAddCompanyId] = useState<number | null>(null);
   const [addCompanyName, setAddCompanyName] = useState("");
   const [addIsNewCompany, setAddIsNewCompany] = useState(false);
-  const [addDesignation, setAddDesignation] = useState("HR Manager");
+  const [addDesignation, setAddDesignation] = useState("Company Owner");
   const [addPhone, setAddPhone] = useState("");
   const [addEmployeeId, setAddEmployeeId] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -239,7 +239,7 @@ export default function ManageAdminsScreen() {
         password: addPassword,
         companyId: addIsNewCompany ? undefined : (addCompanyId || undefined),
         companyName: addIsNewCompany ? addCompanyName.trim() : undefined,
-        designation: addDesignation.trim() || "HR Administrator",
+        designation: addDesignation.trim() || "Company Owner",
         phoneNumber: addPhone.trim() || undefined,
         employeeId: addEmployeeId.trim() || undefined,
       });
@@ -255,7 +255,7 @@ export default function ManageAdminsScreen() {
       setAddCompanyId(null);
       setAddCompanyName("");
       setAddIsNewCompany(false);
-      setAddDesignation("HR Manager");
+      setAddDesignation("Company Owner");
       loadAllData();
     } catch (error: any) {
       Alert.alert(
@@ -605,8 +605,8 @@ export default function ManageAdminsScreen() {
 
                   <View style={styles.detailItem}>
                     <Briefcase size={16} color="#64748B" strokeWidth={2} style={styles.detailIcon} />
-                    <Text style={styles.detailLabel}>HR Designation</Text>
-                    <Text style={styles.detailValue}>{selectedAdmin.designation || "HR Administrator"}</Text>
+                    <Text style={styles.detailLabel}>Admin Role / Title</Text>
+                    <Text style={styles.detailValue}>{selectedAdmin.designation || "Company Owner"}</Text>
                   </View>
                   <View style={styles.divider} />
 
@@ -787,11 +787,11 @@ export default function ManageAdminsScreen() {
                   )}
                 </View>
 
-                {/* HR Designation */}
+                {/* Admin Role / Designation */}
                 <View style={styles.formSection}>
                   <CustomInput
-                    label="HR Designation"
-                    placeholder="e.g. HR Operations Lead"
+                    label="Admin Role / Title"
+                    placeholder="e.g. Company Owner or HR Manager"
                     value={editDesignation}
                     onChangeText={setEditDesignation}
                   />
@@ -1204,11 +1204,11 @@ export default function ManageAdminsScreen() {
                   )}
                 </View>
 
-                {/* HR Designation */}
+                {/* Admin Role / Designation */}
                 <View style={styles.formSection}>
                   <CustomInput
-                    label="HR Designation"
-                    placeholder="e.g. HR Manager"
+                    label="Admin Role / Title"
+                    placeholder="e.g. Company Owner or HR Manager"
                     value={addDesignation}
                     onChangeText={setAddDesignation}
                   />
