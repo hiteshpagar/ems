@@ -44,7 +44,8 @@ public class AuthController {
         userService.registerFirstAdministrator(
                 user.getFullName(),
                 user.getEmail(),
-                user.getPassword());
+                user.getPassword(),
+                user.getPhoneNumber());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Administrator account created successfully. Please login.");
     }

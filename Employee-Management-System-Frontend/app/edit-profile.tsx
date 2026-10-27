@@ -139,11 +139,13 @@ export default function EditProfileScreen() {
             editable={false}
           />
 
-          <CustomInput
-            label="Basic Salary (₹)"
-            value={Number(salary || 0).toLocaleString("en-IN")}
-            editable={false}
-          />
+          {salary && Number(salary) > 0 ? (
+            <CustomInput
+              label="Basic Salary (₹)"
+              value={Number(salary || 0).toLocaleString("en-IN")}
+              editable={false}
+            />
+          ) : null}
         </View>
 
         {/* Submit Button */}

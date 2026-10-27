@@ -19,6 +19,7 @@ import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,7 @@ export default function RegisterScreen() {
         fullName: trimmedName,
         email: trimmedEmail,
         password,
+        phoneNumber: phone.trim() || undefined,
       });
 
       Alert.alert("Success", "Account created successfully. Please login.", [
@@ -85,7 +87,7 @@ export default function RegisterScreen() {
 
           <CustomInput
             label="Full Name"
-            placeholder="John Doe"
+            placeholder="Enter full name"
             value={fullName}
             onChangeText={setFullName}
             autoCapitalize="words"
@@ -94,13 +96,22 @@ export default function RegisterScreen() {
 
           <CustomInput
             label="Email"
-            placeholder="john.doe@example.com"
+            placeholder="admin@example.com"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
             required
+          />
+
+          <CustomInput
+            label="Mobile Number"
+            placeholder="Enter mobile number"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            autoComplete="tel"
           />
 
           <PasswordInput

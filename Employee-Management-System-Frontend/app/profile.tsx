@@ -173,26 +173,34 @@ export default function ProfileScreen() {
           <DetailRow label="Department" value={departmentLabel} />
           <View style={styles.rowDivider} />
           <DetailRow label="Designation" value={designationLabel} />
-          <View style={styles.rowDivider} />
-          <DetailRow
-            label="Monthly Salary"
-            value={
-              profile?.salary
-                ? `₹ ${Number(profile.salary).toLocaleString("en-IN")}`
-                : "—"
-            }
-          />
+          {!isSuperAdmin && (
+            <>
+              <View style={styles.rowDivider} />
+              <DetailRow
+                label="Monthly Salary"
+                value={
+                  profile?.salary
+                    ? `₹ ${Number(profile.salary).toLocaleString("en-IN")}`
+                    : "—"
+                }
+              />
+            </>
+          )}
         </View>
 
         {/* 2. Account Information Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Account Information</Text>
 
-          <DetailRow
-            label="Employee ID"
-            value={profile?.employeeId || (profile?.id ? `EMP-${profile.id}` : "—")}
-          />
-          <View style={styles.rowDivider} />
+          {!isSuperAdmin && (
+            <>
+              <DetailRow
+                label="Employee ID"
+                value={profile?.employeeId || (profile?.id ? `EMP-${profile.id}` : "—")}
+              />
+              <View style={styles.rowDivider} />
+            </>
+          )}
           <DetailRow label="Role" value={roleLabel} />
           <View style={styles.rowDivider} />
           <View style={styles.detailRow}>
