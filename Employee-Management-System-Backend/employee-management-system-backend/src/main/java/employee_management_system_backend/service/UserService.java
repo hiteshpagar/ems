@@ -58,6 +58,11 @@ public class UserService {
     /** Creates the first account as super administrator and closes public registration afterward. */
     @Transactional
     public synchronized User registerFirstAdministrator(String fullName, String email, String password) {
+        return registerFirstAdministrator(fullName, email, password, null);
+    }
+
+    @Transactional
+    public synchronized User registerFirstAdministrator(String fullName, String email, String password, String phoneNumber) {
         String normalizedName = fullName == null ? "" : fullName.trim();
         String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
 
@@ -73,6 +78,11 @@ public class UserService {
         user.setEmail(normalizedEmail);
         user.setPassword(password);
         user.setRole("SUPER_ADMIN");
+        user.setActive(true);
+        user.setDesignation("Super Administrator");
+        if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+            user.setPhoneNumber(phoneNumber.trim());
+        }
         return userRepository.save(user);
     }
 
@@ -125,6 +135,8 @@ public class UserService {
                 throw new RuntimeException("Account is deactivated. Please contact Super Administrator.");
             }
 
+            existingUser.setLastLoginAt(LocalDateTime.now());
+            existingUser = userRepository.save(existingUser);
             return existingUser;
         }
 

@@ -17,12 +17,30 @@ public class CreateAdminRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
+    private Long companyId;
+
+    private String companyName;
+
+    private String designation;
+
+    private String phoneNumber;
+
+    private String employeeId;
+
     public CreateAdminRequest() {}
 
     public CreateAdminRequest(String fullName, String email, String password) {
         this.fullName = fullName;
         this.email = email;
         this.password = password;
+    }
+
+    public CreateAdminRequest(String fullName, String email, String password, Long companyId, String designation) {
+        this.fullName = fullName;
+        this.email = email;
+        this.password = password;
+        this.companyId = companyId;
+        this.designation = designation;
     }
 
     public String getFullName() {
@@ -47,5 +65,45 @@ public class CreateAdminRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+
+    public String getDesignation() {
+        return designation;
+    }
+
+    public void setDesignation(String designation) {
+        this.designation = designation;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
     }
 }

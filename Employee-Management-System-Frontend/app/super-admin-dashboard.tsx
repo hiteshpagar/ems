@@ -38,6 +38,7 @@ interface SuperAdminStats {
   totalEmployees: number;
   totalDepartments: number;
   totalAuditLogs: number;
+  totalCompanies?: number;
 }
 
 interface AdminItem {
@@ -61,6 +62,8 @@ export default function SuperAdminDashboard() {
   const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
   const [addConfirmPassword, setAddConfirmPassword] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addEmployeeId, setAddEmployeeId] = useState("");
   const [addLoading, setAddLoading] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -125,12 +128,16 @@ export default function SuperAdminDashboard() {
         fullName: trimmedName,
         email: trimmedEmail,
         password: addPassword,
+        phoneNumber: addPhone.trim() || undefined,
+        employeeId: addEmployeeId.trim() || undefined,
       });
 
       Alert.alert("Success", "New Administrator provisioned successfully.");
       setShowAddModal(false);
       setAddName("");
       setAddEmail("");
+      setAddPhone("");
+      setAddEmployeeId("");
       setAddPassword("");
       setAddConfirmPassword("");
       loadData();
@@ -322,6 +329,24 @@ export default function SuperAdminDashboard() {
               </View>
               <Text style={styles.kpiSubtext}>Audited system events</Text>
             </TouchableOpacity>
+
+            {/* KPI 5: Enterprises / Companies */}
+            <TouchableOpacity
+              style={styles.kpiCard}
+              onPress={() => router.push("/manage-admins")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.kpiTopRow}>
+                <View style={[styles.kpiIconCircle, { backgroundColor: "#F0FDF4" }]}>
+                  <Building2 size={16} color="#16A34A" strokeWidth={2.2} />
+                </View>
+                <Text style={styles.kpiLabel} numberOfLines={1}>Enterprises</Text>
+              </View>
+              <View style={styles.kpiValueRow}>
+                <Text style={styles.kpiValue}>{stats?.totalCompanies ?? 0}</Text>
+              </View>
+              <Text style={styles.kpiSubtext}>Registered Companies</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Section: Management Controls */}
@@ -416,7 +441,7 @@ export default function SuperAdminDashboard() {
 
                 <CustomInput
                   label="Full Name *"
-                  placeholder="e.g. Rushikesh Wakode"
+                  placeholder="Enter full name"
                   value={addName}
                   onChangeText={setAddName}
                 />
@@ -428,6 +453,21 @@ export default function SuperAdminDashboard() {
                   onChangeText={setAddEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                />
+
+                <CustomInput
+                  label="Employee ID (Optional)"
+                  placeholder="e.g. ADM-001 (auto-generated if empty)"
+                  value={addEmployeeId}
+                  onChangeText={setAddEmployeeId}
+                />
+
+                <CustomInput
+                  label="Phone Number"
+                  placeholder="e.g. +91 98765 43210"
+                  value={addPhone}
+                  onChangeText={setAddPhone}
+                  keyboardType="phone-pad"
                 />
 
                 <PasswordInput

@@ -89,6 +89,24 @@ export default function ProfileScreen() {
   const designationLabel =
     profile?.designation || (isSuperAdmin ? "Super Administrator" : "—");
 
+  const formatDateTime = (dateVal?: string | null) => {
+    if (!dateVal) return "Active today";
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return "Active today";
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return "Active today";
+    }
+  };
+
   return (
     <ScreenWrapper>
       {/* Top Header */}
@@ -162,29 +180,45 @@ export default function ProfileScreen() {
           <View style={styles.rowDivider} />
           <DetailRow label="Email Address" value={displayEmail} />
           <View style={styles.rowDivider} />
+          <DetailRow label="Phone Number" value={profile?.phone || "—"} />
+          <View style={styles.rowDivider} />
+          {(profile as any)?.company?.name ? (
+            <>
+              <DetailRow label="Company" value={(profile as any).company.name} />
+              <View style={styles.rowDivider} />
+            </>
+          ) : null}
           <DetailRow label="Department" value={departmentLabel} />
           <View style={styles.rowDivider} />
           <DetailRow label="Designation" value={designationLabel} />
-          <View style={styles.rowDivider} />
-          <DetailRow
-            label="Monthly Salary"
-            value={
-              profile?.salary
-                ? `₹ ${Number(profile.salary).toLocaleString("en-IN")}`
-                : "—"
-            }
-          />
+          {!isSuperAdmin && (
+            <>
+              <View style={styles.rowDivider} />
+              <DetailRow
+                label="Monthly Salary"
+                value={
+                  profile?.salary
+                    ? `₹ ${Number(profile.salary).toLocaleString("en-IN")}`
+                    : "—"
+                }
+              />
+            </>
+          )}
         </View>
 
         {/* 2. Account Information Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Account Information</Text>
 
-          <DetailRow
-            label="Employee ID"
-            value={profile?.id ? `EMP-${profile.id}` : "—"}
-          />
-          <View style={styles.rowDivider} />
+          {!isSuperAdmin && (
+            <>
+              <DetailRow
+                label="Employee ID"
+                value={profile?.employeeId || (profile?.id ? `EMP-${profile.id}` : "—")}
+              />
+              <View style={styles.rowDivider} />
+            </>
+          )}
           <DetailRow label="Role" value={roleLabel} />
           <View style={styles.rowDivider} />
           <View style={styles.detailRow}>
@@ -197,7 +231,7 @@ export default function ProfileScreen() {
           <View style={styles.rowDivider} />
           <DetailRow
             label="Last Login"
-            value="Oct 24, 2026, 2:05 PM"
+            value={formatDateTime(profile?.lastLoginAt)}
           />
         </View>
 

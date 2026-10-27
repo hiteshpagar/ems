@@ -40,6 +40,17 @@ public class EmployeeService {
     @Autowired
     private AuditLogService auditLogService;
 
+    // Add Employee with creator user context
+    public Employee addEmployee(Employee employee, String userEmail) {
+        if (employee.getCompany() == null && userEmail != null) {
+            User creator = userRepository.findByEmail(userEmail);
+            if (creator != null && creator.getCompany() != null) {
+                employee.setCompany(creator.getCompany());
+            }
+        }
+        return addEmployee(employee);
+    }
+
     // Add Employee
     public Employee addEmployee(Employee employee) {
 
@@ -84,6 +95,14 @@ public class EmployeeService {
                     "EMPLOYEE"
             );
 
+            user.setCompany(
+                    savedEmployee.getCompany()
+            );
+
+            user.setDesignation(
+                    savedEmployee.getDesignation()
+            );
+
             User savedUser = userRepository.save(user);
 
             notificationService.createForUser(savedUser, "Welcome to Employee Management System",
@@ -100,9 +119,22 @@ public class EmployeeService {
                 AuditModule.EMPLOYEE,
                 savedEmployee.getId() != null ? savedEmployee.getId().toString() : null,
                 "Created employee " + savedEmployee.getName() + " (" + savedEmployee.getEmail() + ")"
+                        + (savedEmployee.getCompany() != null ? " at Company: " + savedEmployee.getCompany().getName() : "")
         );
 
         return savedEmployee;
+    }
+
+    // Get Employees Scoped by Logged-in User's Company
+    public List<Employee> getAllEmployeesForUser(String userEmail) {
+        if (userEmail == null || userEmail.isBlank()) {
+            return employeeRepository.findAll();
+        }
+        User user = userRepository.findByEmail(userEmail);
+        if (user == null || "SUPER_ADMIN".equalsIgnoreCase(user.getRole()) || user.getCompany() == null) {
+            return employeeRepository.findAll();
+        }
+        return employeeRepository.findByCompanyId(user.getCompany().getId());
     }
 
     // Get All Employees
@@ -193,13 +225,37 @@ public class EmployeeService {
                 employeeRepository.findByEmail(email);
 
         if (employee == null) {
+            User user = userRepository.findByEmail(email);
+            if (user != null) {
+                if (updatedEmployee.getName() != null && !updatedEmployee.getName().isBlank()) {
+                    user.setFullName(updatedEmployee.getName().trim());
+                }
+                if (updatedEmployee.getPhone() != null) {
+                    user.setPhoneNumber(updatedEmployee.getPhone().trim());
+                }
+                userRepository.save(user);
+
+                Employee dummy = new Employee();
+                dummy.setId(user.getId());
+                dummy.setName(user.getFullName());
+                dummy.setEmail(user.getEmail());
+                dummy.setPhone(user.getPhoneNumber());
+                dummy.setEmployeeId(user.getEmployeeId());
+                dummy.setDepartment("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) ? "Executive Board" : (user.getCompany() != null ? user.getCompany().getName() : "Management"));
+                dummy.setDesignation(user.getDesignation() != null ? user.getDesignation() : "Administrator");
+                dummy.setCompany(user.getCompany());
+                return dummy;
+            }
             return null;
         }
 
         // Editable Fields
-        employee.setName(
-                updatedEmployee.getName()
-        );
+        if (updatedEmployee.getName() != null && !updatedEmployee.getName().isBlank()) {
+            employee.setName(updatedEmployee.getName().trim());
+        }
+        if (updatedEmployee.getPhone() != null) {
+            employee.setPhone(updatedEmployee.getPhone().trim());
+        }
 
         // Non-editable fields:
         // Email

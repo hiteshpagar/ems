@@ -22,6 +22,7 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [department, setDepartment] = useState("");
   const [salary, setSalary] = useState("");
@@ -30,6 +31,7 @@ export default function EditProfileScreen() {
     try {
       const response = await API.get("/profile");
       setName(response.data.name || "");
+      setPhone(response.data.phone || "");
       setEmail(response.data.email || "");
       setDepartment(response.data.department || "");
       setSalary(response.data.salary ? response.data.salary.toString() : "0");
@@ -56,6 +58,7 @@ export default function EditProfileScreen() {
       setSaving(true);
       await API.put("/profile", {
         name: name.trim(),
+        phone: phone.trim(),
       });
 
       Alert.alert("Success", "Profile updated successfully.", [
@@ -109,6 +112,14 @@ export default function EditProfileScreen() {
             autoCapitalize="words"
             required
           />
+
+          <CustomInput
+            label="Phone Number"
+            placeholder="Enter phone number"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
         </View>
 
         {/* Read-Only Information */}
@@ -128,11 +139,13 @@ export default function EditProfileScreen() {
             editable={false}
           />
 
-          <CustomInput
-            label="Basic Salary (₹)"
-            value={Number(salary || 0).toLocaleString("en-IN")}
-            editable={false}
-          />
+          {salary && Number(salary) > 0 ? (
+            <CustomInput
+              label="Basic Salary (₹)"
+              value={Number(salary || 0).toLocaleString("en-IN")}
+              editable={false}
+            />
+          ) : null}
         </View>
 
         {/* Submit Button */}

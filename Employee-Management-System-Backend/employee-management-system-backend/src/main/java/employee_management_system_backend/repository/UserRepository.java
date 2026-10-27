@@ -10,4 +10,8 @@ public interface UserRepository
     User findByEmail(String email);
 
     java.util.List<User> findByRole(String role);
+
+    java.util.List<User> findByCompanyId(Long companyId);
+
+    long countByCompanyIdAndRole(Long companyId, String role);
 }

@@ -21,17 +21,20 @@ public class EmployeeController {
     // Add Employee
     @PostMapping
     public Employee addEmployee(
-            @Valid @RequestBody Employee employee
+            @Valid @RequestBody Employee employee,
+            Authentication authentication
     ) {
-
-        return employeeService.addEmployee(employee);
+        String userEmail = authentication != null ? authentication.getName() : null;
+        return employeeService.addEmployee(employee, userEmail);
     }
 
     // Get All Employees
     @GetMapping
-    public List<Employee> getAllEmployees() {
-
-        return employeeService.getAllEmployees();
+    public List<Employee> getAllEmployees(
+            Authentication authentication
+    ) {
+        String userEmail = authentication != null ? authentication.getName() : null;
+        return employeeService.getAllEmployeesForUser(userEmail);
     }
     
  // Get Logged In Employee

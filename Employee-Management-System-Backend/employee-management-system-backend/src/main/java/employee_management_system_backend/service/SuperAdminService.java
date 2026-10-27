@@ -16,10 +16,12 @@ import employee_management_system_backend.dto.SuperAdminStatsDTO;
 import employee_management_system_backend.dto.UpdateAdminRequest;
 import employee_management_system_backend.entity.AuditAction;
 import employee_management_system_backend.entity.AuditModule;
+import employee_management_system_backend.entity.Company;
 import employee_management_system_backend.entity.User;
 import employee_management_system_backend.exception.ResourceAlreadyExistsException;
 import employee_management_system_backend.exception.ResourceNotFoundException;
 import employee_management_system_backend.repository.AuditLogRepository;
+import employee_management_system_backend.repository.CompanyRepository;
 import employee_management_system_backend.repository.DepartmentRepository;
 import employee_management_system_backend.repository.EmployeeRepository;
 import employee_management_system_backend.repository.UserRepository;
@@ -37,6 +39,12 @@ public class SuperAdminService {
     private DepartmentRepository departmentRepository;
 
     @Autowired
+    private CompanyRepository companyRepository;
+
+    @Autowired
+    private CompanyService companyService;
+
+    @Autowired
     private AuditLogRepository auditLogRepository;
 
     @Autowired
@@ -47,19 +55,21 @@ public class SuperAdminService {
         long totalEmployees = employeeRepository.count();
         long totalDepartments = departmentRepository.count();
         long totalAuditLogs = auditLogRepository.count();
+        long totalCompanies = companyRepository.count();
 
         return new SuperAdminStatsDTO(
                 totalAdmins,
                 totalEmployees,
                 totalDepartments,
-                totalAuditLogs
+                totalAuditLogs,
+                totalCompanies
         );
     }
 
     public List<AdminDTO> getAllAdmins() {
         return userRepository.findByRole("ADMIN")
                 .stream()
-                .map(u -> new AdminDTO(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), u.getActive()))
+                .map(this::toAdminDTO)
                 .collect(Collectors.toList());
     }
 
@@ -72,25 +82,58 @@ public class SuperAdminService {
             throw new ResourceAlreadyExistsException("A user with this email already exists: " + normalizedEmail);
         }
 
+        Company company = null;
+        if (request.getCompanyId() != null) {
+            company = companyRepository.findById(request.getCompanyId()).orElse(null);
+        } else if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
+            company = companyService.getOrCreateCompanyByName(request.getCompanyName());
+        }
+
         User user = new User();
         user.setFullName(normalizedName);
         user.setEmail(normalizedEmail);
         user.setPassword(request.getPassword());
         user.setRole("ADMIN");
         user.setActive(true);
+        user.setCompany(company);
+        if (request.getDesignation() != null && !request.getDesignation().trim().isEmpty()) {
+            user.setDesignation(request.getDesignation().trim());
+        } else {
+            user.setDesignation("HR Administrator");
+        }
+
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+            user.setPhoneNumber(request.getPhoneNumber().trim());
+        }
+
+        if (request.getEmployeeId() != null && !request.getEmployeeId().trim().isEmpty()) {
+            user.setEmployeeId(request.getEmployeeId().trim());
+        }
 
         User saved = userRepository.save(user);
+
+        if (saved.getEmployeeId() == null || saved.getEmployeeId().isBlank()) {
+            String prefix = company != null && company.getCode() != null && !company.getCode().isBlank()
+                    ? company.getCode().trim()
+                    : "ADM";
+            saved.setEmployeeId(prefix + "-" + String.format("%04d", saved.getId()));
+            saved = userRepository.save(saved);
+        }
 
         User superAdmin = userRepository.findByEmail(superAdminEmail);
         auditLogService.log(
                 AuditAction.CREATE,
                 AuditModule.AUTH,
                 saved.getId().toString(),
-                "Super Admin created new Administrator: " + saved.getFullName() + " (" + saved.getEmail() + ")",
+                "Super Admin created new Administrator: " + saved.getFullName() + " (" + saved.getEmail() + ")"
+                        + (company != null ? " for Company: " + company.getName() : "")
+                        + (saved.getDesignation() != null ? " with Designation: " + saved.getDesignation() : "")
+                        + (saved.getEmployeeId() != null ? " [ID: " + saved.getEmployeeId() + "]" : "")
+                        + (saved.getPhoneNumber() != null ? " [Phone: " + saved.getPhoneNumber() + "]" : ""),
                 superAdmin
         );
 
-        return new AdminDTO(saved.getId(), saved.getFullName(), saved.getEmail(), saved.getRole(), saved.getActive());
+        return toAdminDTO(saved);
     }
 
     @Transactional
@@ -112,6 +155,27 @@ public class SuperAdminService {
 
         admin.setFullName(normalizedName);
         admin.setEmail(normalizedEmail);
+
+        if (request.getCompanyId() != null) {
+            Company company = companyRepository.findById(request.getCompanyId()).orElse(null);
+            admin.setCompany(company);
+        } else if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
+            Company company = companyService.getOrCreateCompanyByName(request.getCompanyName());
+            admin.setCompany(company);
+        }
+
+        if (request.getDesignation() != null) {
+            admin.setDesignation(request.getDesignation().trim());
+        }
+
+        if (request.getPhoneNumber() != null) {
+            admin.setPhoneNumber(request.getPhoneNumber().trim().isEmpty() ? null : request.getPhoneNumber().trim());
+        }
+
+        if (request.getEmployeeId() != null && !request.getEmployeeId().trim().isEmpty()) {
+            admin.setEmployeeId(request.getEmployeeId().trim());
+        }
+
         User saved = userRepository.save(admin);
 
         User superAdmin = userRepository.findByEmail(superAdminEmail);
@@ -123,7 +187,7 @@ public class SuperAdminService {
                 superAdmin
         );
 
-        return new AdminDTO(saved.getId(), saved.getFullName(), saved.getEmail(), saved.getRole(), saved.getActive());
+        return toAdminDTO(saved);
     }
 
     @Transactional
@@ -152,7 +216,7 @@ public class SuperAdminService {
                 superAdmin
         );
 
-        return new AdminDTO(saved.getId(), saved.getFullName(), saved.getEmail(), saved.getRole(), saved.getActive());
+        return toAdminDTO(saved);
     }
 
     @Transactional
@@ -170,7 +234,7 @@ public class SuperAdminService {
 
         userRepository.delete(admin);
 
-        User superAdmin = userRepository.findByEmail(superAdminEmail);
+        User superAdmin = superAdminEmail != null ? userRepository.findByEmail(superAdminEmail) : null;
         auditLogService.log(
                 AuditAction.DELETE,
                 AuditModule.AUTH,
@@ -199,6 +263,25 @@ public class SuperAdminService {
                 admin.getId().toString(),
                 "Super Admin reset password for Administrator: " + admin.getEmail(),
                 superAdmin
+        );
+    }
+
+    private AdminDTO toAdminDTO(User user) {
+        Long companyId = user.getCompany() != null ? user.getCompany().getId() : null;
+        String companyName = user.getCompany() != null ? user.getCompany().getName() : null;
+        return new AdminDTO(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getActive(),
+                companyId,
+                companyName,
+                user.getDesignation(),
+                user.getPhoneNumber(),
+                user.getEmployeeId(),
+                user.getCreatedAt(),
+                user.getLastLoginAt()
         );
     }
 }
