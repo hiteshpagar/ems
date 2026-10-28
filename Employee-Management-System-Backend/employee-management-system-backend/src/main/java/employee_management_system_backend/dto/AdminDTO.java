@@ -13,6 +13,7 @@ public class AdminDTO {
     private String employeeId;
     private java.time.LocalDateTime createdAt;
     private java.time.LocalDateTime lastLoginAt;
+    private Boolean passwordChangeRequired = false;
 
     public AdminDTO() {}
 
@@ -165,5 +166,13 @@ public class AdminDTO {
 
     public void setLastLoginAt(java.time.LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public Boolean getPasswordChangeRequired() {
+        return passwordChangeRequired;
+    }
+
+    public void setPasswordChangeRequired(Boolean passwordChangeRequired) {
+        this.passwordChangeRequired = passwordChangeRequired;
     }
 }

@@ -126,9 +126,11 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    minWidth: 0,
+    fontSize: 14,
     color: AppColors.text,
-    paddingVertical: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 0,
   },
   leftIconWrapper: {
     marginRight: 8,

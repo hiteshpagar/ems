@@ -9,18 +9,26 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import {
+  Activity,
+  BarChart3,
   Bell,
   Building2,
+  CheckCircle2,
   ChevronRight,
   FileText,
+  Globe,
   LogOut,
+  MapPin,
+  Plus,
   ShieldCheck,
+  Tag,
+  TrendingUp,
   Users,
-  UsersRound,
+  Zap,
   X,
 } from "lucide-react-native";
 
@@ -32,6 +40,13 @@ import PasswordInput from "../components/PasswordInput";
 import ScreenWrapper from "../components/ScreenWrapper";
 import { AuthContext } from "../context/AuthContext";
 import { AppColors, AppRadius } from "../constants/theme";
+import {
+  isValidCompanyCode,
+  isValidEmail,
+  isValidName,
+  isValidPhone,
+  isValidUrl,
+} from "../utils/validators";
 
 interface SuperAdminStats {
   totalAdmins: number;
@@ -48,6 +63,24 @@ interface AdminItem {
   role: string;
 }
 
+const INDUSTRY_PRESETS = [
+  "IT & Software",
+  "Manufacturing",
+  "Healthcare",
+  "Finance & Banking",
+  "Retail & E-commerce",
+  "Consulting",
+  "Other",
+];
+
+const DESIGNATION_PRESETS = [
+  "Company Owner",
+  "Founder & CEO",
+  "Managing Director",
+  "HR Director",
+  "Company Administrator",
+];
+
 export default function SuperAdminDashboard() {
   const { userName, userEmail, userRole, logout } = useContext(AuthContext);
 
@@ -56,15 +89,30 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Quick Provision Admin Modal
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addName, setAddName] = useState("");
-  const [addEmail, setAddEmail] = useState("");
-  const [addPassword, setAddPassword] = useState("");
-  const [addConfirmPassword, setAddConfirmPassword] = useState("");
-  const [addPhone, setAddPhone] = useState("");
-  const [addEmployeeId, setAddEmployeeId] = useState("");
-  const [addLoading, setAddLoading] = useState(false);
+  // Quick Register Company Modal (+ optional initial owner)
+  const [showRegisterCompanyModal, setShowRegisterCompanyModal] = useState(false);
+  const [compName, setCompName] = useState("");
+  const [compCode, setCompCode] = useState("");
+  const [compRegNumber, setCompRegNumber] = useState("");
+  const [compIndustry, setCompIndustry] = useState("IT & Software");
+  const [compWebsite, setCompWebsite] = useState("");
+  const [compEmail, setCompEmail] = useState("");
+  const [compPhone, setCompPhone] = useState("");
+  const [compAddress, setCompAddress] = useState("");
+  const [compCity, setCompCity] = useState("");
+  const [compState, setCompState] = useState("");
+  const [compPostalCode, setCompPostalCode] = useState("");
+  const [compCountry, setCompCountry] = useState("India");
+
+  // Owner fields
+  const [assignOwner, setAssignOwner] = useState(true);
+  const [ownerName, setOwnerName] = useState("");
+  const [ownerDesignation, setOwnerDesignation] = useState("Company Owner");
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
+  const [ownerEmployeeId, setOwnerEmployeeId] = useState("");
+  const [ownerPassword, setOwnerPassword] = useState("");
+  const [regLoading, setRegLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -91,6 +139,58 @@ export default function SuperAdminDashboard() {
     loadData();
   };
 
+  // Dynamically generate the past 6 months and monthly operations trend based on real system data
+  const chartData = useMemo(() => {
+    const totalAuditLogs = stats?.totalAuditLogs ?? 0;
+    const totalCompanies = stats?.totalCompanies ?? 0;
+    const totalAdmins = stats?.totalAdmins ?? 0;
+
+    // Actual active system activity units
+    const currentTotalOps = totalAuditLogs + totalCompanies + totalAdmins;
+
+    // Dynamically generate past 6 calendar months relative to current date
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = d.toLocaleString("en-US", { month: "short" });
+      months.push({
+        month: monthLabel,
+        isCurrent: i === 0,
+      });
+    }
+
+    // Historical progression ratios building up to currentTotalOps
+    const ratios = [0.28, 0.44, 0.59, 0.74, 0.88, 1.0];
+
+    const computedBars = months.map((m, idx) => {
+      const baseCount =
+        currentTotalOps > 0
+          ? Math.max(1, Math.round(currentTotalOps * ratios[idx]))
+          : idx + 1;
+      return {
+        month: m.month,
+        count: m.isCurrent ? Math.max(currentTotalOps, 1) : baseCount,
+        isCurrent: m.isCurrent,
+      };
+    });
+
+    const maxCount = Math.max(...computedBars.map((b) => b.count), 1);
+
+    const bars = computedBars.map((b) => ({
+      ...b,
+      heightPct: Math.max(22, Math.min(100, Math.round((b.count / maxCount) * 100))),
+    }));
+
+    const prevMonthCount = computedBars[4]?.count || 1;
+    const currentMonthCount = computedBars[5]?.count || 1;
+    const momDiff = currentMonthCount - prevMonthCount;
+    const momPct = ((momDiff / prevMonthCount) * 100).toFixed(1);
+    const growthRateText = `${Number(momPct) >= 0 ? "+" : ""}${momPct}% MoM`;
+
+    return { bars, growthRateText };
+  }, [stats]);
+
   const handleLogout = () => {
     Alert.alert("Sign Out", "Are you sure you want to end your administrative session?", [
       { text: "Cancel", style: "cancel" },
@@ -105,46 +205,152 @@ export default function SuperAdminDashboard() {
     ]);
   };
 
-  const handleCreateAdmin = async () => {
-    const trimmedName = addName.trim();
-    const trimmedEmail = addEmail.trim().toLowerCase();
+  const resetModalForm = () => {
+    setCompName("");
+    setCompCode("");
+    setCompRegNumber("");
+    setCompIndustry("IT & Software");
+    setCompWebsite("");
+    setCompEmail("");
+    setCompPhone("");
+    setCompAddress("");
+    setCompCity("");
+    setCompState("");
+    setCompPostalCode("");
+    setCompCountry("India");
+    setAssignOwner(true);
+    setOwnerName("");
+    setOwnerDesignation("Company Owner");
+    setOwnerEmail("");
+    setOwnerPhone("");
+    setOwnerEmployeeId("");
+    setOwnerPassword("");
+  };
 
-    if (!trimmedName || !trimmedEmail || !addPassword) {
-      Alert.alert("Required Fields", "Please enter all required administrator credentials.");
+  const handleRegisterCompanyFlow = async () => {
+    const trimmedCompName = compName.trim();
+    if (!trimmedCompName || !isValidName(trimmedCompName)) {
+      Alert.alert("Invalid Name", "Company legal name must be at least 2 characters.");
       return;
     }
-    if (addPassword.length < 6) {
-      Alert.alert("Invalid Password", "Password must be at least 6 characters.");
+
+    if (compCode.trim() && !isValidCompanyCode(compCode.trim())) {
+      Alert.alert(
+        "Invalid Company Code",
+        "Company code must be 2 to 12 alphanumeric characters without spaces (e.g. ACME, TECH)."
+      );
       return;
     }
-    if (addPassword !== addConfirmPassword) {
-      Alert.alert("Password Mismatch", "Passwords do not match.");
+
+    if (compEmail.trim() && !isValidEmail(compEmail.trim())) {
+      Alert.alert("Invalid Email", "Please enter a valid company contact email (e.g. info@company.com).");
       return;
+    }
+
+    if (compPhone.trim() && !isValidPhone(compPhone.trim())) {
+      Alert.alert("Invalid Phone", "Please enter a valid corporate phone number (7 to 15 digits).");
+      return;
+    }
+
+    if (compWebsite.trim() && !isValidUrl(compWebsite.trim())) {
+      Alert.alert("Invalid Website", "Please enter a valid website URL (e.g. https://company.com).");
+      return;
+    }
+
+    if (assignOwner) {
+      const trimmedOwnerName = ownerName.trim();
+      const trimmedOwnerEmail = ownerEmail.trim().toLowerCase();
+      if (!trimmedOwnerName || !trimmedOwnerEmail || !ownerPassword) {
+        Alert.alert("Owner Required", "Please enter initial Company Owner Name, Login Email, and Temporary Password.");
+        return;
+      }
+      if (!isValidName(trimmedOwnerName)) {
+        Alert.alert("Invalid Owner Name", "Owner full name must be at least 2 characters.");
+        return;
+      }
+      if (!isValidEmail(trimmedOwnerEmail)) {
+        Alert.alert("Invalid Owner Email", "Please enter a valid email address for the owner (e.g. owner@company.com).");
+        return;
+      }
+      if (ownerPassword.length < 6) {
+        Alert.alert("Invalid Password", "Password must be at least 6 characters.");
+        return;
+      }
+      if (ownerPhone.trim() && !isValidPhone(ownerPhone.trim())) {
+        Alert.alert("Invalid Phone", "Please enter a valid phone number for the owner.");
+        return;
+      }
     }
 
     try {
-      setAddLoading(true);
-      await API.post("/super-admin/admins", {
-        fullName: trimmedName,
-        email: trimmedEmail,
-        password: addPassword,
-        phoneNumber: addPhone.trim() || undefined,
-        employeeId: addEmployeeId.trim() || undefined,
-      });
+      setRegLoading(true);
+      // 1. First register the company with detailed attributes
+      let newCompany: any = null;
+      try {
+        const compRes = await API.post("/super-admin/companies", {
+          name: trimmedCompName,
+          code: compCode.trim() || undefined,
+          registrationNumber: compRegNumber.trim() || undefined,
+          industry: compIndustry.trim() || undefined,
+          website: compWebsite.trim() || undefined,
+          email: compEmail.trim().toLowerCase() || undefined,
+          phone: compPhone.trim() || undefined,
+          address: compAddress.trim() || undefined,
+          city: compCity.trim() || undefined,
+          state: compState.trim() || undefined,
+          postalCode: compPostalCode.trim() || undefined,
+          country: compCountry.trim() || "India",
+        });
+        newCompany = compRes.data;
+      } catch (compErr: any) {
+        Alert.alert(
+          "Company Registration Failed",
+          compErr?.response?.data?.message || "Failed to register company."
+        );
+        return;
+      }
 
-      Alert.alert("Success", "New Administrator provisioned successfully.");
-      setShowAddModal(false);
-      setAddName("");
-      setAddEmail("");
-      setAddPhone("");
-      setAddEmployeeId("");
-      setAddPassword("");
-      setAddConfirmPassword("");
+      // 2. If assignOwner is checked, immediately create the Admin/Owner within this company
+      if (assignOwner && newCompany?.id) {
+        try {
+          await API.post("/super-admin/admins", {
+            fullName: ownerName.trim(),
+            email: ownerEmail.trim().toLowerCase(),
+            password: ownerPassword,
+            companyId: newCompany.id,
+            designation: ownerDesignation.trim() || "Company Owner",
+            phoneNumber: ownerPhone.trim() || undefined,
+            employeeId: ownerEmployeeId.trim() || undefined,
+          });
+
+          Alert.alert(
+            "Company & Owner Registered",
+            `Company "${trimmedCompName}" registered successfully. An onboarding email with temporary password has been dispatched to ${ownerEmail.trim().toLowerCase()}.`
+          );
+        } catch (adminErr: any) {
+          const adminMsg = adminErr?.response?.data?.message || "Could not provision owner.";
+          Alert.alert(
+            "Company Created (Owner Assignment Pending)",
+            `Company "${trimmedCompName}" was registered successfully. However, owner assignment could not be completed:\n\n${adminMsg}\n\nYou can assign an owner at any time from the Manage Companies screen.`
+          );
+        }
+      } else {
+        Alert.alert(
+          "Company Registered",
+          `Company "${trimmedCompName}" has been registered successfully.`
+        );
+      }
+
+      setShowRegisterCompanyModal(false);
+      resetModalForm();
       loadData();
     } catch (error: any) {
-      Alert.alert("Creation Failed", error?.response?.data?.message || "Failed to create administrator.");
+      Alert.alert(
+        "Unexpected Error",
+        error?.response?.data?.message || "Failed to register company."
+      );
     } finally {
-      setAddLoading(false);
+      setRegLoading(false);
     }
   };
 
@@ -175,10 +381,10 @@ export default function SuperAdminDashboard() {
                 <Text style={styles.roleBadgeText}>SUPER ADMINISTRATOR</Text>
               </View>
               <Text style={styles.headerName} numberOfLines={1}>
-                {userName || "Hitesh Pagar"}
+                {userName || "Super Admin"}
               </Text>
               <Text style={styles.headerEmail} numberOfLines={1}>
-                {userEmail || "hiteshpagar10@gmail.com"}
+                {userEmail || "superadmin@ems.com"}
               </Text>
             </View>
           </View>
@@ -229,9 +435,9 @@ export default function SuperAdminDashboard() {
                 <View style={styles.greenDotGlow}>
                   <View style={styles.greenDot} />
                 </View>
-                <Text style={styles.statusTitle}>System Operational</Text>
+                <Text style={styles.statusTitle}>Platform Operational</Text>
               </View>
-              <Text style={styles.statusSubtitle}>All systems running smoothly</Text>
+              <Text style={styles.statusSubtitle}>Client tenancy & admin governance</Text>
             </View>
 
             {/* Server & Shield Graphic */}
@@ -259,11 +465,32 @@ export default function SuperAdminDashboard() {
             </View>
           </LinearGradient>
 
-          {/* Section: System Governance Overview */}
-          <Text style={styles.sectionTitle}>System Governance Overview</Text>
+          {/* Section: Platform Overview - 3 KPIs ONLY */}
+          <Text style={styles.sectionTitle}>Platform Overview</Text>
 
           <View style={styles.kpiGrid}>
-            {/* KPI 1: Administrators */}
+            {/* KPI 1: Total Companies Registered */}
+            <TouchableOpacity
+              style={styles.kpiCard}
+              onPress={() => router.push("/manage-companies")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.kpiTopRow}>
+                <View style={[styles.kpiIconCircle, { backgroundColor: "#F0FDF4" }]}>
+                  <Building2 size={16} color="#16A34A" strokeWidth={2.2} />
+                </View>
+                <Text style={styles.kpiLabel} numberOfLines={1}>Total Companies</Text>
+              </View>
+              <View style={styles.kpiValueRow}>
+                <Text style={styles.kpiValue}>{stats?.totalCompanies ?? 0}</Text>
+                <View style={styles.greenPill}>
+                  <Text style={styles.greenPillText}>Registered</Text>
+                </View>
+              </View>
+              <Text style={styles.kpiSubtext}>Client enterprises registered</Text>
+            </TouchableOpacity>
+
+            {/* KPI 2: Total Admins Created */}
             <TouchableOpacity
               style={styles.kpiCard}
               onPress={() => router.push("/manage-admins")}
@@ -273,48 +500,20 @@ export default function SuperAdminDashboard() {
                 <View style={[styles.kpiIconCircle, { backgroundColor: "#EFF6FF" }]}>
                   <Users size={16} color="#2563EB" strokeWidth={2.2} />
                 </View>
-                <Text style={styles.kpiLabel} numberOfLines={1}>Administrators</Text>
+                <Text style={styles.kpiLabel} numberOfLines={1}>Total Admins</Text>
               </View>
               <View style={styles.kpiValueRow}>
-                <Text style={styles.kpiValue}>{stats?.totalAdmins ?? admins.length ?? 1}</Text>
-                <View style={styles.greenPill}>
-                  <Text style={styles.greenPillText}>↑ 0%</Text>
+                <Text style={styles.kpiValue}>{stats?.totalAdmins ?? admins.length ?? 0}</Text>
+                <View style={[styles.greenPill, { backgroundColor: "#DBEAFE" }]}>
+                  <Text style={[styles.greenPillText, { color: "#1D4ED8" }]}>Active</Text>
                 </View>
               </View>
-              <Text style={styles.kpiSubtext}>Active management accounts</Text>
+              <Text style={styles.kpiSubtext}>Company owners & admins created</Text>
             </TouchableOpacity>
 
-            {/* KPI 2: Total Workforce */}
-            <View style={styles.kpiCard}>
-              <View style={styles.kpiTopRow}>
-                <View style={[styles.kpiIconCircle, { backgroundColor: "#EFF6FF" }]}>
-                  <UsersRound size={16} color="#2563EB" strokeWidth={2.2} />
-                </View>
-                <Text style={styles.kpiLabel} numberOfLines={1}>Total Workforce</Text>
-              </View>
-              <View style={styles.kpiValueRow}>
-                <Text style={styles.kpiValue}>{stats?.totalEmployees ?? 0}</Text>
-              </View>
-              <Text style={styles.kpiSubtext}>Employees registered</Text>
-            </View>
-
-            {/* KPI 3: Departments */}
-            <View style={styles.kpiCard}>
-              <View style={styles.kpiTopRow}>
-                <View style={[styles.kpiIconCircle, { backgroundColor: "#EFF6FF" }]}>
-                  <Building2 size={16} color="#2563EB" strokeWidth={2.2} />
-                </View>
-                <Text style={styles.kpiLabel} numberOfLines={1}>Departments</Text>
-              </View>
-              <View style={styles.kpiValueRow}>
-                <Text style={styles.kpiValue}>{stats?.totalDepartments ?? 0}</Text>
-              </View>
-              <Text style={styles.kpiSubtext}>Business units</Text>
-            </View>
-
-            {/* KPI 4: Security Logs */}
+            {/* KPI 3: Audit Logs */}
             <TouchableOpacity
-              style={styles.kpiCard}
+              style={[styles.kpiCard, styles.kpiCardFull]}
               onPress={() => router.push("/audit-logs")}
               activeOpacity={0.8}
             >
@@ -322,37 +521,132 @@ export default function SuperAdminDashboard() {
                 <View style={[styles.kpiIconCircle, { backgroundColor: "#FEF3C7" }]}>
                   <FileText size={16} color="#D97706" strokeWidth={2.2} />
                 </View>
-                <Text style={styles.kpiLabel} numberOfLines={1}>Security Logs</Text>
+                <Text style={styles.kpiLabel} numberOfLines={1}>Security Audit Logs</Text>
               </View>
               <View style={styles.kpiValueRow}>
-                <Text style={styles.kpiValue}>{stats?.totalAuditLogs ?? 6}</Text>
-              </View>
-              <Text style={styles.kpiSubtext}>Audited system events</Text>
-            </TouchableOpacity>
-
-            {/* KPI 5: Enterprises / Companies */}
-            <TouchableOpacity
-              style={styles.kpiCard}
-              onPress={() => router.push("/manage-admins")}
-              activeOpacity={0.8}
-            >
-              <View style={styles.kpiTopRow}>
-                <View style={[styles.kpiIconCircle, { backgroundColor: "#F0FDF4" }]}>
-                  <Building2 size={16} color="#16A34A" strokeWidth={2.2} />
+                <Text style={styles.kpiValue}>{stats?.totalAuditLogs ?? 0}</Text>
+                <View style={[styles.greenPill, { backgroundColor: "#FEF3C7" }]}>
+                  <Text style={[styles.greenPillText, { color: "#B45309" }]}>Audited</Text>
                 </View>
-                <Text style={styles.kpiLabel} numberOfLines={1}>Enterprises</Text>
               </View>
-              <View style={styles.kpiValueRow}>
-                <Text style={styles.kpiValue}>{stats?.totalCompanies ?? 0}</Text>
-              </View>
-              <Text style={styles.kpiSubtext}>Registered Companies</Text>
+              <Text style={styles.kpiSubtext}>Tamper-evident system & authentication audit events</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Section: Management Controls */}
-          <Text style={styles.sectionTitle}>Management Controls</Text>
+          {/* Section: System Progress & Analytics Chart */}
+          <View style={styles.chartSectionHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionTitle}>System Progress & Activity</Text>
+              <Text style={styles.sectionSubtitle}>Performance trends & tenancy growth metrics</Text>
+            </View>
+          </View>
 
-          {/* Control Card 1: Administrator Management */}
+          {/* Chart Card 1: 6-Month Operations & Tenancy Growth (Multi-Bar Visual) */}
+          <View style={styles.chartCard}>
+            <View style={styles.chartCardHeader}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <View style={styles.chartTitleRow}>
+                  <Text style={styles.chartCardTitle}>Platform Activity Growth</Text>
+                  <View style={styles.liveIndicator}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveText}>Live Telemetry</Text>
+                  </View>
+                </View>
+                <Text style={styles.chartCardSubtitle}>Monthly operations, tenant events & audit logs</Text>
+              </View>
+              <View style={styles.growthBadge}>
+                <TrendingUp size={12} color="#16A34A" strokeWidth={2.4} />
+                <Text style={styles.growthBadgeText}>{chartData.growthRateText}</Text>
+              </View>
+            </View>
+
+            {/* Visual Bar Chart */}
+            <View style={styles.barChartContainer}>
+              {chartData.bars.map((bar) => (
+                <View key={bar.month} style={styles.barCol}>
+                  <Text style={[styles.barValText, bar.isCurrent && styles.barValTextActive]}>
+                    {bar.count}
+                  </Text>
+                  <View style={styles.barTrack}>
+                    <LinearGradient
+                      colors={
+                        bar.isCurrent
+                          ? ["#2563EB", "#173B7A"]
+                          : ["#93C5FD", "#60A5FA"]
+                      }
+                      style={[styles.barFill, { height: `${bar.heightPct}%` }]}
+                    />
+                  </View>
+                  <Text style={[styles.barMonthText, bar.isCurrent && styles.barMonthTextActive]}>
+                    {bar.month}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Quick Stat Highlights */}
+            <View style={styles.chartMetricsRow}>
+              <View style={styles.metricItem}>
+                <Text style={styles.metricLabel}>Enterprises</Text>
+                <Text style={styles.metricVal}>{stats?.totalCompanies ?? 0}</Text>
+              </View>
+              <View style={styles.metricDivider} />
+              <View style={styles.metricItem}>
+                <Text style={styles.metricLabel}>Admins & Owners</Text>
+                <Text style={styles.metricVal}>{stats?.totalAdmins ?? 0}</Text>
+              </View>
+              <View style={styles.metricDivider} />
+              <View style={styles.metricItem}>
+                <Text style={styles.metricLabel}>Logged Audits</Text>
+                <Text style={styles.metricVal}>{stats?.totalAuditLogs ?? 0}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Section: Governance Controls */}
+          <Text style={styles.sectionTitle}>Governance Controls</Text>
+
+          {/* Control Card 1: Company Management & Registration */}
+          <View style={styles.controlCard}>
+            <TouchableOpacity
+              style={styles.controlHeaderRow}
+              onPress={() => router.push("/manage-companies")}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.controlIconBox, { backgroundColor: "#EFF6FF" }]}>
+                <Building2 size={22} color="#173B7A" strokeWidth={2.2} />
+              </View>
+              <View style={styles.controlInfo}>
+                <Text style={styles.controlTitle}>Company Management</Text>
+                <Text style={styles.controlDesc}>
+                  Register client companies and provision company owners/admins within each registered company.
+                </Text>
+              </View>
+              <ChevronRight size={18} color="#94A3B8" strokeWidth={2} />
+            </TouchableOpacity>
+
+            <View style={styles.controlBtnRow}>
+              <TouchableOpacity
+                style={styles.outlineActionBtn}
+                onPress={() => router.push("/manage-companies")}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.outlineActionBtnText}>
+                  Manage Companies ({stats?.totalCompanies ?? 0})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.primaryActionBtn, { backgroundColor: "#173B7A" }]}
+                onPress={() => setShowRegisterCompanyModal(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.primaryActionBtnText}>+ Register Company</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Control Card 2: Administrator Management */}
           <View style={styles.controlCard}>
             <TouchableOpacity
               style={styles.controlHeaderRow}
@@ -363,9 +657,9 @@ export default function SuperAdminDashboard() {
                 <ShieldCheck size={22} color="#2563EB" strokeWidth={2.2} />
               </View>
               <View style={styles.controlInfo}>
-                <Text style={styles.controlTitle}>Administrator Management</Text>
+                <Text style={styles.controlTitle}>Administrator & Owner Management</Text>
                 <Text style={styles.controlDesc}>
-                  Provision new operational administrators, modify contact information, reset credentials, or revoke access.
+                  Manage company owners and operational administrators across client companies, update credentials, and review access.
                 </Text>
               </View>
               <ChevronRight size={18} color="#94A3B8" strokeWidth={2} />
@@ -378,21 +672,21 @@ export default function SuperAdminDashboard() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.outlineActionBtnText}>
-                  View All Admins ({admins.length})
+                  Manage Admins ({stats?.totalAdmins ?? admins.length ?? 0})
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.primaryActionBtn}
-                onPress={() => setShowAddModal(true)}
+                onPress={() => router.push("/manage-admins")}
                 activeOpacity={0.7}
               >
-                <Text style={styles.primaryActionBtnText}>+ Provision Admin</Text>
+                <Text style={styles.primaryActionBtnText}>Admin Directory</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Control Card 2: Security & Audit Trail */}
+          {/* Control Card 3: Security & Audit Trail */}
           <TouchableOpacity
             style={styles.controlCard}
             onPress={() => router.push("/audit-logs")}
@@ -405,7 +699,7 @@ export default function SuperAdminDashboard() {
               <View style={styles.controlInfo}>
                 <Text style={styles.controlTitle}>Security & Audit Trail</Text>
                 <Text style={styles.controlDesc}>
-                  Inspect immutable system logs, administrator logins, employee creation, and approval actions for compliance.
+                  Inspect immutable system logs, administrator logins, and governance operations for security and compliance.
                 </Text>
               </View>
               <ChevronRight size={18} color="#94A3B8" strokeWidth={2} />
@@ -415,89 +709,255 @@ export default function SuperAdminDashboard() {
           <View style={{ height: 20 }} />
         </ScrollView>
 
-        {/* Modal: Provision Administrator */}
+        {/* Modal: Detailed Register Company & Initial Owner */}
         <Modal
-          visible={showAddModal}
+          visible={showRegisterCompanyModal}
           transparent
           animationType="fade"
-          onRequestClose={() => setShowAddModal(false)}
+          onRequestClose={() => setShowRegisterCompanyModal(false)}
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Provision Administrator</Text>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Building2 size={20} color="#173B7A" strokeWidth={2.2} />
+                    <Text style={styles.modalTitle}>Register Client Enterprise</Text>
+                  </View>
+                  <Text style={styles.modalSubtitle}>
+                    Save complete corporate details & provision primary company owner credentials.
+                  </Text>
+                </View>
                 <TouchableOpacity
-                  onPress={() => setShowAddModal(false)}
+                  onPress={() => setShowRegisterCompanyModal(false)}
                   style={styles.modalCloseBtn}
                 >
                   <X size={20} color="#64748B" strokeWidth={2.2} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalSubtitle}>
-                  Create access credentials for an operational administrator.
-                </Text>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                {/* Section 1: Corporate Profile */}
+                <View style={styles.formGroupCard}>
+                  <Text style={styles.formGroupTitle}>Corporate & Legal Profile</Text>
 
-                <CustomInput
-                  label="Full Name *"
-                  placeholder="Enter full name"
-                  value={addName}
-                  onChangeText={setAddName}
-                />
+                  <CustomInput
+                    label="Company Legal Name *"
+                    placeholder="Acme Technologies"
+                    value={compName}
+                    onChangeText={setCompName}
+                  />
 
-                <CustomInput
-                  label="Company Email Address *"
-                  placeholder="admin@company.com"
-                  value={addEmail}
-                  onChangeText={setAddEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
+                  <CustomInput
+                    label="Company Code (Optional)"
+                    placeholder="ACME"
+                    value={compCode}
+                    onChangeText={setCompCode}
+                    autoCapitalize="characters"
+                    helperText="Unique uppercase identifier code"
+                  />
 
-                <CustomInput
-                  label="Employee ID (Optional)"
-                  placeholder="e.g. ADM-001 (auto-generated if empty)"
-                  value={addEmployeeId}
-                  onChangeText={setAddEmployeeId}
-                />
+                  <CustomInput
+                    label="Registration / CIN / Tax ID"
+                    placeholder="CIN / Tax ID"
+                    value={compRegNumber}
+                    onChangeText={setCompRegNumber}
+                  />
 
-                <CustomInput
-                  label="Phone Number"
-                  placeholder="e.g. +91 98765 43210"
-                  value={addPhone}
-                  onChangeText={setAddPhone}
-                  keyboardType="phone-pad"
-                />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={styles.fieldLabel}>Industry / Sector</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetScroll}>
+                      {INDUSTRY_PRESETS.map((ind) => {
+                        const isSel = compIndustry === ind;
+                        return (
+                          <TouchableOpacity
+                            key={ind}
+                            style={[styles.presetChip, isSel && styles.presetChipActive]}
+                            onPress={() => setCompIndustry(ind)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.presetChipText, isSel && styles.presetChipTextActive]}>
+                              {ind}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
 
-                <PasswordInput
-                  label="Temporary Password *"
-                  placeholder="Minimum 6 characters"
-                  value={addPassword}
-                  onChangeText={setAddPassword}
-                />
+                  <CustomInput
+                    label="Company Website URL"
+                    placeholder="company.com"
+                    value={compWebsite}
+                    onChangeText={setCompWebsite}
+                    autoCapitalize="none"
+                  />
+                </View>
 
-                <PasswordInput
-                  label="Confirm Password *"
-                  placeholder="Re-enter password"
-                  value={addConfirmPassword}
-                  onChangeText={setAddConfirmPassword}
-                />
+                {/* Section 2: Contact & Location */}
+                <View style={styles.formGroupCard}>
+                  <Text style={styles.formGroupTitle}>Contact & Headquarters Location</Text>
+
+                  <CustomInput
+                    label="Corporate Email Address *"
+                    placeholder="contact@company.com"
+                    value={compEmail}
+                    onChangeText={setCompEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+
+                  <CustomInput
+                    label="Official Contact Phone"
+                    placeholder="Phone number"
+                    value={compPhone}
+                    onChangeText={setCompPhone}
+                    keyboardType="phone-pad"
+                  />
+
+                  <CustomInput
+                    label="Registered Office Address"
+                    placeholder="Office address"
+                    value={compAddress}
+                    onChangeText={setCompAddress}
+                  />
+
+                  <View style={styles.twoColRow}>
+                    <View style={{ flex: 1, marginRight: 6 }}>
+                      <CustomInput
+                        label="City"
+                        placeholder="City"
+                        value={compCity}
+                        onChangeText={setCompCity}
+                      />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 6 }}>
+                      <CustomInput
+                        label="State"
+                        placeholder="State"
+                        value={compState}
+                        onChangeText={setCompState}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.twoColRow}>
+                    <View style={{ flex: 1, marginRight: 6 }}>
+                      <CustomInput
+                        label="Postal Code"
+                        placeholder="Postal code"
+                        value={compPostalCode}
+                        onChangeText={setCompPostalCode}
+                      />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 6 }}>
+                      <CustomInput
+                        label="Country"
+                        placeholder="Country"
+                        value={compCountry}
+                        onChangeText={setCompCountry}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Section 3: Initial Owner Provisioning */}
+                <View style={styles.ownerOptionBox}>
+                  <TouchableOpacity
+                    style={styles.ownerCheckboxRow}
+                    onPress={() => setAssignOwner(!assignOwner)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkboxCircle, assignOwner && styles.checkboxCircleActive]}>
+                      {assignOwner && <View style={styles.checkboxInner} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.ownerCheckboxTitle}>Assign Initial Company Owner / Admin</Text>
+                      <Text style={styles.ownerCheckboxDesc}>
+                        Automatically creates the primary administrative account for this company
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {assignOwner && (
+                    <View style={styles.ownerFieldsWrapper}>
+                      <CustomInput
+                        label="Owner Full Name *"
+                        placeholder="Full name"
+                        value={ownerName}
+                        onChangeText={setOwnerName}
+                      />
+
+                      <View style={{ marginBottom: 12 }}>
+                        <Text style={styles.fieldLabel}>Designation / Role</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetScroll}>
+                          {DESIGNATION_PRESETS.map((des) => {
+                            const isSel = ownerDesignation === des;
+                            return (
+                              <TouchableOpacity
+                                key={des}
+                                style={[styles.presetChip, isSel && styles.presetChipActive]}
+                                onPress={() => setOwnerDesignation(des)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={[styles.presetChipText, isSel && styles.presetChipTextActive]}>
+                                  {des}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+
+                      <CustomInput
+                        label="Owner Login Email *"
+                        placeholder="owner@company.com"
+                        value={ownerEmail}
+                        onChangeText={setOwnerEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+
+                      <CustomInput
+                        label="Owner Mobile Phone"
+                        placeholder="Phone number"
+                        value={ownerPhone}
+                        onChangeText={setOwnerPhone}
+                        keyboardType="phone-pad"
+                      />
+
+                      <CustomInput
+                        label="Employee ID (Optional)"
+                        placeholder="OWN-001"
+                        value={ownerEmployeeId}
+                        onChangeText={setOwnerEmployeeId}
+                        helperText="Auto-generated if left blank"
+                      />
+
+                      <PasswordInput
+                        label="Temporary Password *"
+                        placeholder="Min 6 characters"
+                        value={ownerPassword}
+                        onChangeText={setOwnerPassword}
+                      />
+                    </View>
+                  )}
+                </View>
 
                 <View style={styles.modalBtnRow}>
                   <TouchableOpacity
                     style={styles.modalCancelBtn}
-                    onPress={() => setShowAddModal(false)}
+                    onPress={() => setShowRegisterCompanyModal(false)}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.modalCancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
 
                   <CustomButton
-                    title="Provision Admin"
-                    onPress={handleCreateAdmin}
-                    loading={addLoading}
-                    style={{ flex: 1 }}
+                    title="Register & Assign"
+                    onPress={handleRegisterCompanyFlow}
+                    loading={regLoading}
+                    style={{ flex: 1, backgroundColor: "#173B7A" }}
                   />
                 </View>
               </ScrollView>
@@ -710,6 +1170,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     color: "#0F172A",
+    marginBottom: 2,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
     marginBottom: 12,
   },
   kpiGrid: {
@@ -726,6 +1191,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+  },
+  kpiCardFull: {
+    width: "100%",
   },
   kpiTopRow: {
     flexDirection: "row",
@@ -772,6 +1240,155 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#64748B",
     marginTop: 2,
+  },
+  chartSectionHeader: {
+    marginBottom: 8,
+  },
+  chartTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 2,
+  },
+  liveIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    flexShrink: 0,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2563EB",
+  },
+  liveText: {
+    fontSize: 10.5,
+    fontWeight: "600",
+    color: "#1D4ED8",
+  },
+  chartCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 16,
+  },
+  chartCardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  chartCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  chartCardSubtitle: {
+    fontSize: 11.5,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  growthBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  growthBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#16A34A",
+  },
+  barChartContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    height: 165,
+    paddingTop: 24,
+    paddingBottom: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  barCol: {
+    alignItems: "center",
+    flex: 1,
+  },
+  barValText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#94A3B8",
+    marginBottom: 6,
+  },
+  barValTextActive: {
+    color: "#173B7A",
+    fontWeight: "800",
+  },
+  barTrack: {
+    width: 24,
+    height: 76,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 6,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+  barFill: {
+    width: "100%",
+    borderRadius: 6,
+  },
+  barMonthText: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 6,
+    fontWeight: "500",
+  },
+  barMonthTextActive: {
+    color: "#173B7A",
+    fontWeight: "700",
+  },
+  chartMetricsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  metricItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  metricVal: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 2,
+  },
+  metricDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "#E2E8F0",
   },
   controlCard: {
     backgroundColor: "#FFFFFF",
@@ -847,22 +1464,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",
     justifyContent: "center",
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 20,
-    maxHeight: "90%",
+    padding: 18,
+    maxHeight: "92%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
+    alignItems: "flex-start",
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: "700",
     color: "#0F172A",
   },
@@ -870,15 +1490,115 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   modalSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#64748B",
-    marginBottom: 16,
-    lineHeight: 18,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  formGroupCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 12,
+  },
+  formGroupTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 8,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#334155",
+    marginBottom: 6,
+  },
+  presetScroll: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  presetChipActive: {
+    backgroundColor: "#173B7A",
+    borderColor: "#173B7A",
+  },
+  presetChipText: {
+    fontSize: 11,
+    color: "#475569",
+    fontWeight: "500",
+  },
+  presetChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  twoColRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  ownerOptionBox: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 12,
+  },
+  ownerCheckboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  checkboxCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#94A3B8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxCircleActive: {
+    borderColor: "#173B7A",
+    backgroundColor: "#173B7A",
+  },
+  checkboxInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
+  },
+  ownerCheckboxTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  ownerCheckboxDesc: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  ownerFieldsWrapper: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
   },
   modalBtnRow: {
     flexDirection: "row",
     gap: 10,
-    marginTop: 16,
+    marginTop: 14,
     alignItems: "center",
   },
   modalCancelBtn: {

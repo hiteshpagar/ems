@@ -1,6 +1,7 @@
 import { router, usePathname } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
+  Building2,
   Calendar,
   Clock,
   CreditCard,
@@ -26,6 +27,11 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
       label: "Console",
       icon: Home,
       route: "/super-admin-dashboard",
+    },
+    {
+      label: "Companies",
+      icon: Building2,
+      route: "/manage-companies",
     },
     {
       label: "Admins",

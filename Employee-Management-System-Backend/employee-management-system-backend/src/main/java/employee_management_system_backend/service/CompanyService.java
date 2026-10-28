@@ -84,15 +84,33 @@ public class CompanyService {
 
         if (request.getCode() != null && !request.getCode().trim().isEmpty()) {
             String code = request.getCode().trim().toUpperCase(Locale.ROOT);
+            if (!code.matches("^[A-Z0-9_-]{2,15}$")) {
+                throw new IllegalArgumentException("Company code must be 2 to 15 alphanumeric characters without spaces.");
+            }
             if (companyRepository.existsByCodeIgnoreCase(code)) {
                 throw new ResourceAlreadyExistsException("Company code already in use: " + code);
             }
             company.setCode(code);
         }
 
-        company.setEmail(request.getEmail() != null ? request.getEmail().trim().toLowerCase(Locale.ROOT) : null);
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+            if (!email.matches("^[\\w-.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+                throw new IllegalArgumentException("Invalid company email format: " + email);
+            }
+            company.setEmail(email);
+        } else {
+            company.setEmail(null);
+        }
         company.setPhone(request.getPhone() != null ? request.getPhone().trim() : null);
         company.setAddress(request.getAddress() != null ? request.getAddress().trim() : null);
+        company.setRegistrationNumber(request.getRegistrationNumber() != null ? request.getRegistrationNumber().trim() : null);
+        company.setIndustry(request.getIndustry() != null ? request.getIndustry().trim() : null);
+        company.setWebsite(request.getWebsite() != null ? request.getWebsite().trim() : null);
+        company.setCity(request.getCity() != null ? request.getCity().trim() : null);
+        company.setState(request.getState() != null ? request.getState().trim() : null);
+        company.setPostalCode(request.getPostalCode() != null ? request.getPostalCode().trim() : null);
+        company.setCountry(request.getCountry() != null ? request.getCountry().trim() : "India");
 
         Company saved = companyRepository.save(company);
 
@@ -122,14 +140,35 @@ public class CompanyService {
 
         if (request.getCode() != null && !request.getCode().trim().isEmpty()) {
             String code = request.getCode().trim().toUpperCase(Locale.ROOT);
+            if (!code.matches("^[A-Z0-9_-]{2,15}$")) {
+                throw new IllegalArgumentException("Company code must be 2 to 15 alphanumeric characters without spaces.");
+            }
+            if (companyRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
+                throw new ResourceAlreadyExistsException("Another company with this code already exists: " + code);
+            }
             company.setCode(code);
         } else {
             company.setCode(null);
         }
 
-        company.setEmail(request.getEmail() != null ? request.getEmail().trim().toLowerCase(Locale.ROOT) : null);
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+            if (!email.matches("^[\\w-.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+                throw new IllegalArgumentException("Invalid company email format: " + email);
+            }
+            company.setEmail(email);
+        } else {
+            company.setEmail(null);
+        }
         company.setPhone(request.getPhone() != null ? request.getPhone().trim() : null);
         company.setAddress(request.getAddress() != null ? request.getAddress().trim() : null);
+        company.setRegistrationNumber(request.getRegistrationNumber() != null ? request.getRegistrationNumber().trim() : null);
+        company.setIndustry(request.getIndustry() != null ? request.getIndustry().trim() : null);
+        company.setWebsite(request.getWebsite() != null ? request.getWebsite().trim() : null);
+        company.setCity(request.getCity() != null ? request.getCity().trim() : null);
+        company.setState(request.getState() != null ? request.getState().trim() : null);
+        company.setPostalCode(request.getPostalCode() != null ? request.getPostalCode().trim() : null);
+        company.setCountry(request.getCountry() != null ? request.getCountry().trim() : "India");
 
         Company saved = companyRepository.save(company);
 
@@ -172,7 +211,7 @@ public class CompanyService {
     public CompanyDTO toDto(Company company) {
         long totalAdmins = userRepository.countByCompanyIdAndRole(company.getId(), "ADMIN");
         long totalEmployees = employeeRepository.countByCompanyId(company.getId());
-        return new CompanyDTO(
+        CompanyDTO dto = new CompanyDTO(
                 company.getId(),
                 company.getName(),
                 company.getCode(),
@@ -183,5 +222,13 @@ public class CompanyService {
                 totalEmployees,
                 company.getCreatedAt()
         );
+        dto.setRegistrationNumber(company.getRegistrationNumber());
+        dto.setIndustry(company.getIndustry());
+        dto.setWebsite(company.getWebsite());
+        dto.setCity(company.getCity());
+        dto.setState(company.getState());
+        dto.setPostalCode(company.getPostalCode());
+        dto.setCountry(company.getCountry());
+        return dto;
     }
 }

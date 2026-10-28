@@ -1,69 +1,12 @@
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
+import { ArrowLeft, Lock, ShieldCheck } from "lucide-react-native";
 
-import API from "../services/api";
 import CustomButton from "../components/CustomButton";
-import CustomInput from "../components/CustomInput";
-import PasswordInput from "../components/PasswordInput";
 import ScreenWrapper from "../components/ScreenWrapper";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 export default function RegisterScreen() {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleRegister = async () => {
-    const trimmedName = fullName.trim();
-    const trimmedEmail = email.trim();
-
-    if (!trimmedName || !trimmedEmail || !password) {
-      Alert.alert("Required Fields", "Please fill in all required fields.");
-      return;
-    }
-
-    if (confirmPassword && password !== confirmPassword) {
-      Alert.alert("Password Mismatch", "Passwords do not match.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await API.post("/auth/register", {
-        fullName: trimmedName,
-        email: trimmedEmail,
-        password,
-        phoneNumber: phone.trim() || undefined,
-      });
-
-      Alert.alert("Success", "Account created successfully. Please login.", [
-        {
-          text: "Login",
-          onPress: () => router.replace("/login"),
-        },
-      ]);
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Registration failed. Please check your information and try again.";
-      Alert.alert("Registration Failed", message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <ScreenWrapper>
       <ScrollView
@@ -73,80 +16,38 @@ export default function RegisterScreen() {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.replace("/login")}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Text style={styles.backIcon}>←</Text>
+          <ArrowLeft size={18} color={AppColors.text} />
         </TouchableOpacity>
 
         <View style={styles.card}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Please fill in the details to register</Text>
+          <View style={styles.iconCircle}>
+            <Lock size={32} color="#173B7A" />
+          </View>
 
-          <CustomInput
-            label="Full Name"
-            placeholder="Enter full name"
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-            required
-          />
+          <Text style={styles.title}>Registration Closed</Text>
+          <Text style={styles.subtitle}>
+            Public self-registration is disabled for security. The System Owner and Super Administrator
+            is pre-configured, and company access is managed directly through the administration portal.
+          </Text>
 
-          <CustomInput
-            label="Email"
-            placeholder="admin@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            required
-          />
-
-          <CustomInput
-            label="Mobile Number"
-            placeholder="Enter mobile number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-          />
-
-          <PasswordInput
-            label="Password"
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            autoComplete="password-new"
-            required
-          />
-
-          <PasswordInput
-            label="Confirm Password"
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            autoComplete="password-new"
-          />
+          <View style={styles.infoBox}>
+            <ShieldCheck size={18} color="#2563EB" />
+            <Text style={styles.infoText}>
+              If you are a company administrator or employee, please check your email for access
+              credentials provided by your organization.
+            </Text>
+          </View>
 
           <CustomButton
-            title="Register"
-            onPress={handleRegister}
-            loading={loading}
-            style={styles.registerButton}
+            title="Return to Login"
+            onPress={() => router.replace("/login")}
+            style={styles.returnButton}
           />
-        </View>
-
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/login")}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.loginLink}>Login</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </ScreenWrapper>
@@ -161,8 +62,8 @@ const styles = StyleSheet.create({
     paddingVertical: 36,
   },
   backButton: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: AppRadius.md,
     backgroundColor: AppColors.surface,
     borderWidth: 1,
@@ -171,46 +72,59 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 20,
   },
-  backIcon: {
-    fontSize: 18,
-    color: AppColors.text,
-    fontWeight: "700",
-  },
   card: {
     backgroundColor: AppColors.surface,
     borderRadius: AppRadius.lg,
-    padding: 20,
+    padding: 24,
     borderWidth: 1,
     borderColor: AppColors.border,
+    alignItems: "center",
     ...AppShadows.card,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
   title: {
     fontSize: 22,
     fontWeight: "700",
     color: AppColors.text,
+    marginBottom: 8,
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
     color: AppColors.textMuted,
-    marginTop: 4,
+    lineHeight: 20,
+    textAlign: "center",
     marginBottom: 20,
   },
-  registerButton: {
-    marginTop: 8,
-  },
-  footerRow: {
+  infoBox: {
     flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 24,
+    alignItems: "flex-start",
+    backgroundColor: "#F8FAFC",
+    borderRadius: AppRadius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    gap: 10,
+    marginBottom: 24,
   },
-  footerText: {
-    fontSize: 14,
-    color: AppColors.textMuted,
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#475569",
+    lineHeight: 18,
   },
-  loginLink: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: AppColors.primary,
+  returnButton: {
+    width: "100%",
+    backgroundColor: "#173B7A",
   },
 });

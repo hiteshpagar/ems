@@ -50,6 +50,9 @@ public class SuperAdminService {
     @Autowired
     private AuditLogService auditLogService;
 
+    @Autowired
+    private EmailService emailService;
+
     public SuperAdminStatsDTO getSuperAdminStats() {
         long totalAdmins = userRepository.findByRole("ADMIN").size();
         long totalEmployees = employeeRepository.count();
@@ -69,6 +72,14 @@ public class SuperAdminService {
     public List<AdminDTO> getAllAdmins() {
         return userRepository.findByRole("ADMIN")
                 .stream()
+                .map(this::toAdminDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<AdminDTO> getAdminsByCompany(Long companyId) {
+        return userRepository.findByCompanyId(companyId)
+                .stream()
+                .filter(u -> "ADMIN".equalsIgnoreCase(u.getRole()))
                 .map(this::toAdminDTO)
                 .collect(Collectors.toList());
     }
@@ -95,6 +106,7 @@ public class SuperAdminService {
         user.setPassword(request.getPassword());
         user.setRole("ADMIN");
         user.setActive(true);
+        user.setPasswordChangeRequired(true);
         user.setCompany(company);
         if (request.getDesignation() != null && !request.getDesignation().trim().isEmpty()) {
             user.setDesignation(request.getDesignation().trim());
@@ -132,6 +144,11 @@ public class SuperAdminService {
                         + (saved.getPhoneNumber() != null ? " [Phone: " + saved.getPhoneNumber() + "]" : ""),
                 superAdmin
         );
+
+        try {
+            emailService.sendAdminOnboardingEmail(saved, company, request.getPassword());
+        } catch (Exception ignored) {
+        }
 
         return toAdminDTO(saved);
     }
@@ -254,6 +271,7 @@ public class SuperAdminService {
         }
 
         admin.setPassword(request.getNewPassword());
+        admin.setPasswordChangeRequired(true);
         userRepository.save(admin);
 
         User superAdmin = userRepository.findByEmail(superAdminEmail);
@@ -264,12 +282,17 @@ public class SuperAdminService {
                 "Super Admin reset password for Administrator: " + admin.getEmail(),
                 superAdmin
         );
+
+        try {
+            emailService.sendAdminPasswordResetEmail(admin, request.getNewPassword());
+        } catch (Exception ignored) {
+        }
     }
 
     private AdminDTO toAdminDTO(User user) {
         Long companyId = user.getCompany() != null ? user.getCompany().getId() : null;
         String companyName = user.getCompany() != null ? user.getCompany().getName() : null;
-        return new AdminDTO(
+        AdminDTO dto = new AdminDTO(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -283,5 +306,7 @@ public class SuperAdminService {
                 user.getCreatedAt(),
                 user.getLastLoginAt()
         );
+        dto.setPasswordChangeRequired(Boolean.TRUE.equals(user.getPasswordChangeRequired()));
+        return dto;
     }
 }
