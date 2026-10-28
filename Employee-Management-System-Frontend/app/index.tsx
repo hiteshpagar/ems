@@ -13,6 +13,8 @@ export default function Index() {
     if (userToken) {
       if (userRole === "SUPER_ADMIN") {
         router.replace("/super-admin-dashboard");
+      } else if (userRole === "ADMIN") {
+        router.replace("/admin-dashboard" as any);
       } else {
         router.replace("/dashboard");
       }

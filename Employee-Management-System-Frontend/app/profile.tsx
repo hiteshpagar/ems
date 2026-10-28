@@ -191,7 +191,7 @@ export default function ProfileScreen() {
           <DetailRow label="Department" value={departmentLabel} />
           <View style={styles.rowDivider} />
           <DetailRow label="Designation" value={designationLabel} />
-          {!isSuperAdmin && (
+          {!isSuperAdmin && !isAdmin && (
             <>
               <View style={styles.rowDivider} />
               <DetailRow
@@ -210,7 +210,7 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Account Information</Text>
 
-          {!isSuperAdmin && (
+          {!isSuperAdmin && !isAdmin && (
             <>
               <DetailRow
                 label="Employee ID"

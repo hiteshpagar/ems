@@ -99,6 +99,56 @@ public class EmailService {
                 "#173B7A");
     }
 
+    public void sendHrOnboardingEmail(User hr, Company company, String temporaryPassword) {
+        String companyLabel = company != null ? company.getName() : "Enterprise Client";
+        if (company != null && company.getCode() != null && !company.getCode().isBlank()) {
+            companyLabel += " (" + company.getCode().trim() + ")";
+        }
+
+        String content = ""
+                + "<p style='margin:0 0 14px;'>Hi <b>" + escape(hr.getFullName()) + "</b>,</p>"
+                + "<p style='margin:0 0 18px;color:#475569;'>You have been registered as an <b>HR Officer / Manager</b> for <b>" + escape(companyLabel) + "</b> on the Employee Management System.</p>"
+                + infoGrid(new String[][] {
+                        {"Company", escape(companyLabel)},
+                        {"Full Name", escape(hr.getFullName())},
+                        {"Login Email", escape(hr.getEmail())},
+                        {"Temporary Password", escape(temporaryPassword)},
+                        {"Designation", escape(valueOrDash(hr.getDesignation()))},
+                        {"HR ID", escape(valueOrDash(hr.getEmployeeId()))}
+                })
+                + highlightBox("First-Time Login Requirement",
+                        "For corporate security, log in using your temporary password. You will be prompted to create your own permanent password immediately upon sign in.")
+                + warningBox("Security Reminder", "Do not share this temporary credential with anyone. Keep it confidential.");
+
+        sendHtmlEmail(
+                hr.getEmail(),
+                "Welcome to EMS - HR Portal Access for " + (company != null ? company.getName() : "Your Company"),
+                "HR Management Access",
+                "Your HR Account is Ready",
+                content,
+                "#1E40AF");
+    }
+
+    public void sendHrPasswordResetEmail(User hr, String temporaryPassword) {
+        String content = ""
+                + "<p style='margin:0 0 14px;'>Hi <b>" + escape(hr.getFullName()) + "</b>,</p>"
+                + "<p style='margin:0 0 18px;color:#475569;'>Your Company Administrator has reset the credentials for your HR account.</p>"
+                + infoGrid(new String[][] {
+                        {"Login Email", escape(hr.getEmail())},
+                        {"Temporary Password", escape(temporaryPassword)}
+                })
+                + highlightBox("Password Update Required",
+                        "Please sign in with this temporary password. You will be prompted to set a new permanent password immediately upon login.");
+
+        sendHtmlEmail(
+                hr.getEmail(),
+                "EMS HR Credentials Reset",
+                "Password Reset",
+                "Temporary Password Issued",
+                content,
+                "#1E40AF");
+    }
+
     public void sendPasswordResetOtp(String email, String otp, int expiryMinutes) {
 
         String content = ""

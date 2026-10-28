@@ -52,24 +52,14 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
 
   const adminTabs = [
     {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      route: "/dashboard",
+      label: "Workspace",
+      icon: Home,
+      route: "/admin-dashboard",
     },
     {
-      label: "Employees",
+      label: "HR Team",
       icon: Users,
-      route: "/employee-list",
-    },
-    {
-      label: "Attendance",
-      icon: Clock,
-      route: "/attendance",
-    },
-    {
-      label: "Leave",
-      icon: Calendar,
-      route: "/leave-list",
+      route: "/manage-hrs",
     },
     {
       label: "Profile",
@@ -115,8 +105,11 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
           pathname === tab.route ||
           (tab.route === "/super-admin-dashboard" &&
             (pathname === "/" || pathname === "/super-admin-dashboard")) ||
+          (tab.route === "/admin-dashboard" &&
+            (pathname === "/" || pathname === "/admin-dashboard")) ||
           (tab.route === "/dashboard" &&
             !isSuperAdmin &&
+            !isAdmin &&
             (pathname === "/" || pathname === "/dashboard"));
 
         const IconComponent = tab.icon;

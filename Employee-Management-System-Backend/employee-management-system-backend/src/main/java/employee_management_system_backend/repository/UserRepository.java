@@ -13,5 +13,9 @@ public interface UserRepository
 
     java.util.List<User> findByCompanyId(Long companyId);
 
+    java.util.List<User> findByCompanyIdAndRole(Long companyId, String role);
+
     long countByCompanyIdAndRole(Long companyId, String role);
+
+    long countByCompanyIdAndRoleAndActive(Long companyId, String role, Boolean active);
 }

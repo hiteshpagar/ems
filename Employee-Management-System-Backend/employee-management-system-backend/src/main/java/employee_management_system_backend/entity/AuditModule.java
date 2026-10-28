@@ -10,5 +10,6 @@ public enum AuditModule {
     HOLIDAY,
     PAYROLL,
     NOTIFICATION,
-    PROFILE
+    PROFILE,
+    COMPANY
 }

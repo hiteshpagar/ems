@@ -40,6 +40,11 @@ public class SecurityConfig {
                         "/api/super-admin/**"
                 ).hasRole("SUPER_ADMIN")
 
+                // Company Admin APIs (Exclusive to ADMIN)
+                .requestMatchers(
+                        "/api/admin/**"
+                ).hasRole("ADMIN")
+
                 // Profile APIs
                 .requestMatchers(
                         "/api/profile/**"
