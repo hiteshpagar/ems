@@ -46,6 +46,11 @@ import PasswordInput from "../components/PasswordInput";
 import ScreenWrapper from "../components/ScreenWrapper";
 import { AuthContext } from "../context/AuthContext";
 import { AppColors } from "../constants/theme";
+import {
+  isValidEmail,
+  isValidName,
+  isValidPhone,
+} from "../utils/validators";
 
 interface AdminItem {
   id: number;
@@ -62,6 +67,7 @@ interface AdminItem {
   lastLoginAt?: string;
   createdOn?: string;
   createdBy?: string;
+  passwordChangeRequired?: boolean;
 }
 
 interface CompanyItem {
@@ -222,12 +228,32 @@ export default function ManageAdminsScreen() {
       Alert.alert("Missing Information", "Please enter all required administrator credentials.");
       return;
     }
+    if (!isValidName(trimmedName)) {
+      Alert.alert("Invalid Name", "Administrator full name must be at least 2 characters.");
+      return;
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      Alert.alert("Invalid Email", "Please enter a valid work email address (e.g. admin@company.com).");
+      return;
+    }
     if (addPassword.length < 6) {
       Alert.alert("Password Length", "Password must be at least 6 characters.");
       return;
     }
     if (addPassword !== addConfirmPassword) {
       Alert.alert("Password Mismatch", "Passwords do not match.");
+      return;
+    }
+    if (addPhone.trim() && !isValidPhone(addPhone.trim())) {
+      Alert.alert("Invalid Phone", "Please enter a valid phone number (7 to 15 digits).");
+      return;
+    }
+
+    if (!addCompanyId && !(addIsNewCompany && addCompanyName.trim())) {
+      Alert.alert(
+        "Company Required",
+        "An Administrator or Company Owner must belong to a registered company. Please select or register a company first."
+      );
       return;
     }
 
@@ -244,7 +270,10 @@ export default function ManageAdminsScreen() {
         employeeId: addEmployeeId.trim() || undefined,
       });
 
-      Alert.alert("Success", "Administrator provisioned successfully.");
+      Alert.alert(
+        "Administrator Provisioned",
+        `Administrator "${trimmedName}" provisioned successfully. An onboarding email with temporary credentials has been dispatched to ${trimmedEmail}.`
+      );
       setShowAddModal(false);
       setAddName("");
       setAddEmail("");
@@ -286,6 +315,18 @@ export default function ManageAdminsScreen() {
 
     if (!trimmedName || !trimmedEmail) {
       Alert.alert("Missing Information", "Full name and email address are required.");
+      return;
+    }
+    if (!isValidName(trimmedName)) {
+      Alert.alert("Invalid Name", "Administrator full name must be at least 2 characters.");
+      return;
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      Alert.alert("Invalid Email", "Please enter a valid work email address (e.g. admin@company.com).");
+      return;
+    }
+    if (editPhone.trim() && !isValidPhone(editPhone.trim())) {
+      Alert.alert("Invalid Phone", "Please enter a valid phone number (7 to 15 digits).");
       return;
     }
 
@@ -343,7 +384,10 @@ export default function ManageAdminsScreen() {
         newPassword: resetPassword,
       });
 
-      Alert.alert("Success", `Credentials updated for ${selectedAdmin.fullName}.`);
+      Alert.alert(
+        "Temporary Password Issued",
+        `New temporary password issued for ${selectedAdmin.fullName}. An email notification has been dispatched to ${selectedAdmin.email}.`
+      );
       setShowResetModal(false);
     } catch (error: any) {
       Alert.alert(
@@ -356,6 +400,11 @@ export default function ManageAdminsScreen() {
   };
 
   const handleDeleteAdmin = (admin: AdminItem) => {
+    if (admin.role === "SUPER_ADMIN") {
+      Alert.alert("Action Prohibited", "Super Administrator accounts cannot be deleted or revoked.");
+      return;
+    }
+
     Alert.alert(
       "Revoke Administrator Access",
       `Are you sure you want to revoke administrative access for "${admin.fullName}" (${admin.email})?`,
@@ -383,6 +432,11 @@ export default function ManageAdminsScreen() {
   };
 
   const handleToggleStatus = (admin: AdminItem) => {
+    if (admin.role === "SUPER_ADMIN") {
+      Alert.alert("Action Prohibited", "Super Administrator accounts cannot be deactivated.");
+      return;
+    }
+
     const isCurrentlyActive = admin.active !== false;
     const actionTitle = isCurrentlyActive ? "Deactivate Administrator" : "Activate Administrator";
     const actionMsg = isCurrentlyActive
@@ -725,14 +779,15 @@ export default function ManageAdminsScreen() {
 
                 <CustomInput
                   label="Employee ID"
-                  placeholder="e.g. ADM-001 or EMP-101"
+                  placeholder="ADM-001"
                   value={editEmployeeId}
                   onChangeText={setEditEmployeeId}
+                  helperText="Identifier code (e.g. ADM-001)"
                 />
 
                 <CustomInput
                   label="Phone Number"
-                  placeholder="e.g. +91 98765 43210"
+                  placeholder="Phone number"
                   value={editPhone}
                   onChangeText={setEditPhone}
                   keyboardType="phone-pad"
@@ -779,7 +834,7 @@ export default function ManageAdminsScreen() {
                   {editIsNewCompany && (
                     <CustomInput
                       label="New Company Name *"
-                      placeholder="e.g. Acme Innovations"
+                      placeholder="Company name"
                       value={editCompanyName}
                       onChangeText={setEditCompanyName}
                       style={{ marginTop: 8 }}
@@ -791,7 +846,7 @@ export default function ManageAdminsScreen() {
                 <View style={styles.formSection}>
                   <CustomInput
                     label="Admin Role / Title"
-                    placeholder="e.g. Company Owner or HR Manager"
+                    placeholder="Role / Title"
                     value={editDesignation}
                     onChangeText={setEditDesignation}
                   />
@@ -923,7 +978,7 @@ export default function ManageAdminsScreen() {
         {/* Dedicated Company / Enterprise Quick Banner */}
         <TouchableOpacity
           style={styles.companyBanner}
-          onPress={() => setShowCompanyModal(true)}
+          onPress={() => router.push("/manage-companies")}
           activeOpacity={0.7}
         >
           <View style={styles.companyBannerLeft}>
@@ -931,14 +986,14 @@ export default function ManageAdminsScreen() {
               <Building2 size={16} color="#1D4ED8" strokeWidth={2.2} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.companyBannerTitle} numberOfLines={1}>Companies & Enterprises</Text>
+              <Text style={styles.companyBannerTitle} numberOfLines={1}>Companies & Enterprises Tab</Text>
               <Text style={styles.companyBannerSub} numberOfLines={1}>
-                {companies.length} {companies.length === 1 ? "company" : "companies"} registered • Tap to manage
+                {companies.length} {companies.length === 1 ? "company" : "companies"} registered • Tap to manage in Companies tab
               </Text>
             </View>
           </View>
           <View style={styles.companyBannerAction}>
-            <Text style={styles.companyBannerActionText}>Manage</Text>
+            <Text style={styles.companyBannerActionText}>Open</Text>
             <ChevronRight size={14} color="#1D4ED8" strokeWidth={2.2} />
           </View>
         </TouchableOpacity>
@@ -1126,7 +1181,7 @@ export default function ManageAdminsScreen() {
 
                 <CustomInput
                   label="Full Name *"
-                  placeholder="Enter full name"
+                  placeholder="Full name"
                   value={addName}
                   onChangeText={setAddName}
                 />
@@ -1142,14 +1197,15 @@ export default function ManageAdminsScreen() {
 
                 <CustomInput
                   label="Employee ID (Optional)"
-                  placeholder="e.g. ADM-001 (auto-generated if empty)"
+                  placeholder="ADM-001"
                   value={addEmployeeId}
                   onChangeText={setAddEmployeeId}
+                  helperText="Auto-generated if left blank"
                 />
 
                 <CustomInput
                   label="Phone Number"
-                  placeholder="e.g. +91 98765 43210"
+                  placeholder="Phone number"
                   value={addPhone}
                   onChangeText={setAddPhone}
                   keyboardType="phone-pad"
@@ -1157,46 +1213,64 @@ export default function ManageAdminsScreen() {
 
                 {/* Company Selection */}
                 <View style={styles.formSection}>
-                  <Text style={styles.formLabel}>Assigned Company / Enterprise</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceScroll}>
-                    {companies.map((c) => {
-                      const isSelected = !addIsNewCompany && addCompanyId === c.id;
-                      return (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={[styles.choiceChip, isSelected && styles.choiceChipActive]}
-                          onPress={() => {
-                            setAddCompanyId(c.id);
-                            setAddCompanyName(c.name);
-                            setAddIsNewCompany(false);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Building2 size={12} color={isSelected ? "#FFFFFF" : "#1E40AF"} strokeWidth={2.2} />
-                          <Text style={[styles.choiceChipText, isSelected && styles.choiceChipTextActive]}>
-                            {c.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                    <TouchableOpacity
-                      style={[styles.choiceChip, addIsNewCompany && styles.choiceChipActive]}
-                      onPress={() => {
-                        setAddIsNewCompany(true);
-                        setAddCompanyId(null);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.choiceChipText, addIsNewCompany && styles.choiceChipTextActive]}>
-                        + New Company
+                  <Text style={styles.formLabel}>Assigned Company / Enterprise *</Text>
+                  {companies.length === 0 ? (
+                    <View style={styles.emptyCompanyNotice}>
+                      <Text style={styles.emptyCompanyNoticeText}>
+                        No companies registered yet. First register a company, then assign an Admin/Owner to it.
                       </Text>
-                    </TouchableOpacity>
-                  </ScrollView>
+                      <TouchableOpacity
+                        style={styles.emptyCompanyNoticeBtn}
+                        onPress={() => {
+                          setShowAddModal(false);
+                          router.push("/manage-companies");
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.emptyCompanyNoticeBtnText}>+ Register Company First</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceScroll}>
+                      {companies.map((c) => {
+                        const isSelected = !addIsNewCompany && addCompanyId === c.id;
+                        return (
+                          <TouchableOpacity
+                            key={c.id}
+                            style={[styles.choiceChip, isSelected && styles.choiceChipActive]}
+                            onPress={() => {
+                              setAddCompanyId(c.id);
+                              setAddCompanyName(c.name);
+                              setAddIsNewCompany(false);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Building2 size={12} color={isSelected ? "#FFFFFF" : "#1E40AF"} strokeWidth={2.2} />
+                            <Text style={[styles.choiceChipText, isSelected && styles.choiceChipTextActive]}>
+                              {c.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      <TouchableOpacity
+                        style={[styles.choiceChip, addIsNewCompany && styles.choiceChipActive]}
+                        onPress={() => {
+                          setAddIsNewCompany(true);
+                          setAddCompanyId(null);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.choiceChipText, addIsNewCompany && styles.choiceChipTextActive]}>
+                          + New Company
+                        </Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+                  )}
 
                   {addIsNewCompany && (
                     <CustomInput
                       label="New Company Name *"
-                      placeholder="e.g. Acme Tech Solutions"
+                      placeholder="Company name"
                       value={addCompanyName}
                       onChangeText={setAddCompanyName}
                       style={{ marginTop: 8 }}
@@ -1208,7 +1282,7 @@ export default function ManageAdminsScreen() {
                 <View style={styles.formSection}>
                   <CustomInput
                     label="Admin Role / Title"
-                    placeholder="e.g. Company Owner or HR Manager"
+                    placeholder="Role / Title"
                     value={addDesignation}
                     onChangeText={setAddDesignation}
                   />
@@ -1231,14 +1305,14 @@ export default function ManageAdminsScreen() {
 
                 <PasswordInput
                   label="Temporary Password *"
-                  placeholder="Minimum 6 characters"
+                  placeholder="Min 6 characters"
                   value={addPassword}
                   onChangeText={setAddPassword}
                 />
 
                 <PasswordInput
                   label="Confirm Password *"
-                  placeholder="Re-enter password"
+                  placeholder="Confirm password"
                   value={addConfirmPassword}
                   onChangeText={setAddConfirmPassword}
                 />
@@ -1293,13 +1367,13 @@ export default function ManageAdminsScreen() {
                   <Text style={styles.addCompanyBoxTitle}>+ Register New Company</Text>
                   <CustomInput
                     label="Company Name *"
-                    placeholder="e.g. TechCorp Global Ltd"
+                    placeholder="Company name"
                     value={newCompanyName}
                     onChangeText={setNewCompanyName}
                   />
                   <CustomInput
                     label="Company Code (Optional)"
-                    placeholder="e.g. TCGL"
+                    placeholder="TCGL"
                     value={newCompanyCode}
                     onChangeText={setNewCompanyCode}
                     autoCapitalize="characters"
@@ -1330,7 +1404,7 @@ export default function ManageAdminsScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.companyRowName}>{c.name}</Text>
                         <Text style={styles.companyRowMeta}>
-                          {c.code ? `Code: ${c.code} • ` : ""}{c.totalAdmins ?? 0} Admins • {c.totalEmployees ?? 0} Employees
+                          {c.code ? `Code: ${c.code} • ` : ""}{c.totalAdmins ?? 0} Admins / Owners
                         </Text>
                       </View>
                     </View>
@@ -2117,5 +2191,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#64748B",
     marginTop: 1,
+  },
+  emptyCompanyNotice: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    marginTop: 4,
+  },
+  emptyCompanyNoticeText: {
+    fontSize: 12,
+    color: "#991B1B",
+    lineHeight: 16,
+  },
+  emptyCompanyNoticeBtn: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "#DC2626",
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
+  emptyCompanyNoticeBtnText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

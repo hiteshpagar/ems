@@ -1,5 +1,6 @@
 import {
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,6 +9,7 @@ import {
 } from "react-native";
 import { useContext, useEffect, useState } from "react";
 import { router } from "expo-router";
+import { AlertCircle, KeyRound, Lock, ShieldCheck, X } from "lucide-react-native";
 
 import API from "../services/api";
 import CustomButton from "../components/CustomButton";
@@ -17,12 +19,21 @@ import ScreenWrapper from "../components/ScreenWrapper";
 import { AuthContext } from "../context/AuthContext";
 import { getRememberedSession } from "../utils/storage";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { isValidEmail } from "../utils/validators";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // First-Time Login / Force Password Change State
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [firstTimeEmail, setFirstTimeEmail] = useState("");
+  const [firstTimeTempPassword, setFirstTimeTempPassword] = useState("");
+  const [firstTimeNewPassword, setFirstTimeNewPassword] = useState("");
+  const [firstTimeConfirmPassword, setFirstTimeConfirmPassword] = useState("");
+  const [firstTimeLoading, setFirstTimeLoading] = useState(false);
 
   const { login } = useContext(AuthContext);
 
@@ -36,8 +47,14 @@ export default function LoginScreen() {
   }, []);
 
   const handleLogin = async () => {
-    if (!email.trim() || !password) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
       Alert.alert("Required Fields", "Please enter your email and password.");
+      return;
+    }
+
+    if (!isValidEmail(trimmedEmail)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address (e.g. name@example.com).");
       return;
     }
 
@@ -49,6 +66,16 @@ export default function LoginScreen() {
       });
 
       if (response.data) {
+        // Intercept first-time login requiring password change
+        if (response.data.requiresPasswordChange) {
+          setFirstTimeEmail(email.trim());
+          setFirstTimeTempPassword(password);
+          setFirstTimeNewPassword("");
+          setFirstTimeConfirmPassword("");
+          setShowFirstTimeModal(true);
+          return;
+        }
+
         await login(
           response.data.token,
           response.data.role,
@@ -73,6 +100,66 @@ export default function LoginScreen() {
       Alert.alert("Login Failed", message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFirstTimePasswordSubmit = async () => {
+    if (!firstTimeNewPassword) {
+      Alert.alert("Missing Password", "Please enter your new permanent password.");
+      return;
+    }
+    if (firstTimeNewPassword.length < 6) {
+      Alert.alert("Password Too Short", "New permanent password must be at least 6 characters.");
+      return;
+    }
+    if (firstTimeNewPassword !== firstTimeConfirmPassword) {
+      Alert.alert("Password Mismatch", "New password and confirmation do not match.");
+      return;
+    }
+    if (firstTimeNewPassword === firstTimeTempPassword) {
+      Alert.alert(
+        "Invalid Password",
+        "Your new permanent password must be different from your temporary password."
+      );
+      return;
+    }
+
+    try {
+      setFirstTimeLoading(true);
+      const res = await API.post("/auth/first-time-password", {
+        email: firstTimeEmail.trim(),
+        temporaryPassword: firstTimeTempPassword,
+        newPassword: firstTimeNewPassword,
+      });
+
+      if (res.data?.token) {
+        await login(
+          res.data.token,
+          res.data.role,
+          res.data.fullName,
+          firstTimeEmail.trim(),
+          rememberMe
+        );
+
+        setShowFirstTimeModal(false);
+        Alert.alert(
+          "Password Updated",
+          "Your personal password has been activated. Welcome to your workspace!"
+        );
+
+        if (res.data.role === "SUPER_ADMIN") {
+          router.replace("/super-admin-dashboard");
+        } else {
+          router.replace("/dashboard");
+        }
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Update Failed",
+        error?.response?.data?.message || "Could not update password. Please check your credentials."
+      );
+    } finally {
+      setFirstTimeLoading(false);
     }
   };
 
@@ -150,27 +237,174 @@ export default function LoginScreen() {
           />
         </View>
 
-        {/* Footer Navigation */}
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
-          <TouchableOpacity
-            onPress={() => router.push("/register")}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.registerLink}>Register</Text>
-          </TouchableOpacity>
+        {/* Enterprise Access Notice */}
+        <View style={styles.enterpriseNoticeRow}>
+          <ShieldCheck size={16} color="#2563EB" />
+          <Text style={styles.enterpriseNoticeText}>
+            Enterprise Portal • Access restricted to authorized personnel.
+          </Text>
         </View>
+
+        {/* First-Time Sign-In / Mandatory Password Change Modal */}
+        <Modal
+          visible={showFirstTimeModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowFirstTimeModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeaderRow}>
+                <View style={styles.modalIconCircle}>
+                  <KeyRound size={22} color="#173B7A" />
+                </View>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowFirstTimeModal(false)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={18} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalTitle}>Set Your Personal Password</Text>
+              <Text style={styles.modalSubtitle}>
+                Welcome to EMS! As an administrator, you have signed in with a temporary password.
+                Please choose your permanent private password to continue.
+              </Text>
+
+              <View style={styles.modalInfoBanner}>
+                <ShieldCheck size={16} color="#2563EB" />
+                <Text style={styles.modalInfoText}>
+                  Signing in as <Text style={{ fontWeight: "700" }}>{firstTimeEmail}</Text>
+                </Text>
+              </View>
+
+              <PasswordInput
+                label="Temporary Password"
+                placeholder="Enter temporary password"
+                value={firstTimeTempPassword}
+                onChangeText={setFirstTimeTempPassword}
+                required
+              />
+
+              <PasswordInput
+                label="New Permanent Password"
+                placeholder="Minimum 6 characters"
+                value={firstTimeNewPassword}
+                onChangeText={setFirstTimeNewPassword}
+                required
+              />
+
+              <PasswordInput
+                label="Confirm New Password"
+                placeholder="Re-enter permanent password"
+                value={firstTimeConfirmPassword}
+                onChangeText={setFirstTimeConfirmPassword}
+                required
+              />
+
+              <CustomButton
+                title="Save Password & Enter Dashboard"
+                onPress={handleFirstTimePasswordSubmit}
+                loading={firstTimeLoading}
+                style={styles.modalSubmitButton}
+              />
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    width: "100%",
+    maxWidth: 440,
+    padding: 24,
+    ...AppShadows.card,
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  modalIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCloseButton: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: "#64748B",
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  modalInfoBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
+  },
+  modalInfoText: {
+    fontSize: 12,
+    color: "#1E40AF",
+  },
+  modalSubmitButton: {
+    marginTop: 10,
+    backgroundColor: "#173B7A",
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
     paddingVertical: 36,
+  },
+  enterpriseNoticeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 28,
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  enterpriseNoticeText: {
+    fontSize: 12,
+    color: AppColors.textMuted,
+    textAlign: "center",
+    fontWeight: "500",
   },
   brandSection: {
     alignItems: "center",

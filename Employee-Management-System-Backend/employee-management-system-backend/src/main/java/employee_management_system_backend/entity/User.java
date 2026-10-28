@@ -29,6 +29,9 @@ public class User {
     @Column(nullable = false)
     private Boolean active = true;
 
+    @Column(name = "password_change_required")
+    private Boolean passwordChangeRequired = false;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "company_id")
     private Company company;
@@ -178,5 +181,13 @@ public class User {
 
     public void setResetOtpExpiresAt(LocalDateTime resetOtpExpiresAt) {
         this.resetOtpExpiresAt = resetOtpExpiresAt;
+    }
+
+    public Boolean getPasswordChangeRequired() {
+        return passwordChangeRequired;
+    }
+
+    public void setPasswordChangeRequired(Boolean passwordChangeRequired) {
+        this.passwordChangeRequired = passwordChangeRequired;
     }
 }

@@ -5,9 +5,11 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import employee_management_system_backend.entity.Company;
 import employee_management_system_backend.entity.Employee;
 import employee_management_system_backend.entity.Holiday;
 import employee_management_system_backend.entity.Leave;
+import employee_management_system_backend.entity.User;
 import jakarta.mail.internet.MimeMessage;
 
 @Service
@@ -45,6 +47,56 @@ public class EmailService {
                 "Your EMS account has been created",
                 content,
                 "#2F80ED");
+    }
+
+    public void sendAdminOnboardingEmail(User admin, Company company, String temporaryPassword) {
+        String companyLabel = company != null ? company.getName() : "Enterprise Client";
+        if (company != null && company.getCode() != null && !company.getCode().isBlank()) {
+            companyLabel += " (" + company.getCode().trim() + ")";
+        }
+
+        String content = ""
+                + "<p style='margin:0 0 14px;'>Hi <b>" + escape(admin.getFullName()) + "</b>,</p>"
+                + "<p style='margin:0 0 18px;color:#475569;'>Your corporate administrator account for <b>" + escape(companyLabel) + "</b> has been provisioned on the Employee Management System.</p>"
+                + infoGrid(new String[][] {
+                        {"Company", escape(companyLabel)},
+                        {"Full Name", escape(admin.getFullName())},
+                        {"Login Email", escape(admin.getEmail())},
+                        {"Temporary Password", escape(temporaryPassword)},
+                        {"Designation", escape(valueOrDash(admin.getDesignation()))},
+                        {"Admin ID", escape(valueOrDash(admin.getEmployeeId()))}
+                })
+                + highlightBox("First-Time Login Requirement",
+                        "For enterprise security, you must log in using your temporary password. Upon your first sign in, you will be prompted to set your own permanent private password.")
+                + warningBox("Security Reminder", "Do not share this temporary password with anyone. Once updated, your new password will become your permanent credential.");
+
+        sendHtmlEmail(
+                admin.getEmail(),
+                "Welcome to EMS - Administrator Account Created for " + (company != null ? company.getName() : "Your Organization"),
+                "Administrator Access",
+                "Your Account is Ready",
+                content,
+                "#173B7A");
+    }
+
+    public void sendAdminPasswordResetEmail(User admin, String temporaryPassword) {
+        String content = ""
+                + "<p style='margin:0 0 14px;'>Hi <b>" + escape(admin.getFullName()) + "</b>,</p>"
+                + "<p style='margin:0 0 18px;color:#475569;'>The Super Administrator has reset the credentials for your administrator account.</p>"
+                + infoGrid(new String[][] {
+                        {"Login Email", escape(admin.getEmail())},
+                        {"Temporary Password", escape(temporaryPassword)}
+                })
+                + highlightBox("Password Update Required",
+                        "Please sign in with this temporary password. You will be prompted to choose a new permanent password immediately upon login.");
+
+        sendHtmlEmail(
+                admin.getEmail(),
+                "EMS Administrator Credentials Reset",
+                "Password Reset",
+                "Temporary Password Issued",
+                content,
+                "#173B7A");
     }
 
     public void sendPasswordResetOtp(String email, String otp, int expiryMinutes) {

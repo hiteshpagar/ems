@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import employee_management_system_backend.dto.FirstTimePasswordRequest;
 import employee_management_system_backend.dto.ForgotPasswordRequest;
 import employee_management_system_backend.dto.ResetPasswordRequest;
 import employee_management_system_backend.entity.AuditAction;
@@ -202,5 +203,41 @@ public class UserService {
                 "Password reset completed for user " + user.getEmail(),
                 user
         );
+    }
+
+    @Transactional
+    public User updateFirstTimePassword(FirstTimePasswordRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        User user = userRepository.findByEmail(normalizedEmail);
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found with email: " + normalizedEmail);
+        }
+
+        if (!user.getPassword().equals(request.getTemporaryPassword())) {
+            throw new IllegalArgumentException("Incorrect temporary password.");
+        }
+
+        if (request.getNewPassword().equals(request.getTemporaryPassword())) {
+            throw new IllegalArgumentException("New password cannot be the same as your temporary password.");
+        }
+
+        user.setPassword(request.getNewPassword());
+        user.setPasswordChangeRequired(false);
+        user.setLastLoginAt(LocalDateTime.now());
+        User saved = userRepository.save(user);
+
+        emailService.sendPasswordResetConfirmation(saved.getEmail());
+        notificationService.createForUser(saved, "Password Updated",
+                "Your temporary password has been replaced with your permanent password.", NotificationType.PASSWORD);
+
+        auditLogService.log(
+                AuditAction.PASSWORD_RESET,
+                AuditModule.AUTH,
+                saved.getId() != null ? saved.getId().toString() : null,
+                "First-time login: Administrator " + saved.getFullName() + " (" + saved.getEmail() + ") set permanent password",
+                saved
+        );
+
+        return saved;
     }
 }

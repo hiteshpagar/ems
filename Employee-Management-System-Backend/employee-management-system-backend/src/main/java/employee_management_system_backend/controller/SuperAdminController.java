@@ -114,6 +114,11 @@ public class SuperAdminController {
         return ResponseEntity.ok(companyService.getCompanyById(id));
     }
 
+    @GetMapping("/companies/{companyId}/admins")
+    public ResponseEntity<List<AdminDTO>> getAdminsByCompany(@PathVariable Long companyId) {
+        return ResponseEntity.ok(superAdminService.getAdminsByCompany(companyId));
+    }
+
     @PostMapping("/companies")
     public ResponseEntity<CompanyDTO> createCompany(
             @Valid @RequestBody CreateCompanyRequest request,

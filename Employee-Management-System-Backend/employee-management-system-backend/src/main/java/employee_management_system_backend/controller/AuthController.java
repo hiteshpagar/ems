@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import employee_management_system_backend.dto.FirstTimePasswordRequest;
 import employee_management_system_backend.dto.ForgotPasswordRequest;
 import employee_management_system_backend.dto.ResetPasswordRequest;
 import employee_management_system_backend.entity.AuditAction;
@@ -41,17 +42,12 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<String> registerFirstAdministrator(@RequestBody User user) {
-        userService.registerFirstAdministrator(
-                user.getFullName(),
-                user.getEmail(),
-                user.getPassword(),
-                user.getPhoneNumber());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body("Administrator account created successfully. Please login.");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body("Public registration is disabled. The System Owner / Super Administrator is pre-provisioned, and client accounts are managed directly through the Super Admin portal.");
     }
 
     @PostMapping("/login")
-    public Map<String, String> loginUser(
+    public Map<String, Object> loginUser(
             @RequestBody User user
     ) {
 
@@ -72,22 +68,34 @@ public class AuthController {
                 existingUser
         );
 
-        Map<String, String> response =
+        Map<String, Object> response =
                 new HashMap<>();
 
         response.put("token", token);
-
-        response.put(
-                "role",
-                existingUser.getRole()
-        );
-
-        response.put(
-                "fullName",
-                existingUser.getFullName()
-        );
+        response.put("role", existingUser.getRole());
+        response.put("fullName", existingUser.getFullName());
+        response.put("email", existingUser.getEmail());
+        response.put("requiresPasswordChange", Boolean.TRUE.equals(existingUser.getPasswordChangeRequired()));
 
         return response;
+    }
+
+    @PostMapping("/first-time-password")
+    public ResponseEntity<Map<String, Object>> updateFirstTimePassword(
+            @Valid @RequestBody FirstTimePasswordRequest request
+    ) {
+        User updatedUser = userService.updateFirstTimePassword(request);
+        String token = jwtUtil.generateToken(updatedUser.getEmail(), updatedUser.getRole());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("role", updatedUser.getRole());
+        response.put("fullName", updatedUser.getFullName());
+        response.put("email", updatedUser.getEmail());
+        response.put("requiresPasswordChange", false);
+        response.put("message", "Password set successfully. Welcome to your workspace!");
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/logout")
