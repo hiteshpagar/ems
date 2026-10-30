@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { useContext, useEffect, useMemo, useState, useCallback } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
@@ -44,6 +44,20 @@ interface LeaveBalance {
 }
 
 export default function LeaveListScreen() {
+  const params = useLocalSearchParams<{ scope?: string }>();
+  const { userRole } = useContext(AuthContext);
+
+  const isManager =
+    userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR";
+  const isHr = userRole === "HR";
+
+  // Active module scope: "staff" (Staff Leave Management) vs "personal" (Personal Leaves)
+  const [activeScope, setActiveScope] = useState<"staff" | "personal">(() => {
+    if (params.scope === "personal") return "personal";
+    if (params.scope === "staff") return "staff";
+    return isManager ? "staff" : "personal";
+  });
+
   const [leaves, setLeaves] = useState<any[]>([]);
   const [balance, setBalance] = useState<LeaveBalance | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +65,14 @@ export default function LeaveListScreen() {
   const [activeTab, setActiveTab] = useState<TabFilter>("ALL");
   const [exporting, setExporting] = useState(false);
 
-  const { userRole } = useContext(AuthContext);
-  const isAdmin = userRole === "ADMIN";
+  // Sync if URL param changes
+  useEffect(() => {
+    if (params.scope === "personal") {
+      setActiveScope("personal");
+    } else if (params.scope === "staff" && isManager) {
+      setActiveScope("staff");
+    }
+  }, [params.scope, isManager]);
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -65,11 +85,9 @@ export default function LeaveListScreen() {
 
   const fetchLeaves = useCallback(async () => {
     try {
-      const response =
-        isAdmin
-          ? await API.get("/leaves")
-          : await API.get("/leaves/me");
-
+      const endpoint =
+        isManager && activeScope === "staff" ? "/leaves" : "/leaves/me";
+      const response = await API.get(endpoint);
       const data = Array.isArray(response.data) ? response.data : [];
       setLeaves(data);
     } catch (error) {
@@ -78,19 +96,24 @@ export default function LeaveListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isAdmin]);
+  }, [isManager, activeScope]);
 
   useEffect(() => {
     if (userRole) {
+      setLoading(true);
       fetchLeaves();
-      fetchBalance();
+      if (activeScope === "personal" || !isManager) {
+        fetchBalance();
+      }
     }
-  }, [userRole, fetchLeaves, fetchBalance]);
+  }, [userRole, activeScope, isManager, fetchLeaves, fetchBalance]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchLeaves();
-    fetchBalance();
+    if (activeScope === "personal" || !isManager) {
+      fetchBalance();
+    }
   };
 
   const filteredLeaves = useMemo(() => {
@@ -114,10 +137,24 @@ export default function LeaveListScreen() {
     }
   };
 
+  const getScreenTitle = () => {
+    if (activeScope === "personal") {
+      return isHr ? "HR Personal Leave" : "My Leaves";
+    }
+    return isHr ? "Staff Leave Requests" : "Leave Management";
+  };
+
+  const getScreenSubtitle = () => {
+    if (activeScope === "personal") {
+      return `${filteredLeaves.length} personal time-off application${filteredLeaves.length === 1 ? "" : "s"}`;
+    }
+    return `${filteredLeaves.length} company request${filteredLeaves.length === 1 ? "" : "s"} shown`;
+  };
+
   if (loading) {
     return (
       <ScreenWrapper>
-        <AppHeader title="Leave Requests" showBack />
+        <AppHeader title={getScreenTitle()} showBack />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={AppColors.primary} />
           <Text style={styles.loadingText}>Loading leave requests...</Text>
@@ -136,12 +173,12 @@ export default function LeaveListScreen() {
   return (
     <ScreenWrapper>
       <AppHeader
-        title={isAdmin ? "Leave Management" : "My Leaves"}
-        subtitle={`${filteredLeaves.length} requests shown`}
+        title={getScreenTitle()}
+        subtitle={getScreenSubtitle()}
         showBack
         rightAction={
           <View style={styles.headerRightRow}>
-            {isAdmin ? (
+            {isManager && activeScope === "staff" ? (
               <TouchableOpacity
                 style={styles.headerActionBtn}
                 onPress={() => router.push("/leave-allocation")}
@@ -173,8 +210,57 @@ export default function LeaveListScreen() {
       />
 
       <View style={styles.container}>
-        {/* Leave Balance Overview Banner */}
-        {balance ? (
+        {/* Module Scope Switcher for HR & Managers */}
+        {isManager ? (
+          <View style={styles.moduleSelectorWrapper}>
+            <View style={styles.moduleSelectorContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.moduleTab,
+                  activeScope === "staff" && styles.moduleTabActive,
+                ]}
+                onPress={() => {
+                  setActiveTab("ALL");
+                  setActiveScope("staff");
+                }}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.moduleTabText,
+                    activeScope === "staff" && styles.moduleTabTextActive,
+                  ]}
+                >
+                  👥 Staff Leaves
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.moduleTab,
+                  activeScope === "personal" && styles.moduleTabActive,
+                ]}
+                onPress={() => {
+                  setActiveTab("ALL");
+                  setActiveScope("personal");
+                }}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.moduleTabText,
+                    activeScope === "personal" && styles.moduleTabTextActive,
+                  ]}
+                >
+                  👤 {isHr ? "HR Personal Leave" : "My Leaves"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Leave Balance Overview Banner (for Personal Scope) */}
+        {activeScope === "personal" && balance ? (
           <View style={styles.balanceWidget}>
             <View style={styles.balanceWidgetHeader}>
               <View>
@@ -273,7 +359,10 @@ export default function LeaveListScreen() {
         <FlatList
           data={filteredLeaves}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            activeScope !== "personal" && { paddingBottom: 24 },
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -285,14 +374,26 @@ export default function LeaveListScreen() {
           ListEmptyComponent={
             <EmptyState
               icon="🏖️"
-              title="No Leave Requests"
+              title={
+                activeScope === "personal"
+                  ? "No Personal Requests"
+                  : "No Staff Requests"
+              }
               message={
                 activeTab === "ALL"
-                  ? "No leave requests have been submitted yet."
+                  ? activeScope === "personal"
+                    ? "You have not submitted any personal time-off requests yet."
+                    : "No employee leave requests have been submitted yet."
                   : `No ${activeTab.toLowerCase()} leave requests found.`
               }
-              actionTitle="Apply Leave"
-              onAction={() => router.push("/apply-leave")}
+              actionTitle={
+                activeScope === "personal" ? "+ Apply Personal Leave" : undefined
+              }
+              onAction={
+                activeScope === "personal"
+                  ? () => router.push("/apply-leave?mode=personal")
+                  : undefined
+              }
             />
           }
           renderItem={({ item }) => (
@@ -303,7 +404,7 @@ export default function LeaveListScreen() {
             >
               <View style={styles.cardHeader}>
                 <View style={styles.headerLeft}>
-                  {isAdmin && item.employeeName ? (
+                  {(activeScope === "staff" || isManager) && item.employeeName ? (
                     <Text style={styles.employeeName} numberOfLines={1}>
                       {item.employeeName}
                     </Text>
@@ -330,20 +431,24 @@ export default function LeaveListScreen() {
               ) : null}
 
               <View style={styles.cardFooter}>
-                <Text style={styles.viewDetailsLink}>View Details</Text>
+                <Text style={styles.viewDetailsLink}>
+                  {activeScope === "staff" ? "Review & Manage" : "View Details"}
+                </Text>
                 <Text style={styles.chevron}>›</Text>
               </View>
             </TouchableOpacity>
           )}
         />
 
-        {/* Bottom Apply Leave Action */}
-        <View style={styles.bottomBar}>
-          <CustomButton
-            title="+ Apply Leave"
-            onPress={() => router.push("/apply-leave")}
-          />
-        </View>
+        {/* Bottom Apply Leave Action - Only available for Personal Leave */}
+        {activeScope === "personal" ? (
+          <View style={styles.bottomBar}>
+            <CustomButton
+              title="+ Apply Personal Leave"
+              onPress={() => router.push("/apply-leave?mode=personal")}
+            />
+          </View>
+        ) : null}
       </View>
     </ScreenWrapper>
   );
@@ -580,5 +685,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: AppColors.primaryDark,
+  },
+  moduleSelectorWrapper: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 8,
+    backgroundColor: AppColors.background,
+  },
+  moduleSelectorContainer: {
+    flexDirection: "row",
+    backgroundColor: AppColors.surfaceMuted,
+    borderRadius: AppRadius.md,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  moduleTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: AppRadius.sm,
+  },
+  moduleTabActive: {
+    backgroundColor: AppColors.primary,
+    ...AppShadows.subtle,
+  },
+  moduleTabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+  },
+  moduleTabTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
   },
 });

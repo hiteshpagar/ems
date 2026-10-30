@@ -138,19 +138,47 @@ export default function EmployeeDetailsScreen() {
 
           <DetailRow label="Full Name" value={employee.name} />
           <View style={styles.divider} />
-          <DetailRow label="Email Address" value={employee.email} />
+          <DetailRow label="Official Email" value={employee.email} />
           <View style={styles.divider} />
-          <DetailRow label="Employee ID" value={`EMP-${employee.id}`} />
+          <DetailRow label="Contact Phone" value={employee.phone || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Personal Email" value={employee.personalEmail || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Date of Birth" value={employee.dateOfBirth || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Gender" value={employee.gender || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Blood Group" value={employee.bloodGroup || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Marital Status" value={employee.maritalStatus || "—"} />
         </View>
 
         {/* Employment Information */}
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Employment Information</Text>
 
+          <DetailRow
+            label="Employee ID"
+            value={employee.employeeId || `EMP-${employee.id}`}
+          />
+          <View style={styles.divider} />
           <DetailRow label="Department" value={employee.department || "—"} />
           <View style={styles.divider} />
           <DetailRow label="Designation" value={employee.designation || "—"} />
           <View style={styles.divider} />
+          <DetailRow label="Employment Type" value={employee.employmentType || "Full-Time"} />
+          <View style={styles.divider} />
+          <DetailRow label="Joining Date" value={employee.joiningDate || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Work Location" value={employee.workLocation || "Head Office"} />
+          <View style={styles.divider} />
+          <DetailRow label="Current Status" value={employee.status || "Active"} />
+        </View>
+
+        {/* Compensation & Financial */}
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>Compensation & Financial</Text>
+
           <DetailRow
             label="Basic Monthly Salary"
             value={
@@ -159,6 +187,40 @@ export default function EmployeeDetailsScreen() {
                 : "—"
             }
           />
+          <View style={styles.divider} />
+          <DetailRow label="Bank Name" value={employee.bankName || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Account Number" value={employee.bankAccountNumber || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="IFSC Code" value={employee.ifscCode || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="PAN Number" value={employee.panNumber || "—"} />
+        </View>
+
+        {/* Residential Address */}
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>Residential Address</Text>
+
+          <DetailRow label="Street Address" value={employee.address || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="City" value={employee.city || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="State" value={employee.state || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Postal / PIN Code" value={employee.postalCode || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Country" value={employee.country || "India"} />
+        </View>
+
+        {/* Emergency Contact */}
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>Emergency Contact</Text>
+
+          <DetailRow label="Contact Person" value={employee.emergencyContactName || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Relationship" value={employee.emergencyContactRelation || "—"} />
+          <View style={styles.divider} />
+          <DetailRow label="Contact Phone" value={employee.emergencyContactPhone || "—"} />
         </View>
 
         {/* Action Buttons */}

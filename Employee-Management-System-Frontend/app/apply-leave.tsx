@@ -3,10 +3,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
 
 import API from "../services/api";
@@ -45,6 +46,20 @@ interface LeaveBalance {
 }
 
 export default function ApplyLeaveScreen() {
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const { userRole } = useContext(AuthContext);
+
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isHr = userRole === "HR";
+  const isManager = isAdmin || isHr;
+
+  // HR and regular employees can ONLY apply for personal leave.
+  // Only Company Admin / Super Admin can apply on behalf of other staff.
+  const [applyMode, setApplyMode] = useState<"personal" | "staff">(() => {
+    if (isAdmin && params.mode === "staff") return "staff";
+    return "personal";
+  });
+
   const [employees, setEmployees] = useState<any[]>([]);
   const [employeeId, setEmployeeId] = useState<number | null>(null);
   const [employeeName, setEmployeeName] = useState("");
@@ -54,9 +69,6 @@ export default function ApplyLeaveScreen() {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [balance, setBalance] = useState<LeaveBalance | null>(null);
-
-  const { userRole } = useContext(AuthContext);
-  const isAdmin = userRole === "ADMIN";
 
   const fetchEmployees = async () => {
     try {
@@ -75,8 +87,10 @@ export default function ApplyLeaveScreen() {
   const fetchLoggedInEmployee = async () => {
     try {
       const response = await API.get("/employees/me");
-      setEmployeeId(response.data.id);
-      setEmployeeName(response.data.name);
+      if (response.data) {
+        setEmployeeId(response.data.id);
+        setEmployeeName(response.data.name || "");
+      }
     } catch (error) {
       console.log("Error loading employee info:", error);
     }
@@ -86,7 +100,7 @@ export default function ApplyLeaveScreen() {
     async (targetEmployeeId: number | null) => {
       try {
         const url =
-          isAdmin && targetEmployeeId
+          isAdmin && applyMode === "staff" && targetEmployeeId
             ? `/leaves/balance/${targetEmployeeId}`
             : "/leaves/me/balance";
         const response = await API.get(url);
@@ -95,24 +109,26 @@ export default function ApplyLeaveScreen() {
         console.log("Error fetching leave balance:", error);
       }
     },
-    [isAdmin]
+    [isAdmin, applyMode]
   );
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && applyMode === "staff") {
       fetchEmployees();
     } else {
       fetchLoggedInEmployee();
     }
-  }, [isAdmin]);
+  }, [isAdmin, applyMode]);
 
   useEffect(() => {
-    if (employeeId) {
-      fetchBalance(employeeId);
-    } else if (!isAdmin) {
+    if (applyMode === "staff") {
+      if (employeeId) {
+        fetchBalance(employeeId);
+      }
+    } else {
       fetchBalance(null);
     }
-  }, [employeeId, isAdmin, fetchBalance]);
+  }, [employeeId, applyMode, fetchBalance]);
 
   const requestedDays = useMemo(() => {
     if (!startDate || !endDate) return 0;
@@ -146,7 +162,7 @@ export default function ApplyLeaveScreen() {
   }, [balance, requestedDays, leaveType]);
 
   const handleApplyLeave = async () => {
-    if (isAdmin && !employeeId) {
+    if (applyMode === "staff" && !employeeId) {
       Alert.alert("Required Field", "Please select an employee.");
       return;
     }
@@ -164,20 +180,26 @@ export default function ApplyLeaveScreen() {
     try {
       setSubmitting(true);
       await API.post("/leaves", {
-        employeeId,
-        employeeName,
+        employeeId: applyMode === "staff" ? employeeId : undefined,
+        employeeName: applyMode === "staff" ? employeeName : undefined,
         leaveType,
         startDate,
         endDate,
         reason: reason.trim(),
       });
 
-      Alert.alert("Success", "Leave request submitted successfully.", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert(
+        "Success",
+        applyMode === "personal"
+          ? "Personal leave application submitted successfully."
+          : "Staff leave request submitted successfully.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ]
+      );
     } catch (error: any) {
       console.log("Error applying leave:", error);
       const msg =
@@ -191,8 +213,18 @@ export default function ApplyLeaveScreen() {
   return (
     <ScreenWrapper>
       <AppHeader
-        title="Apply Leave"
-        subtitle="Submit a new time-off request"
+        title={
+          applyMode === "personal"
+            ? isHr
+              ? "Apply HR Personal Leave"
+              : "Apply Personal Leave"
+            : "Staff Leave Application"
+        }
+        subtitle={
+          applyMode === "personal"
+            ? "Submit your personal time-off application"
+            : "Submit time-off on behalf of an employee"
+        }
         showBack
       />
 
@@ -201,12 +233,57 @@ export default function ApplyLeaveScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Admin Mode Switcher (Personal vs Staff) - Only available to Admin */}
+        {isAdmin ? (
+          <View style={styles.modeToggleContainer}>
+            <TouchableOpacity
+              style={[
+                styles.modeToggleBtn,
+                applyMode === "personal" && styles.modeToggleBtnActive,
+              ]}
+              onPress={() => setApplyMode("personal")}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.modeToggleText,
+                  applyMode === "personal" && styles.modeToggleTextActive,
+                ]}
+              >
+                👤 {isHr ? "HR Personal Leave" : "My Personal Leave"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.modeToggleBtn,
+                applyMode === "staff" && styles.modeToggleBtnActive,
+              ]}
+              onPress={() => setApplyMode("staff")}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.modeToggleText,
+                  applyMode === "staff" && styles.modeToggleTextActive,
+                ]}
+              >
+                👥 On Behalf of Staff
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {/* Leave Balance Overview Card */}
         {balance ? (
           <View style={styles.balanceCard}>
             <View style={styles.balanceHeader}>
               <View>
-                <Text style={styles.balanceTitle}>Annual Leave Balances</Text>
+                <Text style={styles.balanceTitle}>
+                  {applyMode === "personal"
+                    ? "My Annual Leave Balances"
+                    : `${employeeName ? `${employeeName}'s` : "Employee"} Leave Balances`}
+                </Text>
                 <Text style={styles.balanceSubtitle}>
                   Quarterly tracking for {balance.year || new Date().getFullYear()}
                 </Text>
@@ -223,7 +300,7 @@ export default function ApplyLeaveScreen() {
               <View style={styles.emptyQuotaNotice}>
                 <Text style={styles.emptyQuotaNoticeText}>
                   ℹ️ No quarterly quota has been allocated for {balance.year || new Date().getFullYear()} yet.
-                  {isAdmin ? " You can allocate quotas from the Leave Allocation screen." : " Please contact your administrator."}
+                  {isManager ? " You can allocate quotas from the Leave Allocation screen." : " Please contact your administrator."}
                 </Text>
               </View>
             ) : (
@@ -263,11 +340,26 @@ export default function ApplyLeaveScreen() {
         ) : null}
 
         <View style={styles.card}>
-          {/* Admin Employee Selector */}
-          {isAdmin ? (
+          {/* Personal vs Staff Employee Selector */}
+          {applyMode === "personal" ? (
+            <View style={styles.applicantInfoCard}>
+              <View style={styles.applicantIconBox}>
+                <Text style={styles.applicantIcon}>👤</Text>
+              </View>
+              <View style={styles.applicantDetails}>
+                <Text style={styles.applicantLabel}>Applicant (Self)</Text>
+                <Text style={styles.applicantName}>
+                  {employeeName || (isHr ? "HR Manager" : "Logged-in User")}
+                </Text>
+              </View>
+              <View style={styles.personalBadge}>
+                <Text style={styles.personalBadgeText}>Personal</Text>
+              </View>
+            </View>
+          ) : (
             <View style={styles.pickerField}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>Employee</Text>
+                <Text style={styles.label}>Select Employee</Text>
                 <Text style={styles.requiredStar}> *</Text>
               </View>
               <View style={styles.pickerContainer}>
@@ -289,7 +381,7 @@ export default function ApplyLeaveScreen() {
                 </Picker>
               </View>
             </View>
-          ) : null}
+          )}
 
           {/* Leave Type */}
           <View style={styles.pickerField}>
@@ -359,7 +451,11 @@ export default function ApplyLeaveScreen() {
           />
 
           <CustomButton
-            title="Submit Leave"
+            title={
+              applyMode === "personal"
+                ? "Submit Personal Leave Request"
+                : "Submit Staff Leave Request"
+            }
             onPress={handleApplyLeave}
             loading={submitting}
             style={styles.submitBtn}
@@ -374,6 +470,83 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
+  },
+  modeToggleContainer: {
+    flexDirection: "row",
+    backgroundColor: AppColors.surfaceMuted,
+    borderRadius: AppRadius.md,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    marginBottom: 16,
+  },
+  modeToggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: AppRadius.sm,
+  },
+  modeToggleBtnActive: {
+    backgroundColor: AppColors.primary,
+    ...AppShadows.subtle,
+  },
+  modeToggleText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+  },
+  modeToggleTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  applicantInfoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.surfaceMuted,
+    padding: 12,
+    borderRadius: AppRadius.md,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  applicantIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: AppColors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  applicantIcon: {
+    fontSize: 18,
+  },
+  applicantDetails: {
+    flex: 1,
+  },
+  applicantLabel: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  applicantName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AppColors.text,
+    marginTop: 2,
+  },
+  personalBadge: {
+    backgroundColor: AppColors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: AppRadius.sm,
+  },
+  personalBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: AppColors.primaryDark,
   },
   balanceCard: {
     backgroundColor: AppColors.surface,

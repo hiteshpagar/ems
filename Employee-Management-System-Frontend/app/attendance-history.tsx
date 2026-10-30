@@ -21,21 +21,24 @@ import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 import { exportAttendanceCsv } from "../utils/csvExport";
 
 export default function AttendanceHistoryScreen() {
+  const { userRole } = useContext(AuthContext);
+  const isManager =
+    userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR";
+  const isHr = userRole === "HR";
+
+  const [activeScope, setActiveScope] = useState<"staff" | "personal">(
+    isManager ? "staff" : "personal"
+  );
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const { userRole } = useContext(AuthContext);
-  const isAdmin = userRole === "ADMIN";
-
   const fetchAttendance = useCallback(async () => {
     try {
-      const response =
-        isAdmin
-          ? await API.get("/attendance")
-          : await API.get("/attendance/me");
-
+      const endpoint =
+        isManager && activeScope === "staff" ? "/attendance" : "/attendance/me";
+      const response = await API.get(endpoint);
       const data = Array.isArray(response.data) ? response.data : [];
       setAttendance(data);
     } catch (error) {
@@ -44,13 +47,14 @@ export default function AttendanceHistoryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isAdmin]);
+  }, [isManager, activeScope]);
 
   useEffect(() => {
     if (userRole) {
+      setLoading(true);
       fetchAttendance();
     }
-  }, [userRole, fetchAttendance]);
+  }, [userRole, activeScope, fetchAttendance]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -82,10 +86,24 @@ export default function AttendanceHistoryScreen() {
     return `${hours}:${minute} ${ampm}`;
   };
 
+  const getScreenTitle = () => {
+    if (activeScope === "personal") {
+      return isHr ? "My Attendance Logs" : "My Attendance History";
+    }
+    return "Staff Attendance Records";
+  };
+
+  const getScreenSubtitle = () => {
+    if (activeScope === "personal") {
+      return `${attendance.length} personal check-in log${attendance.length === 1 ? "" : "s"}`;
+    }
+    return `${attendance.length} employee attendance log${attendance.length === 1 ? "" : "s"}`;
+  };
+
   if (loading) {
     return (
       <ScreenWrapper>
-        <AppHeader title="Attendance History" showBack />
+        <AppHeader title={getScreenTitle()} showBack />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={AppColors.primary} />
           <Text style={styles.loadingText}>Loading attendance records...</Text>
@@ -97,8 +115,8 @@ export default function AttendanceHistoryScreen() {
   return (
     <ScreenWrapper>
       <AppHeader
-        title="Attendance History"
-        subtitle={`${attendance.length} total logs recorded`}
+        title={getScreenTitle()}
+        subtitle={getScreenSubtitle()}
         showBack
         rightAction={
           attendance.length > 0 ? (
@@ -122,6 +140,49 @@ export default function AttendanceHistoryScreen() {
       />
 
       <View style={styles.container}>
+        {/* Module Scope Switcher for HR & Managers */}
+        {isManager ? (
+          <View style={styles.moduleSelectorWrapper}>
+            <View style={styles.moduleSelectorContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.moduleTab,
+                  activeScope === "staff" && styles.moduleTabActive,
+                ]}
+                onPress={() => setActiveScope("staff")}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.moduleTabText,
+                    activeScope === "staff" && styles.moduleTabTextActive,
+                  ]}
+                >
+                  👥 Staff Attendance
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.moduleTab,
+                  activeScope === "personal" && styles.moduleTabActive,
+                ]}
+                onPress={() => setActiveScope("personal")}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.moduleTabText,
+                    activeScope === "personal" && styles.moduleTabTextActive,
+                  ]}
+                >
+                  👤 {isHr ? "My Attendance" : "Personal History"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
         <FlatList
           data={attendance}
           keyExtractor={(item) => item.id.toString()}
@@ -137,8 +198,16 @@ export default function AttendanceHistoryScreen() {
           ListEmptyComponent={
             <EmptyState
               icon="🕒"
-              title="No Attendance Records"
-              message="There are no attendance records found in the system."
+              title={
+                activeScope === "personal"
+                  ? "No Personal Logs"
+                  : "No Staff Records"
+              }
+              message={
+                activeScope === "personal"
+                  ? "You have not recorded any attendance logs yet."
+                  : "There are no attendance records found in the system."
+              }
             />
           }
           renderItem={({ item }) => (
@@ -146,7 +215,7 @@ export default function AttendanceHistoryScreen() {
               <View style={styles.cardTopRow}>
                 <View style={styles.dateBlock}>
                   <Text style={styles.dateText}>{formatDate(item.date)}</Text>
-                  {isAdmin && item.employeeName ? (
+                  {(activeScope === "staff" || isManager) && item.employeeName ? (
                     <Text style={styles.employeeName}>👤 {item.employeeName}</Text>
                   ) : null}
                 </View>
@@ -275,5 +344,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: AppColors.primary,
+  },
+  moduleSelectorWrapper: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 8,
+    backgroundColor: AppColors.background,
+  },
+  moduleSelectorContainer: {
+    flexDirection: "row",
+    backgroundColor: AppColors.surfaceMuted,
+    borderRadius: AppRadius.md,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  moduleTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: AppRadius.sm,
+  },
+  moduleTabActive: {
+    backgroundColor: AppColors.primary,
+    ...AppShadows.subtle,
+  },
+  moduleTabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.textSecondary,
+  },
+  moduleTabTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
   },
 });

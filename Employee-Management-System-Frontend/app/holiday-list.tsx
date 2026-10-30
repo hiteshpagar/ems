@@ -44,7 +44,7 @@ export default function HolidayListScreen() {
   const [search, setSearch] = useState("");
 
   const { userRole } = useContext(AuthContext);
-  const isAdmin = userRole === "ADMIN";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR";
 
   const filteredHolidays = useMemo(() => {
     const query = search.trim().toLowerCase();

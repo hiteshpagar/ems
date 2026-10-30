@@ -35,6 +35,7 @@ export default function ProfileScreen() {
 
   const isSuperAdmin = userRole === "SUPER_ADMIN";
   const isAdmin = userRole === "ADMIN";
+  const isHr = userRole === "HR";
 
   const fetchProfile = async () => {
     try {
@@ -74,14 +75,16 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const displayName = profile?.name || userName || "Administrator";
-  const displayEmail = profile?.email || userEmail || "admin@example.com";
+  const displayName = profile?.name || userName || "User";
+  const displayEmail = profile?.email || userEmail || "user@example.com";
   const initial = displayName.charAt(0).toUpperCase();
 
   const roleLabel = isSuperAdmin
     ? "Super Administrator"
     : isAdmin
-    ? "Administrator"
+    ? "Company Administrator"
+    : isHr
+    ? "HR Officer / Manager"
     : "Employee";
 
   const departmentLabel =
@@ -191,7 +194,7 @@ export default function ProfileScreen() {
           <DetailRow label="Department" value={departmentLabel} />
           <View style={styles.rowDivider} />
           <DetailRow label="Designation" value={designationLabel} />
-          {!isSuperAdmin && !isAdmin && (
+          {!isSuperAdmin && !isAdmin && !isHr && (
             <>
               <View style={styles.rowDivider} />
               <DetailRow
@@ -213,7 +216,7 @@ export default function ProfileScreen() {
           {!isSuperAdmin && !isAdmin && (
             <>
               <DetailRow
-                label="Employee ID"
+                label={isHr ? "HR Staff ID" : "Employee ID"}
                 value={profile?.employeeId || (profile?.id ? `EMP-${profile.id}` : "—")}
               />
               <View style={styles.rowDivider} />

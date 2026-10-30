@@ -20,7 +20,7 @@ import { AuthContext } from "../context/AuthContext";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
 
 export default function DashboardScreen() {
-  const { userRole, userName, logout } = useContext(AuthContext);
+  const { userRole, userName, userEmail, logout } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -81,7 +81,24 @@ export default function DashboardScreen() {
   const fetchDashboardData = async () => {
     try {
       const response = await API.get("/employees");
-      const emps = Array.isArray(response.data) ? response.data : [];
+      const rawEmps = Array.isArray(response.data) ? response.data : [];
+      const currentCaller = (userEmail || "").trim().toLowerCase();
+      const emps = rawEmps.filter((emp: any) => {
+        if (!emp) return false;
+        const empMail = (emp.email || "").trim().toLowerCase();
+        if (currentCaller && empMail === currentCaller && (userRole === "HR" || userRole === "ADMIN" || userRole === "SUPER_ADMIN")) {
+          return false;
+        }
+        const des = (emp.designation || "").toLowerCase().trim();
+        const dept = (emp.department || "").toLowerCase().trim();
+        if (des.includes("owner") || des.includes("admin") || des.includes("director") || des.includes("founder") || des.includes("ceo")) {
+          return false;
+        }
+        if (des.includes("hr") || des.includes("human resource") || dept.includes("human resource") || dept === "hr") {
+          return false;
+        }
+        return true;
+      });
       setEmployees(emps);
 
       const departments = new Set(emps.map((emp: any) => emp.department).filter(Boolean));
@@ -107,6 +124,10 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (userRole === "SUPER_ADMIN") {
       router.replace("/super-admin-dashboard");
+    } else if (userRole === "ADMIN") {
+      router.replace("/admin-dashboard" as any);
+    } else if (userRole === "HR") {
+      router.replace("/hr-dashboard" as any);
     }
   }, [userRole]);
 

@@ -45,7 +45,7 @@ interface AllocationItem {
 
 export default function LeaveAllocationScreen() {
   const { userRole } = useContext(AuthContext);
-  const isAdmin = userRole === "ADMIN";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR";
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [employeeId, setEmployeeId] = useState<number | null>(null);
@@ -450,7 +450,8 @@ const styles = StyleSheet.create({
     borderColor: AppColors.borderStrong,
     borderRadius: AppRadius.md,
     backgroundColor: AppColors.surface,
-    overflow: "hidden",
+    minHeight: 54,
+    justifyContent: "center",
   },
   row: {
     flexDirection: "row",
