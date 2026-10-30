@@ -26,7 +26,7 @@ export default function LeaveDetailsScreen() {
   const [deleting, setDeleting] = useState(false);
 
   const { userRole } = useContext(AuthContext);
-  const isAdmin = userRole === "ADMIN";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR";
 
   const fetchLeave = useCallback(async () => {
     try {

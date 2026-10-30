@@ -26,7 +26,8 @@ export default function AttendanceScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const { userRole } = useContext(AuthContext);
-  const isAdmin = userRole === "ADMIN";
+  const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+  const isHr = userRole === "HR";
 
   const fetchEmployees = async () => {
     try {
@@ -45,8 +46,10 @@ export default function AttendanceScreen() {
   const fetchLoggedInEmployee = async () => {
     try {
       const response = await API.get("/employees/me");
-      setEmployeeId(response.data.id.toString());
-      setEmployeeName(response.data.name);
+      if (response.data) {
+        setEmployeeId(response.data.id?.toString() || "");
+        setEmployeeName(response.data.name || "");
+      }
     } catch (error) {
       console.log("Error loading current employee:", error);
     }
@@ -71,7 +74,7 @@ export default function AttendanceScreen() {
   }, [isAdmin]);
 
   const handleCheckIn = async () => {
-    if (!employeeId) {
+    if (isAdmin && !employeeId) {
       Alert.alert("Error", "Please select an employee.");
       return;
     }
@@ -79,15 +82,19 @@ export default function AttendanceScreen() {
     try {
       setSubmitting(true);
       await API.post("/attendance/check-in", {
-        employeeId,
-        employeeName,
+        employeeId: isAdmin ? employeeId : undefined,
+        employeeName: isAdmin ? employeeName : undefined,
       });
 
       if (!isAdmin) {
         await fetchTodayAttendance();
+        Alert.alert("Success", "You have successfully checked in for today!");
+      } else {
+        Alert.alert(
+          "Success",
+          `Check In Successful for ${employeeName || "Employee"}.`
+        );
       }
-
-      Alert.alert("Success", `Check In Successful for ${employeeName || "Employee"}.`);
     } catch (error: any) {
       console.log("Check-in error:", error);
       const msg = error?.response?.data?.message || "Check In Failed";
@@ -98,7 +105,7 @@ export default function AttendanceScreen() {
   };
 
   const handleCheckOut = async () => {
-    if (!employeeId) {
+    if (isAdmin && !employeeId) {
       Alert.alert("Error", "Please select an employee.");
       return;
     }
@@ -106,14 +113,18 @@ export default function AttendanceScreen() {
     try {
       setSubmitting(true);
       await API.post("/attendance/check-out", {
-        employeeId,
+        employeeId: isAdmin ? employeeId : undefined,
       });
 
       if (!isAdmin) {
         await fetchTodayAttendance();
+        Alert.alert("Success", "You have successfully checked out for today!");
+      } else {
+        Alert.alert(
+          "Success",
+          `Check Out Successful for ${employeeName || "Employee"}.`
+        );
       }
-
-      Alert.alert("Success", `Check Out Successful for ${employeeName || "Employee"}.`);
     } catch (error: any) {
       console.log("Check-out error:", error);
       const msg = error?.response?.data?.message || "Check Out Failed";
@@ -147,8 +158,8 @@ export default function AttendanceScreen() {
   return (
     <ScreenWrapper>
       <AppHeader
-        title="Attendance"
-        subtitle={todayFormatted}
+        title={isAdmin ? "Staff Attendance" : isHr ? "My Attendance" : "Attendance"}
+        subtitle={isAdmin ? "Record staff check-in & check-out" : todayFormatted}
         showBack
         rightAction={
           <TouchableOpacity
@@ -165,6 +176,23 @@ export default function AttendanceScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* HR Self Profile Info Card */}
+        {isHr ? (
+          <View style={styles.applicantCard}>
+            <View style={styles.applicantIconBox}>
+              <Text style={styles.applicantIcon}>👤</Text>
+            </View>
+            <View style={styles.applicantDetails}>
+              <Text style={styles.applicantLabel}>Logged in as</Text>
+              <Text style={styles.applicantName}>{employeeName || "HR Manager"}</Text>
+              <Text style={styles.applicantSub}>Personal Attendance Check-In</Text>
+            </View>
+            <View style={styles.personalBadge}>
+              <Text style={styles.personalBadgeText}>HR Self</Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Admin Employee Selector */}
         {isAdmin ? (
           <View style={styles.card}>
@@ -483,5 +511,60 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: AppColors.textMuted,
     marginLeft: 8,
+  },
+  applicantCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.surface,
+    padding: 14,
+    borderRadius: AppRadius.lg,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    ...AppShadows.card,
+  },
+  applicantIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: AppColors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  applicantIcon: {
+    fontSize: 20,
+  },
+  applicantDetails: {
+    flex: 1,
+  },
+  applicantLabel: {
+    fontSize: 11,
+    color: AppColors.textMuted,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  applicantName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: AppColors.text,
+    marginTop: 2,
+  },
+  applicantSub: {
+    fontSize: 11,
+    color: AppColors.primary,
+    fontWeight: "500",
+    marginTop: 1,
+  },
+  personalBadge: {
+    backgroundColor: AppColors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: AppRadius.sm,
+  },
+  personalBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: AppColors.primaryDark,
   },
 });

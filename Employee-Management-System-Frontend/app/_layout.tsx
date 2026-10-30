@@ -23,6 +23,10 @@ function MainLayout() {
     if (userToken && inAuthScreen) {
       if (userRole === "SUPER_ADMIN") {
         router.replace("/super-admin-dashboard");
+      } else if (userRole === "ADMIN") {
+        router.replace("/admin-dashboard" as any);
+      } else if (userRole === "HR") {
+        router.replace("/hr-dashboard" as any);
       } else {
         router.replace("/dashboard");
       }

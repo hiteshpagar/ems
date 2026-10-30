@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { router } from "expo-router";
 
 import API from "../services/api";
@@ -19,8 +19,10 @@ import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
 import CustomButton from "../components/CustomButton";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { AuthContext } from "../context/AuthContext";
 
 export default function EmployeeListScreen() {
+  const { userEmail, userRole } = useContext(AuthContext);
   const [employees, setEmployees] = useState<any[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -31,8 +33,44 @@ export default function EmployeeListScreen() {
     try {
       const response = await API.get("/employees");
       const data = Array.isArray(response.data) ? response.data : [];
-      setEmployees(data);
-      setFilteredEmployees(data);
+      const currentCaller = (userEmail || "").trim().toLowerCase();
+
+      const staffOnly = data.filter((emp: any) => {
+        if (!emp) return false;
+        const empMail = (emp.email || "").trim().toLowerCase();
+
+        // HR itself or Admin itself must never be in Total Staff
+        if (currentCaller && empMail === currentCaller && (userRole === "HR" || userRole === "ADMIN" || userRole === "SUPER_ADMIN")) {
+          return false;
+        }
+
+        const des = (emp.designation || "").toLowerCase().trim();
+        const dept = (emp.department || "").toLowerCase().trim();
+
+        // Filter out Company Owner and Admin designations
+        if (
+          des.includes("owner") ||
+          des.includes("admin") ||
+          des.includes("director") ||
+          des.includes("founder") ||
+          des.includes("ceo")
+        ) {
+          return false;
+        }
+
+        // Filter out HR designations & HR department
+        if (des.includes("hr") || des.includes("human resource")) {
+          return false;
+        }
+        if (dept.includes("human resource") || dept === "hr") {
+          return false;
+        }
+
+        return true;
+      });
+
+      setEmployees(staffOnly);
+      setFilteredEmployees(staffOnly);
     } catch (error) {
       console.log("Error fetching employees:", error);
     } finally {

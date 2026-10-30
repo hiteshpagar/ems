@@ -88,6 +88,8 @@ export default function LoginScreen() {
           router.replace("/super-admin-dashboard");
         } else if (response.data.role === "ADMIN") {
           router.replace("/admin-dashboard" as any);
+        } else if (response.data.role === "HR") {
+          router.replace("/hr-dashboard" as any);
         } else {
           router.replace("/dashboard");
         }
@@ -153,6 +155,8 @@ export default function LoginScreen() {
           router.replace("/super-admin-dashboard");
         } else if (res.data.role === "ADMIN") {
           router.replace("/admin-dashboard" as any);
+        } else if (res.data.role === "HR") {
+          router.replace("/hr-dashboard" as any);
         } else {
           router.replace("/dashboard");
         }

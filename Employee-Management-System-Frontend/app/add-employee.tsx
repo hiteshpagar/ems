@@ -2,6 +2,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,13 +13,27 @@ import { useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import {
+  Briefcase,
+  Building2,
+  Calendar,
+  CreditCard,
+  HeartHandshake,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  User,
+  Users,
+} from "lucide-react-native";
 
 import API from "../services/api";
 import ScreenWrapper from "../components/ScreenWrapper";
 import AppHeader from "../components/AppHeader";
 import CustomInput from "../components/CustomInput";
 import CustomButton from "../components/CustomButton";
+import DatePickerField from "../components/DatePickerField";
 import { AppColors, AppRadius, AppShadows } from "../constants/theme";
+import { isValidEmail, isValidName, isValidPhone } from "../utils/validators";
 
 interface Department {
   id: number;
@@ -33,12 +48,46 @@ interface Designation {
 }
 
 export default function AddEmployeeScreen() {
+  // Section 1: Personal Details
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [personalEmail, setPersonalEmail] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("Male");
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("Single");
+  const [imageUri, setImageUri] = useState("");
+
+  // Section 2: Employment Details
+  const [employeeId, setEmployeeId] = useState("");
   const [departmentId, setDepartmentId] = useState<number | null>(null);
   const [designationId, setDesignationId] = useState<number | null>(null);
+  const [employmentType, setEmploymentType] = useState("Full-Time");
+  const [joiningDate, setJoiningDate] = useState("");
+  const [workLocation, setWorkLocation] = useState("Head Office");
+  const [status, setStatus] = useState("Active");
+
+  // Section 3: Compensation & Banking
   const [salary, setSalary] = useState("");
-  const [imageUri, setImageUri] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+
+  // Section 4: Residential Address
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("India");
+
+  // Section 5: Emergency Contact
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactRelation, setEmergencyContactRelation] = useState("Parent");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
+
+  // Masters & Status
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [masterLoading, setMasterLoading] = useState(true);
@@ -79,7 +128,7 @@ export default function AddEmployeeScreen() {
       setDepartmentId(departmentData[0]?.id ?? null);
     } catch (error) {
       console.log("Error loading master data:", error);
-      Alert.alert("Error", "Failed to load departments and designations");
+      Alert.alert("Error", "Failed to load departments and designations.");
     } finally {
       setMasterLoading(false);
     }
@@ -141,15 +190,46 @@ export default function AddEmployeeScreen() {
   };
 
   const handleAddEmployee = async () => {
-    if (!name.trim() || !email.trim() || !salary) {
-      Alert.alert("Required Fields", "Please fill all required fields.");
+    const cleanName = name.trim();
+    if (!cleanName || !isValidName(cleanName)) {
+      Alert.alert("Invalid Name", "Employee full name must be at least 2 characters.");
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !isValidEmail(cleanEmail)) {
+      Alert.alert("Invalid Email", "Please enter a valid official email address.");
+      return;
+    }
+
+    if (phone.trim() && !isValidPhone(phone.trim())) {
+      Alert.alert("Invalid Phone", "Please enter a valid contact phone number (10-15 digits).");
+      return;
+    }
+
+    if (personalEmail.trim() && !isValidEmail(personalEmail.trim())) {
+      Alert.alert("Invalid Alternate Email", "Please enter a valid personal email or leave blank.");
       return;
     }
 
     if (!selectedDepartment || !selectedDesignation) {
       Alert.alert(
-        "Validation",
-        "Please select a department and a designation for this employee."
+        "Department Required",
+        "Please select an assigned department and designation."
+      );
+      return;
+    }
+
+    const cleanSalary = Number(salary);
+    if (!salary || isNaN(cleanSalary) || cleanSalary < 0) {
+      Alert.alert("Invalid Salary", "Please specify a valid basic monthly salary.");
+      return;
+    }
+
+    if (emergencyContactPhone.trim() && !isValidPhone(emergencyContactPhone.trim())) {
+      Alert.alert(
+        "Invalid Emergency Phone",
+        "Please enter a valid 10-15 digit phone for the emergency contact."
       );
       return;
     }
@@ -158,18 +238,51 @@ export default function AddEmployeeScreen() {
       setSaving(true);
       const uploadedPhotoUrl = await uploadImage();
 
-      await API.post("/employees", {
-        name: name.trim(),
-        email: email.trim(),
+      const payload = {
+        name: cleanName,
+        email: cleanEmail,
+        phone: phone.trim() || undefined,
+        personalEmail: personalEmail.trim() || undefined,
+        dateOfBirth: dateOfBirth || undefined,
+        gender: gender || undefined,
+        bloodGroup: bloodGroup || undefined,
+        maritalStatus: maritalStatus || undefined,
+        photoUrl: uploadedPhotoUrl || undefined,
+
+        employeeId: employeeId.trim() || undefined,
         department: selectedDepartment.name,
         designation: selectedDesignation.name,
-        salary: Number(salary),
-        photoUrl: uploadedPhotoUrl,
-      });
+        employmentType: employmentType || "Full-Time",
+        joiningDate: joiningDate || undefined,
+        workLocation: workLocation || "Head Office",
+        status: status || "Active",
 
-      Alert.alert("Success", "Employee added successfully.", [
+        salary: cleanSalary,
+        bankName: bankName.trim() || undefined,
+        bankAccountNumber: bankAccountNumber.trim() || undefined,
+        ifscCode: ifscCode.trim().toUpperCase() || undefined,
+        panNumber: panNumber.trim().toUpperCase() || undefined,
+
+        address: address.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+        postalCode: postalCode.trim() || undefined,
+        country: country.trim() || "India",
+
+        emergencyContactName: emergencyContactName.trim() || undefined,
+        emergencyContactRelation: emergencyContactRelation || undefined,
+        emergencyContactPhone: emergencyContactPhone.trim() || undefined,
+      };
+
+      await API.post("/employees", payload);
+
+      Alert.alert("Success", `Employee ${cleanName} onboarded successfully!`, [
         {
-          text: "OK",
+          text: "View Directory",
+          onPress: () => router.replace("/employee-list"),
+        },
+        {
+          text: "Done",
           onPress: () => router.back(),
         },
       ]);
@@ -177,8 +290,8 @@ export default function AddEmployeeScreen() {
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Failed to add employee.";
-      Alert.alert("Error", message);
+        "Failed to register employee.";
+      Alert.alert("Registration Error", message);
     } finally {
       setSaving(false);
     }
@@ -187,8 +300,8 @@ export default function AddEmployeeScreen() {
   return (
     <ScreenWrapper>
       <AppHeader
-        title="Add Employee"
-        subtitle="Register a new team member"
+        title="Onboard Staff"
+        subtitle="Complete employee registration"
         showBack
       />
 
@@ -197,13 +310,54 @@ export default function AddEmployeeScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Personal Information */}
+        {/* HERO SECTION BANNER */}
+        <View style={styles.topInfoCard}>
+          <View style={styles.topInfoIconBox}>
+            <Users size={20} color="#173B7A" />
+          </View>
+          <View style={styles.topInfoTextWrap}>
+            <Text style={styles.topInfoTitle}>Comprehensive Onboarding Form</Text>
+            <Text style={styles.topInfoDesc}>
+              Enter all personal, job, financial, and emergency records for the new staff member.
+            </Text>
+          </View>
+        </View>
+
+        {/* SECTION 1: PERSONAL INFORMATION */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>Personal Information</Text>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: "#EFF6FF" }]}>
+              <User size={18} color="#173B7A" />
+            </View>
+            <Text style={styles.sectionHeading}>1. Personal Information</Text>
+          </View>
+
+          {/* Photo Picker */}
+          <View style={styles.photoSection}>
+            <Text style={styles.label}>Profile Avatar</Text>
+            <View style={styles.photoRow}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <User size={26} color="#94A3B8" />
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.pickButton}
+                onPress={pickImage}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.pickButtonText}>
+                  {imageUri ? "Change Avatar" : "Upload Picture"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <CustomInput
-            label="Full Name"
-            placeholder="e.g. John Doe"
+            label="Full Legal Name"
+            placeholder="e.g. Rachel Adams"
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
@@ -211,8 +365,8 @@ export default function AddEmployeeScreen() {
           />
 
           <CustomInput
-            label="Email Address"
-            placeholder="john.doe@example.com"
+            label="Official Work Email"
+            placeholder="rachel.adams@company.com"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -220,11 +374,106 @@ export default function AddEmployeeScreen() {
             autoComplete="email"
             required
           />
+
+          <CustomInput
+            label="Contact Phone Number"
+            placeholder="9876543210"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+
+          <CustomInput
+            label="Personal / Alternate Email"
+            placeholder="rachel.personal@gmail.com"
+            value={personalEmail}
+            onChangeText={setPersonalEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          <DatePickerField
+            label="Date of Birth"
+            value={dateOfBirth}
+            onChange={setDateOfBirth}
+            placeholder="Select birth date"
+          />
+
+          <View style={styles.pickerField}>
+            <Text style={styles.label}>Gender</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={gender}
+                onValueChange={(val) => setGender(val)}
+                style={styles.picker}
+                dropdownIconColor="#173B7A"
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="Male" value="Male" />
+                <Picker.Item label="Female" value="Female" />
+                <Picker.Item label="Other" value="Other" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.pickerField}>
+            <Text style={styles.label}>Blood Group</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={bloodGroup}
+                onValueChange={(val) => setBloodGroup(val)}
+                style={styles.picker}
+                dropdownIconColor="#173B7A"
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="Select Blood Group (Optional)" value="" />
+                <Picker.Item label="A+" value="A+" />
+                <Picker.Item label="A-" value="A-" />
+                <Picker.Item label="B+" value="B+" />
+                <Picker.Item label="B-" value="B-" />
+                <Picker.Item label="O+" value="O+" />
+                <Picker.Item label="O-" value="O-" />
+                <Picker.Item label="AB+" value="AB+" />
+                <Picker.Item label="AB-" value="AB-" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.pickerField}>
+            <Text style={styles.label}>Marital Status</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={maritalStatus}
+                onValueChange={(val) => setMaritalStatus(val)}
+                style={styles.picker}
+                dropdownIconColor="#173B7A"
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="Single" value="Single" />
+                <Picker.Item label="Married" value="Married" />
+                <Picker.Item label="Divorced" value="Divorced" />
+                <Picker.Item label="Widowed" value="Widowed" />
+              </Picker>
+            </View>
+          </View>
         </View>
 
-        {/* Employment Information */}
+        {/* SECTION 2: EMPLOYMENT & JOB DETAILS */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>Employment Information</Text>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: "#EEF2FF" }]}>
+              <Briefcase size={18} color="#4F46E5" />
+            </View>
+            <Text style={styles.sectionHeading}>2. Employment & Job Role</Text>
+          </View>
+
+          <CustomInput
+            label="Employee ID / Code"
+            placeholder="e.g. EMP-2024-001"
+            value={employeeId}
+            onChangeText={setEmployeeId}
+            autoCapitalize="characters"
+          />
 
           <View style={styles.pickerField}>
             <View style={styles.labelRow}>
@@ -240,6 +489,8 @@ export default function AddEmployeeScreen() {
                   onValueChange={(value) => setDepartmentId(value)}
                   enabled={departments.length > 0}
                   style={styles.picker}
+                  dropdownIconColor="#173B7A"
+                  itemStyle={styles.pickerItem}
                 >
                   {departments.length === 0 ? (
                     <Picker.Item label="No departments found" value={null} />
@@ -271,6 +522,8 @@ export default function AddEmployeeScreen() {
                   onValueChange={(value) => setDesignationId(value)}
                   enabled={filteredDesignations.length > 0}
                   style={styles.picker}
+                  dropdownIconColor="#173B7A"
+                  itemStyle={styles.pickerItem}
                 >
                   {filteredDesignations.length === 0 ? (
                     <Picker.Item
@@ -291,42 +544,213 @@ export default function AddEmployeeScreen() {
             </View>
           </View>
 
+          <View style={styles.pickerField}>
+            <Text style={styles.label}>Employment Type</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={employmentType}
+                onValueChange={(val) => setEmploymentType(val)}
+                style={styles.picker}
+                dropdownIconColor="#173B7A"
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="Full-Time" value="Full-Time" />
+                <Picker.Item label="Part-Time" value="Part-Time" />
+                <Picker.Item label="Contract" value="Contract" />
+                <Picker.Item label="Internship" value="Intern" />
+              </Picker>
+            </View>
+          </View>
+
+          <DatePickerField
+            label="Date of Joining"
+            value={joiningDate}
+            onChange={setJoiningDate}
+            placeholder="Select joining date"
+          />
+
+          <View style={styles.pickerField}>
+            <Text style={styles.label}>Work Location</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={workLocation}
+                onValueChange={(val) => setWorkLocation(val)}
+                style={styles.picker}
+                dropdownIconColor="#173B7A"
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="Head Office" value="Head Office" />
+                <Picker.Item label="Branch Office" value="Branch Office" />
+                <Picker.Item label="Remote" value="Remote" />
+                <Picker.Item label="Hybrid" value="Hybrid" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.pickerField}>
+            <Text style={styles.label}>Employment Status</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={status}
+                onValueChange={(val) => setStatus(val)}
+                style={styles.picker}
+                dropdownIconColor="#173B7A"
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="Active" value="Active" />
+                <Picker.Item label="On Probation" value="Probation" />
+                <Picker.Item label="Inactive" value="Inactive" />
+              </Picker>
+            </View>
+          </View>
+        </View>
+
+        {/* SECTION 3: COMPENSATION & BANKING */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: "#ECFDF5" }]}>
+              <CreditCard size={18} color="#059669" />
+            </View>
+            <Text style={styles.sectionHeading}>3. Compensation & Banking</Text>
+          </View>
+
           <CustomInput
             label="Monthly Basic Salary (₹)"
-            placeholder="50000"
+            placeholder="e.g. 50000"
             value={salary}
             onChangeText={setSalary}
             keyboardType="numeric"
             required
           />
 
-          {/* Photo Picker */}
-          <View style={styles.photoSection}>
-            <Text style={styles.label}>Profile Photo</Text>
-            <View style={styles.photoRow}>
-              {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.photoPlaceholder}>
-                  <Text style={styles.photoIcon}>📷</Text>
-                </View>
-              )}
-              <TouchableOpacity
-                style={styles.pickButton}
-                onPress={pickImage}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pickButtonText}>
-                  {imageUri ? "Change Photo" : "Choose Image"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <CustomInput
+            label="Bank Name"
+            placeholder="e.g. HDFC Bank, SBI, ICICI"
+            value={bankName}
+            onChangeText={setBankName}
+            autoCapitalize="words"
+          />
+
+          <CustomInput
+            label="Bank Account Number"
+            placeholder="e.g. 50100234567890"
+            value={bankAccountNumber}
+            onChangeText={setBankAccountNumber}
+            keyboardType="numeric"
+          />
+
+          <CustomInput
+            label="IFSC Code"
+            placeholder="e.g. HDFC0001234"
+            value={ifscCode}
+            onChangeText={setIfscCode}
+            autoCapitalize="characters"
+          />
+
+          <CustomInput
+            label="PAN / Tax ID Number"
+            placeholder="e.g. ABCDE1234F"
+            value={panNumber}
+            onChangeText={setPanNumber}
+            autoCapitalize="characters"
+          />
         </View>
 
-        {/* Submit */}
+        {/* SECTION 4: RESIDENTIAL ADDRESS */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: "#FEF3C7" }]}>
+              <MapPin size={18} color="#D97706" />
+            </View>
+            <Text style={styles.sectionHeading}>4. Residential Address</Text>
+          </View>
+
+          <CustomInput
+            label="Street Address"
+            placeholder="Apartment, building, street address"
+            value={address}
+            onChangeText={setAddress}
+          />
+
+          <CustomInput
+            label="City"
+            placeholder="e.g. Mumbai, Bangalore"
+            value={city}
+            onChangeText={setCity}
+          />
+
+          <CustomInput
+            label="State / Province"
+            placeholder="e.g. Maharashtra, Karnataka"
+            value={state}
+            onChangeText={setState}
+          />
+
+          <CustomInput
+            label="Postal / PIN Code"
+            placeholder="e.g. 400001"
+            value={postalCode}
+            onChangeText={setPostalCode}
+            keyboardType="numeric"
+          />
+
+          <CustomInput
+            label="Country"
+            placeholder="India"
+            value={country}
+            onChangeText={setCountry}
+          />
+        </View>
+
+        {/* SECTION 5: EMERGENCY CONTACT */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: "#FEE2E2" }]}>
+              <HeartHandshake size={18} color="#DC2626" />
+            </View>
+            <Text style={styles.sectionHeading}>5. Emergency Contact</Text>
+          </View>
+
+          <CustomInput
+            label="Emergency Contact Name"
+            placeholder="e.g. John Adams"
+            value={emergencyContactName}
+            onChangeText={setEmergencyContactName}
+            autoCapitalize="words"
+          />
+
+          <View style={styles.pickerField}>
+            <Text style={styles.label}>Relationship</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={emergencyContactRelation}
+                onValueChange={(val) => setEmergencyContactRelation(val)}
+                style={styles.picker}
+                dropdownIconColor="#173B7A"
+                itemStyle={styles.pickerItem}
+              >
+                <Picker.Item label="Parent" value="Parent" />
+                <Picker.Item label="Spouse" value="Spouse" />
+                <Picker.Item label="Sibling" value="Sibling" />
+                <Picker.Item label="Friend" value="Friend" />
+                <Picker.Item label="Guardian" value="Guardian" />
+                <Picker.Item label="Other" value="Other" />
+              </Picker>
+            </View>
+          </View>
+
+          <CustomInput
+            label="Emergency Contact Phone"
+            placeholder="e.g. 9876500000"
+            value={emergencyContactPhone}
+            onChangeText={setEmergencyContactPhone}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        {/* SUBMIT BUTTON */}
         <CustomButton
-          title="Save Employee"
+          title="Onboard & Save Employee"
           onPress={handleAddEmployee}
           loading={saving}
           style={styles.submitButton}
@@ -338,8 +762,41 @@ export default function AddEmployeeScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: 18,
+    paddingBottom: 48,
+  },
+  topInfoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    borderRadius: AppRadius.md,
+    padding: 14,
+    marginBottom: 16,
+    gap: 12,
+  },
+  topInfoIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#DBEAFE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topInfoTextWrap: {
+    flex: 1,
+  },
+  topInfoTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#173B7A",
+    marginBottom: 2,
+  },
+  topInfoDesc: {
+    fontSize: 12,
+    color: "#3B82F6",
+    lineHeight: 16,
   },
   card: {
     backgroundColor: AppColors.surface,
@@ -350,14 +807,26 @@ const styles = StyleSheet.create({
     borderColor: AppColors.border,
     ...AppShadows.subtle,
   },
-  sectionHeading: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: AppColors.text,
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     marginBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
-    paddingBottom: 8,
+    paddingBottom: 10,
+  },
+  sectionIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionHeading: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0E2A5D",
   },
   pickerField: {
     marginBottom: 16,
@@ -371,6 +840,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: AppColors.textSecondary,
+    marginBottom: 6,
   },
   requiredStar: {
     color: AppColors.danger,
@@ -382,30 +852,48 @@ const styles = StyleSheet.create({
     borderColor: AppColors.borderStrong,
     borderRadius: AppRadius.md,
     backgroundColor: AppColors.surface,
-    overflow: "hidden",
+    minHeight: 56,
+    justifyContent: "center",
   },
   picker: {
-    height: 46,
+    width: "100%",
+    ...Platform.select({
+      android: {
+        height: 56,
+        color: AppColors.text,
+      },
+      ios: {
+        height: 50,
+      },
+      default: {
+        height: 54,
+      },
+    }),
+  },
+  pickerItem: {
+    fontSize: 14,
+    height: 56,
+    color: AppColors.text,
   },
   photoSection: {
-    marginTop: 4,
+    marginBottom: 16,
   },
   photoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 6,
   },
   previewImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     marginRight: 16,
     backgroundColor: AppColors.surfaceMuted,
   },
   photoPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: AppColors.surfaceMuted,
     borderWidth: 1,
     borderColor: AppColors.border,
@@ -413,23 +901,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 16,
   },
-  photoIcon: {
-    fontSize: 22,
-  },
   pickButton: {
-    backgroundColor: AppColors.surfaceMuted,
+    backgroundColor: "#F1F5F9",
     borderWidth: 1,
-    borderColor: AppColors.border,
-    paddingHorizontal: 14,
+    borderColor: "#CBD5E1",
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: AppRadius.md,
   },
   pickButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: AppColors.text,
+    color: "#173B7A",
   },
   submitButton: {
     marginTop: 8,
+    marginBottom: 20,
+    backgroundColor: "#173B7A",
   },
 });

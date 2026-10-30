@@ -14,13 +14,14 @@ import {
 import { AppColors } from "../constants/theme";
 
 type Props = {
-  role?: "SUPER_ADMIN" | "ADMIN" | "EMPLOYEE" | string | null;
+  role?: "SUPER_ADMIN" | "ADMIN" | "HR" | "EMPLOYEE" | string | null;
 };
 
 export default function BottomNav({ role = "EMPLOYEE" }: Props) {
   const pathname = usePathname();
   const isSuperAdmin = role === "SUPER_ADMIN";
   const isAdmin = role === "ADMIN";
+  const isHr = role === "HR";
 
   const superAdminTabs = [
     {
@@ -68,6 +69,34 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
     },
   ];
 
+  const hrTabs = [
+    {
+      label: "Portal",
+      icon: Home,
+      route: "/hr-dashboard",
+    },
+    {
+      label: "Staff",
+      icon: Users,
+      route: "/employee-list",
+    },
+    {
+      label: "Attendance",
+      icon: Clock,
+      route: "/attendance",
+    },
+    {
+      label: "Leaves",
+      icon: Calendar,
+      route: "/leave-list",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      route: "/profile",
+    },
+  ];
+
   const employeeTabs = [
     {
       label: "Home",
@@ -96,7 +125,13 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
     },
   ];
 
-  const tabs = isSuperAdmin ? superAdminTabs : isAdmin ? adminTabs : employeeTabs;
+  const tabs = isSuperAdmin
+    ? superAdminTabs
+    : isAdmin
+    ? adminTabs
+    : isHr
+    ? hrTabs
+    : employeeTabs;
 
   return (
     <View style={styles.container}>
@@ -107,9 +142,12 @@ export default function BottomNav({ role = "EMPLOYEE" }: Props) {
             (pathname === "/" || pathname === "/super-admin-dashboard")) ||
           (tab.route === "/admin-dashboard" &&
             (pathname === "/" || pathname === "/admin-dashboard")) ||
+          (tab.route === "/hr-dashboard" &&
+            (pathname === "/" || pathname === "/hr-dashboard")) ||
           (tab.route === "/dashboard" &&
             !isSuperAdmin &&
             !isAdmin &&
+            !isHr &&
             (pathname === "/" || pathname === "/dashboard"));
 
         const IconComponent = tab.icon;

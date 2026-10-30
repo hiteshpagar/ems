@@ -472,10 +472,11 @@ const styles = StyleSheet.create({
     borderColor: AppColors.borderStrong,
     borderRadius: AppRadius.md,
     backgroundColor: AppColors.surface,
-    overflow: "hidden",
+    minHeight: 56,
+    justifyContent: "center",
   },
   picker: {
-    height: 46,
+    height: 54,
   },
   formButtonsRow: {
     flexDirection: "row",
