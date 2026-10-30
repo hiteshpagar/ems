@@ -17,17 +17,26 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @Autowired
+    private org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource;
+
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
 
         http
+            // Enable CORS for web clients (e.g. Chrome, Expo Web, React Web)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+
             // Disable CSRF
             .csrf(csrf -> csrf.disable())
 
             // API Authorization Rules
             .authorizeHttpRequests(auth -> auth
+
+                // Preflight OPTIONS requests for CORS must always be permitted
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                 // Public APIs
                 .requestMatchers(

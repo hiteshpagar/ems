@@ -1,8 +1,11 @@
 package com.ems.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
@@ -10,25 +13,22 @@ import org.springframework.web.filter.CorsFilter;
 public class CorsConfig {
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization", "Content-Type", "X-Total-Count"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
+    @Bean
     public CorsFilter corsFilter() {
-
-        CorsConfiguration config
-                = new CorsConfiguration();
-
-        config.addAllowedOrigin("*");
-
-        config.addAllowedHeader("*");
-
-        config.addAllowedMethod("*");
-
-        UrlBasedCorsConfigurationSource source
-                = new UrlBasedCorsConfigurationSource();
-
-        source.registerCorsConfiguration(
-                "/**",
-                config
-        );
-
-        return new CorsFilter(source);
+        return new CorsFilter(corsConfigurationSource());
     }
 }

@@ -1,12 +1,31 @@
 # Frontend
 Employee-Management-System-Frontend/node_modules/
 Employee-Management-System-Frontend/.expo/
+Employee-Management-System-Frontend/dist/
+Employee-Management-System-Frontend/web-build/
 
-# Backend
-Employee-Management-System-Backend/target/
+# Backend Build Artifacts
+/target/
+.mvn/wrapper/maven-wrapper.jar
 
-# VS Code
+# Eclipse / STS Workspace & Metadata
+.metadata/
+**/.metadata/
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache
+.apt_generated
+
+# IDEs
 .vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
 
-# Logs
+# OS & Logs
 *.log
+.DS_Store
+Thumbs.db
